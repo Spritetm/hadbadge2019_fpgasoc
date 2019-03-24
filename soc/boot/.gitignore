@@ -1,0 +1,4 @@
+rom.bin
+rom.elf
+rom.map
+*.o

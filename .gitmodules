@@ -1,0 +1,3 @@
+[submodule "soc/picorv32"]
+	path = soc/picorv32
+	url = https://github.com/cliffordwolf/picorv32.git

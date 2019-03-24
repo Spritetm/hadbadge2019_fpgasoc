@@ -1,0 +1,5 @@
+app.bin
+app.elf
+app.map
+send
+*.o

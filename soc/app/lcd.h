@@ -1,0 +1,1 @@
+void lcd_init();

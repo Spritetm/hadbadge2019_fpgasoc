@@ -1,0 +1,7 @@
+verilator-build
+rom.hex
+soc.bit
+soc.json
+soc.svf
+soc_out.config
+soctrace.vcd
