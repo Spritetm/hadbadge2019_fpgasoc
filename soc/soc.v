@@ -2,9 +2,8 @@
 Top module for SoC.
 */
 
-
 module soc(
-		input clk, 
+		input clk48m, 
 		input [7:0] btn, 
 		output [5:0] led,
 		output [27:0] genio,
@@ -20,12 +19,16 @@ module soc(
 		output lcd_rst,
 		input lcd_fmark,
 		output lcd_blen,
-		output psrama_ce,
+		output psrama_nce,
 		output psrama_sclk,
-		inout [3:0] psrama_sio,
-		output psramb_ce,
+		input [3:0] psrama_sin,
+		output [3:0] psrama_sout,
+		output psrama_oe,
+		output psramb_nce,
 		output psramb_sclk,
-		inout [3:0] psramb_sio
+		input [3:0] psramb_sin,
+		output [3:0] psramb_sout,
+		output psramb_oe
 	);
 
 	parameter integer MEM_WORDS = 4096;
@@ -35,19 +38,14 @@ module soc(
 
 	reg [5:0] reset_cnt = 0;
 	wire resetn = &reset_cnt;
-	always @(posedge clk) begin
+	wire rst = !resetn;
+	always @(posedge clk48m) begin
 		if (btn[7]) begin
-			reset_cnt <= reset_cnt + !resetn;
+			if (!resetn) reset_cnt <= reset_cnt + 1;
 		end else begin
 			reset_cnt <= 0;
 		end
 	end
-
-	wire clk48m;
-	pll_8_48 pll(
-		.clki(clk),
-		.clko(clk48m)
-	);
 
 	wire mem_valid;
 	wire mem_instr;
@@ -58,7 +56,11 @@ module soc(
 	reg [31:0] mem_rdata;
 	wire [31:0] irq;
 	reg [5:0] led;
+	reg [7:0] psrama_ovr;
+	reg [7:0] psramb_ovr;
 
+
+/* verilator lint_off PINMISSING */
 	picorv32 #(
 		.STACKADDR(STACKADDR),
 		.PROGADDR_RESET(PROGADDR_RESET),
@@ -82,6 +84,7 @@ module soc(
 		.mem_rdata   (mem_rdata  ),
 		.irq         (irq        )
 	);
+/* verilator lint_on PINMISSING */
 
 	assign irq = 'h0;
 
@@ -118,6 +121,7 @@ module soc(
 			end
 		end else if (mem_addr[31:28]=='h2) begin
 			led_select = mem_valid;
+			//todo: led/psram/... readback
 		end else if (mem_addr[31:28]=='h3) begin
 			lcd_select = mem_valid;
 			mem_rdata = lcd_rdata;
@@ -161,45 +165,103 @@ module soc(
 		.reg_div_do  (uart_reg_div_do),
 
 		.reg_dat_we  (uart_dat_select ? mem_wstrb[0] : 1'b 0),
-		.reg_dat_re  (uart_dat_select && !mem_wstrb),
+		.reg_dat_re  (uart_dat_select && mem_wstrb==0),
 		.reg_dat_di  (mem_wdata),
 		.reg_dat_do  (uart_reg_dat_do),
 		.reg_dat_wait(uart_reg_dat_wait)
 	);
 
-	assign genio[29:4]='h0;
+	assign genio[27:4]='h0;
 	assign genio[2]=clk48m;
 	assign genio[3]=uart_rx;
 
-	base_mem #(
-		.WORDS(MEM_WORDS)
-	) memory (
+	wire qpi_do_read, qpi_do_write;
+	reg qpi_next_byte;
+	wire [23:0] qpi_addr;
+	reg [31:0] qpi_rdata;
+	wire [31:0] qpi_wdata;
+	reg qpi_is_idle;
+
+	qpimem_cache #(
+		.CACHELINE_WORDS(8),
+		.CACHELINE_CT(32),
+		.ADDR_WIDTH(22) //addresses words
+	) qpimem_cache (
 		.clk(clk48m),
+		.rst(rst),
+		
+		.qpi_do_read(qpi_do_read),
+		.qpi_do_write(qpi_do_write),
+		.qpi_next_byte(qpi_next_byte),
+		.qpi_addr(qpi_addr),
+		.qpi_wdata(qpi_wdata),
+		.qpi_rdata(qpi_rdata),
+		.qpi_is_idle(qpi_is_idle),
+	
 		.wen((mem_valid && !mem_ready && mem_select) ? mem_wstrb : 4'b0),
+		.ren(mem_valid && !mem_ready && mem_select && mem_wstrb==0),
 		.addr(mem_addr[23:2]),
 		.wdata(mem_wdata),
-		.rdata(ram_rdata)
+		.rdata(ram_rdata),
+		.ready(ram_ready)
 	);
 
+	wire qpsrama_sclk;
+	wire qpsrama_nce;
+	wire [3:0] qpsrama_sout;
+	wire qpsrama_oe;
+
+	qpimem_iface qpimem_iface(
+		.clk(clk48m),
+		.rst(rst),
+		
+		.do_read(qpi_do_read),
+		.do_write(qpi_do_write),
+		.next_byte(qpi_next_byte),
+		.addr(qpi_addr),
+		.wdata(qpi_wdata),
+		.rdata(qpi_rdata),
+		.is_idle(qpi_is_idle),
+
+		.spi_clk(qpsrama_sclk),
+		.spi_ncs(qpsrama_nce),
+		.spi_sout(qpsrama_sout),
+		.spi_sin(psrama_sin),
+		.spi_oe(qpsrama_oe)
+	);
+
+	wire psrama_override;
+	assign psrama_override=psrama_ovr[7];
+	assign psrama_oe = psrama_override ? psrama_ovr[6] : qpsrama_oe;
+	assign psrama_sclk = psrama_override ? psrama_ovr[5] : qpsrama_sclk;
+	assign psrama_nce = psrama_override ? psrama_ovr[4] : qpsrama_nce;
+	assign psrama_sout = psrama_override ? psrama_ovr[3:0] : qpsrama_sout;
+
 	always @(posedge clk48m) begin
-		ram_ready <= mem_valid && !mem_ready && mem_select;
-		if (led_select && mem_wstrb[0]) begin
-			led <= mem_wdata[5:0];
+		if (rst) begin
+			led <= 0;
+			psrama_ovr <= 0;
+			psramb_ovr <= 0;
+		end else if (led_select && mem_wstrb[0]) begin
+			if (mem_addr[4:2]==0) begin
+				led <= mem_wdata[5:0];
+			end else if (mem_addr[4:2]==1) begin
+				psrama_ovr <= mem_wdata;
+			end else if (mem_addr[4:2]==2) begin
+				psramb_ovr <= mem_wdata;
+			end
 		end
 	end
 	
+	//Unused pins
+	assign pwmout = 0;
+	assign psramb_sclk = 0;
+	assign psramb_nce = 0;
+	assign psramb_sclk = 0;
+	assign psramb_oe = 0;
+	assign psramb_sout = 0;
+	assign genio[0] = 0;
+	assign genio[1] = 0;
 	
-	wire psrama_so[3:0];
-	wire psrama_si[3:0];
-	wire psrama_oe;
-	wire psramb_so[3:0];
-	wire psramb_si[3:0];
-	wire psramb_oe;
-
-	genvar i;
-	for (i=0; i<4; i++) begin
-		TRELLIS_IO #(.DIR("BIDIR")) psrama_sio_tristate[i] (.I(psrama_so[i]),.T(psrama_oe),.B(psrama_sio[i]),.O(psrama_si[i]));
-		TRELLIS_IO #(.DIR("BIDIR")) psramb_sio_tristate[i] (.I(psramb_so[i]),.T(psramb_oe),.B(psramb_sio[i]),.O(psramb_si[i]));
-	end
-
+	
 endmodule

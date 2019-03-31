@@ -1,4 +1,5 @@
 rom.bin
 rom.elf
 rom.map
+rom.disasm
 *.o

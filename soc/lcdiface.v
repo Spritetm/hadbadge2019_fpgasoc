@@ -6,9 +6,9 @@ module lcdiface(
 	input ren,
 	output reg [31:0] rdata,
 	input [31:0] wdata,
-	output ready,
+	output reg ready,
 
-	output [17:0] lcd_db,
+	output reg [17:0] lcd_db,
 	output reg lcd_rd,
 	output reg lcd_wr,
 	output reg lcd_rs,

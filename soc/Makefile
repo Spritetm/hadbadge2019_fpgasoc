@@ -1,7 +1,7 @@
 PROJ=soc
-SRC=soc.v picorv32/picorv32.v simpleuart.v base_mem.v lcdiface.v
-SRC_SYNTH=pll.v
-SRC_SIM=pll_sim.v
+SRC=soc.v picorv32/picorv32.v simpleuart.v base_mem.v lcdiface.v qpi_cache/qpimem_cache.v qpi_cache/qpimem_iface.v
+SRC_SYNTH=pll.v top_fpga.v
+SRC_SIM=verilator_main.cpp psram_emu.cpp
 EXTRA_DEPEND=rom.hex
 CONSTR=had19_proto1.lpf
 TRELLIS=/usr/share/trellis
@@ -9,7 +9,7 @@ TRELLIS=/usr/share/trellis
 all: $(PROJ).svf
 
 $(PROJ).json: $(SRC) $(SRC_SYNTH) $(EXTRA_DEPEND)
-	yosys -p "synth_ecp5 -top soc -json $@" $(SRC) $(SRC_SYNTH)
+	yosys -p "synth_ecp5 -top top_fpga -json $@" $(SRC) $(SRC_SYNTH)
 
 %_out.config: %.json
 	nextpnr-ecp5 --json $< --lpf $(CONSTR) --textcfg $@ --um-45k --package CABGA381 --speed 8  --freq 48
@@ -31,8 +31,8 @@ clean:
 verilator: verilator-build/Vsoc $(EXTRA_DEPEND)
 	./verilator-build/Vsoc
 
-verilator-build/Vsoc: $(SRC) $(SRC_SIM) verilator_main.cpp
-	verilator --trace --Mdir verilator-build -Wno-style -Wno-fatal -cc --top-module soc --exe $(SRC) $(SRC_SIM) verilator_main.cpp
+verilator-build/Vsoc: $(SRC) $(SRC_SIM)
+	verilator -CFLAGS "-ggdb" --trace --Mdir verilator-build -Wno-style -Wno-fatal -cc --top-module soc --exe $(SRC) $(SRC_SIM)
 	make OPT_FAST="-O2 -fno-stack-protector" -C verilator-build -f Vsoc.mk
 
 rom.hex: boot/

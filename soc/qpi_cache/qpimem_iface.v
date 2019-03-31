@@ -23,6 +23,7 @@ module qpimem_iface #(
 	parameter [0:0] CMD_IS_SPI = 0
 /*
 	//w25q32:
+	//NOTE: untested/not working. Write is probably impossible to get to work (because it's a flash part).
 	parameter [7:0] READCMD = 'hEb,
 	parameter [7:0] WRITECMD = 'hA5,
 	parameter integer READDUMMY = 3,
@@ -37,17 +38,31 @@ module qpimem_iface #(
 	input do_read,
 	input do_write,
 	output reg next_byte,
-	input [24:0] addr,
+	input [23:0] addr,
 	input [31:0] wdata,
-	output reg [31:0] rdata,
+	output [31:0] rdata,
 	output is_idle,
 
 	output spi_clk,
-	output reg spi_cs,
+	output reg spi_ncs,
 	output reg [3:0] spi_sout,
 	input [3:0] spi_sin,
 	output reg spi_oe
 );
+
+//Note: 32-bit words from RiscV are little-endian, but the way we send them is big-end first. Swap
+//endian-ness to make tests happy.
+wire [31:0] wdata_be;
+assign wdata_be[31:24]=wdata[7:0];
+assign wdata_be[23:16]=wdata[15:8];
+assign wdata_be[15:8]=wdata[23:16];
+assign wdata_be[7:0]=wdata[31:24];
+
+reg [31:0] rdata_be;
+assign rdata[31:24]=rdata_be[7:0];
+assign rdata[23:16]=rdata_be[15:8];
+assign rdata[15:8]=rdata_be[23:16];
+assign rdata[7:0]=rdata_be[31:24];
 
 reg [6:0] state;
 reg [4:0] bitno; //note: this sometimes indicates nibble-no, not bitno. Also used to store dummy nibble count.
@@ -72,7 +87,7 @@ always @(posedge clk) begin
 		state <= 0;
 		bitno <= 0;
 		spi_oe <= 0;
-		spi_cs <= 1;
+		spi_ncs <= 1;
 		spi_sout <= 0;
 		curr_is_read <= 0;
 		keep_transferring <= 0;
@@ -83,6 +98,7 @@ always @(posedge clk) begin
 
 		next_byte <= 0;
 		if (state == 0) begin
+			spi_ncs <= 1;
 			if (do_read || do_write) begin
 				//New write or read cycle starts.
 				state <= 1;
@@ -91,7 +107,7 @@ always @(posedge clk) begin
 			end
 		end else if (state == 1) begin
 			//Send out command
-			spi_cs <= 0;
+			spi_ncs <= 0;
 			spi_oe <= 1;
 			if (CMD_IS_SPI) begin
 				spi_sout <= {command[bitno],3'b0};
@@ -121,7 +137,7 @@ always @(posedge clk) begin
 						//nop
 					end else begin
 						//Make sure we already have the data to shift out.
-						data_shifted <= wdata;
+						data_shifted <= wdata_be;
 						next_byte <= 1;
 					end
 				end else begin
@@ -144,7 +160,7 @@ always @(posedge clk) begin
 					spi_oe <= 0; //abuse one cycle for turnaround
 				end else begin
 					//Make sure we already have the data to shift out.
-					data_shifted <= wdata;
+					data_shifted <= wdata_be;
 					next_byte <= 1;
 					bitno <= 7;
 				end
@@ -153,12 +169,12 @@ always @(posedge clk) begin
 			//Data state.
 			if (curr_is_read) begin
 				if (bitno==0) begin
-					rdata <= {data_shifted[31:4], spi_sin_sampled[3:0]};
+					rdata_be <= {data_shifted[31:4], spi_sin_sampled[3:0]};
 					next_byte <= 1;
 					bitno <= 7;
 					if (!do_read) begin //abort?
 						state <= 5;
-						spi_cs <= 0;
+						spi_ncs <= 0;
 					end
 				end else begin
 					data_shifted[bitno*4+3 -: 4]<=spi_sin_sampled;
@@ -172,7 +188,7 @@ always @(posedge clk) begin
 					if (!keep_transferring) begin //abort?
 						state <= 5;
 					end else begin
-						data_shifted <= wdata;
+						data_shifted <= wdata_be;
 						next_byte <= 1;
 						bitno <= 7;
 					end
@@ -181,7 +197,7 @@ always @(posedge clk) begin
 				end
 			end
 		end else begin
-			spi_cs <= 1;
+			spi_ncs <= 1;
 			spi_oe <= 0;
 			state <= 0;
 		end

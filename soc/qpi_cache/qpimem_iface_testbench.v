@@ -9,7 +9,7 @@ reg [24:0] addr;
 wire [31:0] rdata;
 reg [31:0] wdata;
 
-wire spi_clk, spi_cs, is_idle;
+wire spi_clk, spi_ncs, is_idle;
 wire [3:0] spi_sout;
 wire [3:0] spi_sin;
 wire spi_oe;
@@ -27,7 +27,7 @@ qpimem_iface qpimem_iface(
 	.is_idle(is_idle),
 
 	.spi_clk(spi_clk),
-	.spi_cs(spi_cs),
+	.spi_ncs(spi_ncs),
 	.spi_sout(spi_sout),
 	.spi_sin(spi_sin),
 	.spi_oe(spi_oe)
@@ -35,7 +35,7 @@ qpimem_iface qpimem_iface(
 
 spiram spiram (
 	.spi_clk(spi_clk),
-	.spi_cs(spi_cs),
+	.spi_ncs(spi_ncs),
 	.spi_sin(spi_sout),
 	.spi_sout(spi_sin),
 	.spi_oe(spi_oe)

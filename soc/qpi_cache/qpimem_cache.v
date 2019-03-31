@@ -21,7 +21,7 @@ module qpimem_cache #(
 	input ren,
 	input [31:0] wdata,
 	output reg [31:0] rdata,
-	output ready
+	output reg ready
 );
 
 /*
@@ -81,7 +81,9 @@ reg [2:0] flagdata [0:(CACHE_SETS)-1];
 //Initial values for cache data
 integer i;
 initial begin
-	for (i=0; i<CACHELINE_CT*CACHELINE_WORDS; i++) cachedata[i]=0;
+//	for (i=0; i<CACHELINE_CT*CACHELINE_WORDS; i++) cachedata[i]=0;
+	$readmemh("rom.hex", cachedata);
+
 	for (i=0; i<CACHE_SETS; i++) begin
 		//make sure we don't have two cache lines pointing to the same address
 		//plus, this works if we directly readmemh() into the cache ram.
@@ -117,7 +119,14 @@ end
 
 //Idea here is if we don't find the tag, we have a cache miss. The tag will
 //only be written after a cache hit, so we're ready by then.
-assign ready = found_tag;
+always @(posedge clk) begin
+	if (rst) begin
+		ready <= 0;
+	end else begin
+		ready <= found_tag && (ren || wen!=0);
+	end
+end
+
 
 always @(posedge clk) begin
 	if (rst) begin
@@ -132,9 +141,9 @@ always @(posedge clk) begin
 			flagdata[current_set][FLAG_LRU]<=!cachehit_way;
 			//Mark cache line as dirty, so we'll do writeback
 			if (cachehit_way) begin
-				flagdata[current_set][FLAG_CW1_DIRTY]<=1;
-			end else begin
 				flagdata[current_set][FLAG_CW2_DIRTY]<=1;
+			end else begin
+				flagdata[current_set][FLAG_CW1_DIRTY]<=1;
 			end
 			//Change requested byte(s)
 			if (wen[0]) `CACHEDATA(cachehit_way, current_set, `OFFSET_FROM_ADDR(addr))[7:0] <= wdata[7:0];
@@ -148,11 +157,14 @@ end
 
 wire need_cache_refill;
 wire cache_line_lru;
+wire cache_line_lru_dirty;
 assign need_cache_refill = !found_tag && (ren || wen!=0);
 assign cache_line_lru = flagdata[current_set][FLAG_LRU];
 assign cache_line_lru_dirty = cache_line_lru ? 
 		flagdata[current_set][FLAG_CW2_DIRTY] : 
 		flagdata[current_set][FLAG_CW1_DIRTY];
+
+reg [CACHE_OFFSET_BITS-1:0] write_words_left;
 
 always @(posedge clk) begin
 	if (rst) begin
@@ -172,19 +184,22 @@ always @(posedge clk) begin
 				if (cache_line_lru_dirty) begin
 					qpi_do_write <= 1;
 					//Address is the address that the LRU has
-					qpi_addr[24:2+CACHE_OFFSET_BITS] <= {flagdata[current_set][FLAG_LRU]?`TAGDATA(1, current_set):`TAGDATA(0, current_set), current_set};
+					qpi_addr[23:2+CACHE_OFFSET_BITS] <= {flagdata[current_set][FLAG_LRU]?`TAGDATA(1, current_set):`TAGDATA(0, current_set), current_set};
 					qpi_addr[2+CACHE_OFFSET_BITS-1:0] <= 0;
+					write_words_left <= 'hffff; //all ones
 					qpi_wdata <= `CACHEDATA(cache_line_lru, `SET_FROM_ADDR(addr), 0);
 				end else begin
 					qpi_do_read <= 1;
 					//Read from the address the user gave
-					qpi_addr[24:2+CACHE_OFFSET_BITS] <= {`TAG_FROM_ADDR(addr), current_set};
+					qpi_addr[23:2+CACHE_OFFSET_BITS] <= {`TAG_FROM_ADDR(addr), current_set};
 					qpi_addr[2+CACHE_OFFSET_BITS-1:0] <= 0;
 				end
 			end else if (qpi_do_write && qpi_next_byte) begin
 				qpi_addr[2+CACHE_OFFSET_BITS-1:2] <= qpi_addr[2+CACHE_OFFSET_BITS-1:2] + 1;
-				qpi_wdata <= `CACHEDATA(cache_line_lru, `SET_FROM_ADDR(addr), 0);
-				if (&qpi_addr[2+CACHE_OFFSET_BITS-1:2]) begin
+				//Note the 'b100 added to the offset: we want to send the next word.
+				qpi_wdata <= `CACHEDATA(cache_line_lru, `SET_FROM_ADDR(addr), qpi_addr[2+CACHE_OFFSET_BITS-1:2]+'b1);
+				write_words_left <= write_words_left - 1;
+				if ((write_words_left)==1) begin
 					//last write of the cache line, un-dirty cache line
 					//Note that because we un-dirtied the cache line but there's still no cache hit,
 					//the next round (after the qspi machine has gone idle), we'll do the actual
