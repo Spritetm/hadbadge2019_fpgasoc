@@ -14,21 +14,22 @@ Note:
 */
 
 module qpimem_iface #(
-/*
 	//ly68l6400:
-	parameter integer readcmd = 'hEB,
-	parameter integer writecmd = 'h38,
-	parameter integer readdummy = 7,
-	parameter integer writedummy = 0,
-	parameter integer cmd_is_spi = 0
-*/
+	parameter [7:0] READCMD = 'hEB,
+	parameter [7:0] WRITECMD = 'h38,
+	parameter integer READDUMMY = 7,
+	parameter integer WRITEDUMMY = 0,
+	parameter [3:0] DUMMYVAL = 0,
+	parameter [0:0] CMD_IS_SPI = 0
+/*
 	//w25q32:
 	parameter [7:0] READCMD = 'hEb,
 	parameter [7:0] WRITECMD = 'hA5,
 	parameter integer READDUMMY = 3,
-	parameter [7:0] DUMMYVAL = 'hff,
-	parameter [0:0] WRITEDUMMY = 1,
-	parameter [0:0] CMD_IS_SPI = 0
+	parameter [3:0] DUMMYVAL = 'hf,
+	parameter integer WRITEDUMMY = 1,
+	parameter [0:0] CMD_IS_SPI = 1
+*/
 ) (
 	input clk,
 	input rst,
@@ -113,15 +114,27 @@ always @(posedge clk) begin
 			//Address, in qpi
 			spi_sout <= addr[bitno*4+3 -: 4];
 			if (bitno == 0) begin
-				bitno <= do_read ? READDUMMY*2-1 : WRITEDUMMY*2-1;
-				state <= 3;
+				if ((do_read ? READDUMMY : WRITEDUMMY)==0) begin
+					state <= 4;
+						bitno <= 7;
+					if (curr_is_read) begin
+						//nop
+					end else begin
+						//Make sure we already have the data to shift out.
+						data_shifted <= wdata;
+						next_byte <= 1;
+					end
+				end else begin
+					bitno <= do_read ? READDUMMY-1 : WRITEDUMMY-1;
+					state <= 3;
+				end
 			end else begin
 				bitno <= bitno - 1;
 			end
 		end else if (state == 3) begin
 			//Dummy bytes. Amount of nibbles is in bitno.
 			//Note that once the host has pulled down 
-			spi_sout <= bitno[0] ? DUMMYVAL[7:4] : DUMMYVAL[3:0];
+			spi_sout <= DUMMYVAL;
 			bitno <= bitno - 1;
 			if (bitno==0) begin
 				//end of dummy cycle
