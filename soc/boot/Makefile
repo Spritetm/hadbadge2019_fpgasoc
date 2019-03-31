@@ -16,3 +16,8 @@ rom.elf: $(OBJS) sections.lds
 rom.bin: rom.elf
 	$(TOOLCHAIN_PREFIX)objcopy -O binary $< $@
 	chmod -x $@
+
+clean:
+	rm -f rom.bin rom.elf $(OBJS)
+
+.PHONY: clean

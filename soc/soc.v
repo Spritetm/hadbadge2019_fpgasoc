@@ -19,7 +19,13 @@ module soc(
 		input lcd_id,
 		output lcd_rst,
 		input lcd_fmark,
-		output lcd_blen
+		output lcd_blen,
+		output psrama_ce,
+		output psrama_sclk,
+		inout [3:0] psrama_sio,
+		output psramb_ce,
+		output psramb_sclk,
+		inout [3:0] psramb_sio
 	);
 
 	parameter integer MEM_WORDS = 4096;
@@ -180,6 +186,20 @@ module soc(
 		if (led_select && mem_wstrb[0]) begin
 			led <= mem_wdata[5:0];
 		end
+	end
+	
+	
+	wire psrama_so[3:0];
+	wire psrama_si[3:0];
+	wire psrama_oe;
+	wire psramb_so[3:0];
+	wire psramb_si[3:0];
+	wire psramb_oe;
+
+	genvar i;
+	for (i=0; i<4; i++) begin
+		TRELLIS_IO #(.DIR("BIDIR")) psrama_sio_tristate[i] (.I(psrama_so[i]),.T(psrama_oe),.B(psrama_sio[i]),.O(psrama_si[i]));
+		TRELLIS_IO #(.DIR("BIDIR")) psramb_sio_tristate[i] (.I(psramb_so[i]),.T(psramb_oe),.B(psramb_sio[i]),.O(psramb_si[i]));
 	end
 
 endmodule

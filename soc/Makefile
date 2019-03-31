@@ -12,7 +12,7 @@ $(PROJ).json: $(SRC) $(SRC_SYNTH) $(EXTRA_DEPEND)
 	yosys -p "synth_ecp5 -top soc -json $@" $(SRC) $(SRC_SYNTH)
 
 %_out.config: %.json
-	nextpnr-ecp5 --json $< --lpf $(CONSTR) --textcfg $@ --um-45k --package CABGA381 --speed 8
+	nextpnr-ecp5 --json $< --lpf $(CONSTR) --textcfg $@ --um-45k --package CABGA381 --speed 8  --freq 48
 
 %.bit: %_out.config
 	ecppack --svf-rowsize 100000 --svf $(PROJ).svf --input $< --bit $@
