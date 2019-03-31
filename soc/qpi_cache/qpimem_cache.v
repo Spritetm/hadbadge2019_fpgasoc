@@ -107,6 +107,7 @@ reg cachehit_way;
 reg found_tag; //this being 0 indicates a cache miss
 always @(*) begin
 	found_tag=0;
+	cachehit_way=0;
 	if (`TAGDATA(0, current_set)==`TAG_FROM_ADDR(addr)) begin
 		found_tag=1;
 		cachehit_way=0; //DO U KNOW THE WAY
