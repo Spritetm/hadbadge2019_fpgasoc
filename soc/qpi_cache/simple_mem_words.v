@@ -18,8 +18,11 @@ module simple_mem_words #(
 	
 	integer i;
 	initial begin
-		for (i=0; i<WORDS; i=i+1) mem[i]='hdeadbeef;
-		if (INITIAL_HEX != "") $readmemh("rom.hex", mem);
+		if (INITIAL_HEX == "") begin
+			for (i=0; i<WORDS; i=i+1) mem[i]='hdeadbeef;
+		end else begin
+			$readmemh("rom.hex", mem);
+		end
 	end
 
 	always @(posedge clk) begin
