@@ -182,9 +182,10 @@ module soc(
 	wire [31:0] qpi_wdata;
 	reg qpi_is_idle;
 
+	//16 words * 256 lines = 4K words = 16K bytes. Each way can contain 8KByte.
 	qpimem_cache #(
-		.CACHELINE_WORDS(8),
-		.CACHELINE_CT(32),
+		.CACHELINE_WORDS(16),
+		.CACHELINE_CT(256),
 		.ADDR_WIDTH(22) //addresses words
 	) qpimem_cache (
 		.clk(clk48m),

@@ -27,16 +27,18 @@ int main(int argc, char **argv) {
 
 	psram_emu_init();
 	int oldled=0;
-	for (int i=0; i<4800000; i++) {
+	for (int i=0; i<480000; i++) {
 		if (do_abort) break;
 		tb->uart_rx=uart_get(i*21);
+		int sin = psram_emu(tb->psrama_sclk, tb->psrama_nce, tb->psrama_sout, tb->psrama_oe);
 		tb->clk48m = 1;
-		tb->psrama_sin = psram_emu(tb->psrama_sclk, tb->psrama_nce, tb->psrama_sout, tb->psrama_oe);
 		tb->eval();
+		tb->psrama_sin=sin;
 		if (do_trace) trace->dump(i*21);
+		sin=tb->psrama_sin = psram_emu(tb->psrama_sclk, tb->psrama_nce, tb->psrama_sout, tb->psrama_oe);
 		tb->clk48m = 0;
-		tb->psrama_sin = psram_emu(tb->psrama_sclk, tb->psrama_nce, tb->psrama_sout, tb->psrama_oe);
 		tb->eval();
+		tb->psrama_sin = sin;
 		if (do_trace) trace->dump(i*21+10);
 		if (oldled != tb->led) {
 			oldled=tb->led;

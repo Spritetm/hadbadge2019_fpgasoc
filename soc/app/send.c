@@ -15,7 +15,8 @@
 #include <string.h>
 #include <math.h>
 #include <sys/ioctl.h>
-
+#include <readline/readline.h>
+#include <readline/history.h>
 
 /*
 Protocol:

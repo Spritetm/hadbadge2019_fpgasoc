@@ -1,25 +1,47 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <cstdlib>
+#include <sys/mman.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 
 #define MEMSIZE 8*1024*1024
 
 static uint8_t *mem;
 static uint8_t rom[0x1000];
+static int romsize;
 
 extern int do_abort;
 
+FILE *lafd;
+
 void psram_emu_init() {
+#if 1
+	int m=open("psram_contents.bin", O_RDWR|O_CREAT, 0666);
+	mem=(uint8_t*)mmap(NULL, MEMSIZE, PROT_READ|PROT_WRITE, MAP_SHARED, m, 0);
+	if (mem==(uint8_t*)MAP_FIXED) {
+		perror("mmap failed");
+		exit(1);
+	}
+	printf("%x %x %x %x\n", mem[0], mem[1], mem[2], mem[3]);
+#else
 	mem=(uint8_t*)malloc(MEMSIZE);
 	for (int i=0; i<MEMSIZE; i++) mem[i]=rand();
+#endif
+
 	FILE *f=fopen("boot/rom.bin", "rb");
-	fread(rom, 1, 0x1000, f);
+	romsize=fread(rom, 1, 0x1000, f);
 	fclose(f);
+
+	lafd=fopen("lafd.txt", "w");
 }
 
 void verify_write(int addr, uint8_t val) {
+#if 1
 	if (addr<0x10000) {
-		if (val!=rom[addr]) {
+		if (addr<romsize && val!=rom[addr]) {
 			printf("ERROR! Overwriting boot ROM addr 0x%08X with 0x%02X!\n", addr, val);
 			do_abort=1;
 		}
@@ -35,6 +57,7 @@ void verify_write(int addr, uint8_t val) {
 			do_abort=1;
 		}
 	}
+#endif
 }
 
 
@@ -46,6 +69,8 @@ static int sout_next=0, sout_cur=0;
 static int oldclk;
 //Called on clock changes.
 int psram_emu(int clk, int ncs, int sin, int oe) {
+	if (clk && clk!=oldclk) fprintf(lafd, "0.000012340000000,0x%04X\n", (oe?sin:sout_next)|(ncs?0x80:0));
+
 	if (ncs==1) {
 		nib=0;
 		cmd=0;
@@ -70,6 +95,7 @@ int psram_emu(int clk, int ncs, int sin, int oe) {
 				}
 			}
 		} else {
+			sin&=0xf;
 			if (nib==0) cmd|=(sin<<4);
 			if (nib==1) cmd|=(sin);
 			if (nib==1 && (cmd!=0xeb && cmd!=0x02 && cmd!=0x38)) {
@@ -105,12 +131,13 @@ int psram_emu(int clk, int ncs, int sin, int oe) {
 			nib++;
 		}
 	} else {
-		sout_cur=sout_next;
 		//negedge clk
+		sout_cur=sout_next;
 		oldclk=clk;
 	}
 	oldclk=clk;
-	return sout_cur;
+//	return sout_cur;
+	return sout_next;
 }
 
 

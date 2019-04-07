@@ -13,7 +13,7 @@ reset_vec:
 //	picorv32_waitirq_insn(zero)
 //	picorv32_maskirq_insn(zero, zero)
 
-//Bitbang PSRAM port
+//Bitbang PSRAM port initialization command
 	la a1, psram_init
 	li a2, PERI_LED+4
 bbloop:
@@ -22,6 +22,8 @@ bbloop:
 	addi a1, a1, 1
 	bne zero, a3, bbloop
 
+#if 1
+	//LEDS: 0 for init
 	li a1, PERI_LED
 	li a2, 0xff
 	sw a2, 0(a1)
@@ -36,6 +38,7 @@ memtestwloop:
 	addi a1, a1, 4
 	bne a1, a4, memtestwloop
 
+	//LEDS: 1 for write loop done
 	li a1, PERI_LED
 	li a2, 1
 	sw a2, 0(a1)
@@ -50,21 +53,24 @@ memtestrloop:
 	addi a1, a1, 4
 	bne a1, a4, memtestrloop
 
+	//LEDS: 2 for OK
 	li a2, 0x02
 	j memtestok
 
 memtesterr:
+	//LEDs: 0 for error
 	li a2, 0x00
 memtestok:
 	li a1, PERI_LED
 	sw a2, 0(a1)
 
 hangtest: j hangtest
-
+#endif
 
 	//Set up UART divider
 	li a1, PERI_UART_DIV
-	li a2, 416 //115200 with a clock of 48MHz
+//	li a2, 416 //115200 with a clock of 48MHz
+	li a2, 69 //115200 with a clock of 8MHz
 	sw a2, 0(a1)
 
 	//Set up LEDs
@@ -205,8 +211,6 @@ psram_init:
 	.byte 0xCD, 0xED //bit 2
 	.byte 0xCC, 0xEC //bit 1
 	.byte 0xCD, 0xED //bit 0
-	.byte 0xDD, 0xCD //raise sck, clear override
-	.byte 0x4F, 0
-
-
+	.byte 0xDD, 0x4F //raise sck, clear override
+	.byte 0
 

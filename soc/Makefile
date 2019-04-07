@@ -1,5 +1,6 @@
 PROJ=soc
-SRC=soc.v picorv32/picorv32.v simpleuart.v base_mem.v lcdiface.v qpi_cache/qpimem_cache.v qpi_cache/qpimem_iface.v
+SRC=soc.v picorv32/picorv32.v simpleuart.v base_mem.v lcdiface.v qpi_cache/qpimem_cache.v 
+SRC+=qpi_cache/qpimem_iface.v qpi_cache/simple_mem.v qpi_cache/simple_mem_words.v
 SRC_SYNTH=pll.v top_fpga.v
 SRC_SIM=verilator_main.cpp psram_emu.cpp
 EXTRA_DEPEND=rom.hex

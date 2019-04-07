@@ -17,7 +17,11 @@ reg [31:0] wdata;
 wire [31:0] rdata;
 wire ready;
 
-qpimem_cache qpimem_cache(
+qpimem_cache #(
+		.CACHELINE_WORDS(4),
+		.CACHELINE_CT(256),
+		.ADDR_WIDTH(22) //addresses words
+) qpimem_cache (
 	.clk(clk),
 	.rst(rst),
 	
@@ -67,36 +71,31 @@ initial begin
 	clk <= 1;
 	
 	#2 rst <= 0;
-
-	#1 addr <= 'h12;
-	ren <= 1;
-	#1 while (!ready) #1;
-	ren <= 0;
-
-	#1 addr <= 'h34;
-	ren <= 1;
-	#1 while (!ready) #1;
-	ren <= 0;
-
+	
+	//Load cache line 0, way 0, and dirty
 	#1 wdata <= 'h12345678;
+	#1 addr <= 'h0000;
 	wen <= 'hf;
 	#1 while (!ready) #1;
 	wen <= 0;
 
-	#1 addr <= 'h12;
+	//Load cache line 0, way 1
+	#1 addr <= 'h1000;
 	ren <= 1;
 	#1 while (!ready) #1;
 	ren <= 0;
 
-	#1 addr <= 'h34;
+	//Load cache line 0 way 0; cause a writeback of address 0
+	#1 addr <= 'h2000;
 	ren <= 1;
 	#1 while (!ready) #1;
 	ren <= 0;
 
-	#1 addr <= 'hAAAAAA;
+	//Load cache line 0 way 1 with the previously written-back data at addr 0
+	#1 addr <= 'h0000;
 	ren <= 1;
-//	#1 while (!ready) #1;
-//	ren <= 0;
+	#1 while (!ready) #1;
+	ren <= 0;
 
 	#200 $finish;
 end

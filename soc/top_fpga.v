@@ -66,15 +66,17 @@ module top_fpga(
 		.psramb_oe(psramb_oe)
 	);
 
-	pll_8_48 pll(
-		.clki(clk),
-		.clko(clk48m)
-	);
+//	pll_8_48 pll(
+//		.clki(clk),
+//		.clko(clk48m)
+//	);
+	assign clk=clk48m;
 
 	genvar i;
+	//Note: TRELLIS_IO has a T-ristate input, which does the opposite of OE.
 	for (i=0; i<4; i++) begin
-		TRELLIS_IO #(.DIR("BIDIR")) psrama_sio_tristate[i] (.I(psrama_sout[i]),.T(psrama_oe),.B(psrama_sio[i]),.O(psrama_sin[i]));
-		TRELLIS_IO #(.DIR("BIDIR")) psramb_sio_tristate[i] (.I(psramb_sout[i]),.T(psramb_oe),.B(psramb_sio[i]),.O(psramb_sin[i]));
+		TRELLIS_IO #(.DIR("BIDIR")) psrama_sio_tristate[i] (.I(psrama_sout[i]),.T(!psrama_oe),.B(psrama_sio[i]),.O(psrama_sin[i]));
+		TRELLIS_IO #(.DIR("BIDIR")) psramb_sio_tristate[i] (.I(psramb_sout[i]),.T(!psramb_oe),.B(psramb_sio[i]),.O(psramb_sin[i]));
 	end
 
 endmodule

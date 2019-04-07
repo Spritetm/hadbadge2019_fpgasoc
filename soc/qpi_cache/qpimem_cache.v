@@ -20,7 +20,7 @@ module qpimem_cache #(
 	input [3:0] wen,
 	input ren,
 	input [31:0] wdata,
-	output reg [31:0] rdata,
+	output [31:0] rdata,
 	output reg ready
 );
 
@@ -63,41 +63,65 @@ parameter CACHE_OFFSET_BITS=$clog2(CACHELINE_WORDS);
 `define TAG_FROM_ADDR(addr) addr[ADDR_WIDTH-1:ADDR_WIDTH-CACHE_TAG_BITS]
 `define SET_FROM_ADDR(addr) addr[CACHE_OFFSET_BITS+CACHE_SET_BITS-1:CACHE_OFFSET_BITS]
 `define OFFSET_FROM_ADDR(addr) addr[CACHE_OFFSET_BITS-1:0]
+`define CACHEDATA_ADDR(way, set, offset) (way*CACHE_SETS*CACHELINE_WORDS+set*CACHELINE_WORDS+offset)
 
 //Bits in flag memory
 parameter integer FLAG_LRU=0;
 parameter integer FLAG_CW1_DIRTY=1;
 parameter integer FLAG_CW2_DIRTY=2;
 
+reg [3:0] cachedata_wen;
+reg [31:0] cachedata_wdata;
+wire [31:0] cachedata_rdata;
+reg [CACHE_SET_BITS+CACHE_OFFSET_BITS:0] cachedata_addr;
+
 //Cache memory, tag memory, flags memory.
-reg [31:0] cachedata [0:CACHELINE_CT*CACHELINE_WORDS-1];
-reg [CACHE_TAG_BITS-1:0] tagdata [0:CACHELINE_CT-1];
-reg [2:0] flagdata [0:(CACHE_SETS)-1];
+simple_mem_words #(
+	.WORDS(CACHELINE_CT*CACHELINE_WORDS),
+	.INITIAL_HEX("rom.hex")
+) cachedata (
+	.clk(clk),
+	.wen(cachedata_wen),
+	.addr(cachedata_addr),
+	.wdata(cachedata_wdata),
+	.rdata(cachedata_rdata)
+);
 
-//Easy accessor for cache/tag memory
-`define CACHEDATA(way, set, offset) cachedata[way*CACHE_SETS*CACHELINE_WORDS+set*CACHELINE_WORDS+offset]
-`define TAGDATA(way, set) tagdata[way*CACHE_SETS+set]
+assign rdata = cachedata_rdata;
+wire [CACHE_TAG_BITS-1:0] tag_wdata;
+wire [CACHE_TAG_BITS-1:0] tag_rdata[0:1];
+reg [1:0] tag_wen;
 
-//Initial values for cache data
-integer i;
-initial begin
-//	for (i=0; i<CACHELINE_CT*CACHELINE_WORDS; i++) cachedata[i]=0;
-	$readmemh("rom.hex", cachedata);
-
-	for (i=0; i<CACHE_SETS; i++) begin
-		//make sure we don't have two cache lines pointing to the same address
-		//plus, this works if we directly readmemh() into the cache ram.
-		tagdata[i]=0;
-		tagdata[i+CACHE_SETS]=1;
-	end
-	for (i=0; i<CACHE_SETS; i++) begin
-		//Mark all cache as dirty: we want the preloaded cache to be written back to
-		//main memory if needed.
-		flagdata[i][FLAG_LRU]=0;
-		flagdata[i][FLAG_CW1_DIRTY]=1;
-		flagdata[i][FLAG_CW2_DIRTY]=1;
-	end
+genvar i;
+for (i=0; i<2; i=i+1) begin
+	simple_mem #(
+		.WORDS(CACHE_SETS),
+		.WIDTH(CACHE_TAG_BITS),
+		.INITIAL_FILL(i)
+	) tagdata (
+		.clk(clk),
+		.wen(tag_wen[i]),
+		.addr(`SET_FROM_ADDR(addr)),
+		.wdata(`TAG_FROM_ADDR(addr)),
+		.rdata(tag_rdata[i])
+	);
 end
+
+reg flag_wen;
+reg [2:0] flag_wdata;
+wire [2:0] flag_rdata;
+
+simple_mem #(
+	.WORDS(CACHE_SETS),
+	.WIDTH(3),
+	.INITIAL_FILL('b110)
+) flagdata (
+	.clk(clk),
+	.wen(flag_wen),
+	.addr(`SET_FROM_ADDR(addr)),
+	.wdata(flag_wdata),
+	.rdata(flag_rdata)
+);
 
 wire [CACHE_SET_BITS-1:0] current_set;
 assign current_set = `SET_FROM_ADDR(addr);
@@ -105,16 +129,42 @@ assign current_set = `SET_FROM_ADDR(addr);
 //Find the cache line the current address is located in.
 reg cachehit_way;
 reg found_tag; //this being 0 indicates a cache miss
+wire doing_cache_refill;
+reg [CACHE_OFFSET_BITS-1:0] cache_refill_offset;
+reg [3:0] cache_refill_wen;
 always @(*) begin
 	found_tag=0;
 	cachehit_way=0;
-	if (`TAGDATA(0, current_set)==`TAG_FROM_ADDR(addr)) begin
+	flag_wdata = flag_rdata;
+	qpi_wdata = cachedata_rdata;
+	if (tag_rdata[0]==`TAG_FROM_ADDR(addr)) begin
 		found_tag=1;
 		cachehit_way=0; //DO U KNOW THE WAY
-	end
-	if (`TAGDATA(1, current_set)==`TAG_FROM_ADDR(addr)) begin
+		flag_wdata[FLAG_CW1_DIRTY] = flag_rdata[FLAG_CW1_DIRTY] || (wen != 0);
+		flag_wdata[FLAG_CW2_DIRTY] = flag_rdata[FLAG_CW2_DIRTY];
+		flag_wdata[FLAG_LRU]=1;
+	end else if (tag_rdata[1]==`TAG_FROM_ADDR(addr)) begin
 		found_tag=1;
 		cachehit_way=1;
+		flag_wdata[FLAG_CW1_DIRTY] = flag_rdata[FLAG_CW1_DIRTY];
+		flag_wdata[FLAG_CW2_DIRTY] = flag_wdata[FLAG_CW2_DIRTY] || (wen != 0);
+		flag_wdata[FLAG_LRU]=0;
+	end
+	if (found_tag && !doing_cache_refill) begin
+		//Tag is found. Route the read or write to the cache data store
+		cachedata_addr = `CACHEDATA_ADDR(cachehit_way, `SET_FROM_ADDR(addr), `OFFSET_FROM_ADDR(addr));
+		cachedata_wen = wen;
+		cachedata_wdata = wdata;
+	end else begin
+		//No tag. Switch over control of cache data to refill logic.
+		cachedata_addr = `CACHEDATA_ADDR(flag_rdata[FLAG_LRU], `SET_FROM_ADDR(addr), cache_refill_offset);
+		//A cache line reload will always un-dirty the LRU page. Prepare the flags that indicate it so the
+		//reload state machine only has to write them.
+		flag_wdata[FLAG_CW1_DIRTY] = (flag_rdata[FLAG_LRU]==0) ? 0 : flag_rdata[FLAG_CW1_DIRTY];
+		flag_wdata[FLAG_CW2_DIRTY] = (flag_rdata[FLAG_LRU]==1) ? 0 : flag_rdata[FLAG_CW2_DIRTY];
+		flag_wdata[FLAG_LRU] = flag_rdata[FLAG_LRU]; //doesn't matter actually
+		cachedata_wdata = qpi_rdata;
+		cachedata_wen = cache_refill_wen;
 	end
 end
 
@@ -124,60 +174,49 @@ always @(posedge clk) begin
 	if (rst) begin
 		ready <= 0;
 	end else begin
-		ready <= found_tag && (ren || wen!=0);
+		ready <= found_tag && (ren || wen!=0) && !doing_cache_refill;
 	end
 end
-
-
-always @(posedge clk) begin
-	if (rst) begin
-		//na
-	end else begin
-		if (ren && found_tag) begin
-			//Cache hit. Read, mark other line as LRU, return.
-			flagdata[current_set][FLAG_LRU]<=!cachehit_way;
-			rdata <= `CACHEDATA(cachehit_way, current_set, `OFFSET_FROM_ADDR(addr));
-		end else if (wen!=0 && found_tag) begin
-			//Cache hit for write. Mark other line as LRU first.
-			flagdata[current_set][FLAG_LRU]<=!cachehit_way;
-			//Mark cache line as dirty, so we'll do writeback
-			if (cachehit_way) begin
-				flagdata[current_set][FLAG_CW2_DIRTY]<=1;
-			end else begin
-				flagdata[current_set][FLAG_CW1_DIRTY]<=1;
-			end
-			//Change requested byte(s)
-			if (wen[0]) `CACHEDATA(cachehit_way, current_set, `OFFSET_FROM_ADDR(addr))[7:0] <= wdata[7:0];
-			if (wen[1]) `CACHEDATA(cachehit_way, current_set, `OFFSET_FROM_ADDR(addr))[15:8] <= wdata[15:8];
-			if (wen[2]) `CACHEDATA(cachehit_way, current_set, `OFFSET_FROM_ADDR(addr))[23:16] <= wdata[23:16];
-			if (wen[3]) `CACHEDATA(cachehit_way, current_set, `OFFSET_FROM_ADDR(addr))[31:24] <= wdata[31:24];
-		end
-	end
-end
-
 
 wire need_cache_refill;
 wire cache_line_lru;
 wire cache_line_lru_dirty;
+//Assumption: ren/wen/addr will stay stable until we have signaled the memory is ready.
 assign need_cache_refill = !found_tag && (ren || wen!=0);
-assign cache_line_lru = flagdata[current_set][FLAG_LRU];
+assign cache_line_lru = flag_rdata[FLAG_LRU];
 assign cache_line_lru_dirty = cache_line_lru ? 
-		flagdata[current_set][FLAG_CW2_DIRTY] : 
-		flagdata[current_set][FLAG_CW1_DIRTY];
+		flag_rdata[FLAG_CW2_DIRTY] : 
+		flag_rdata[FLAG_CW1_DIRTY];
 
 reg [CACHE_OFFSET_BITS-1:0] write_words_left;
+
+assign doing_cache_refill = qpi_do_read || qpi_do_write;
 
 always @(posedge clk) begin
 	if (rst) begin
 		qpi_do_read <= 0;
 		qpi_do_write <= 0;
 		qpi_addr <= 0;
-		qpi_wdata <= 0;
+		ready <= 0;
+		flag_wen <= 0;
+		tag_wen <= 0;
+		cache_refill_offset <= 0;
+		write_words_left <= 0;
+		cache_refill_wen <= 0;
 	end else begin
-		if (!need_cache_refill) begin
-			//Whee, we can idle.
+		ready <= 0;
+		flag_wen <= 0;
+		tag_wen[0] <= 0;
+		tag_wen[1] <= 0;
+		cache_refill_wen <= 0;
+		if (found_tag && (ren || wen!=0) && !doing_cache_refill) begin
+			//Cache hit. Write back flags, 
+			if (!ready) flag_wen <= 1;
+			ready <= 1;
+		end else if (!need_cache_refill) begin
+			//Nothing going on. Idle.
 		end else if (!qpi_do_read && !qpi_do_write && !qpi_is_idle) begin
-			//Done reading/writing, but we have no 
+			//Done reading/writing, but we have to wait for the qpi iface to get idle again.
 		end else if (need_cache_refill) begin
 			//Tag not found! Grabbing from SPI memory.
 			if (!qpi_do_read && !qpi_do_write) begin
@@ -185,20 +224,22 @@ always @(posedge clk) begin
 				if (cache_line_lru_dirty) begin
 					qpi_do_write <= 1;
 					//Address is the address that the LRU has
-					qpi_addr[23:2+CACHE_OFFSET_BITS] <= {flagdata[current_set][FLAG_LRU]?`TAGDATA(1, current_set):`TAGDATA(0, current_set), current_set};
+					qpi_addr[23:2+CACHE_OFFSET_BITS] <= {cache_line_lru?tag_rdata[1]:tag_rdata[0], current_set};
 					qpi_addr[2+CACHE_OFFSET_BITS-1:0] <= 0;
 					write_words_left <= 'hffff; //all ones
-					qpi_wdata <= `CACHEDATA(cache_line_lru, `SET_FROM_ADDR(addr), 0);
+					cache_refill_offset <= 0;
+					//note: qpi memory always writes what's read from cachedata mem.
 				end else begin
 					qpi_do_read <= 1;
 					//Read from the address the user gave
 					qpi_addr[23:2+CACHE_OFFSET_BITS] <= {`TAG_FROM_ADDR(addr), current_set};
 					qpi_addr[2+CACHE_OFFSET_BITS-1:0] <= 0;
+					cache_refill_offset <= -1;
+					//note: on refill, cache always writes whatever comes from cachedata mem.
 				end
 			end else if (qpi_do_write && qpi_next_byte) begin
 				qpi_addr[2+CACHE_OFFSET_BITS-1:2] <= qpi_addr[2+CACHE_OFFSET_BITS-1:2] + 1;
-				//Note the 'b100 added to the offset: we want to send the next word.
-				qpi_wdata <= `CACHEDATA(cache_line_lru, `SET_FROM_ADDR(addr), qpi_addr[2+CACHE_OFFSET_BITS-1:2]+'b1);
+				cache_refill_offset <= cache_refill_offset + 1;
 				write_words_left <= write_words_left - 1;
 				if ((write_words_left)==1) begin
 					//last write of the cache line, un-dirty cache line
@@ -206,14 +247,20 @@ always @(posedge clk) begin
 					//the next round (after the qspi machine has gone idle), we'll do the actual
 					//read of the cache line.
 					qpi_do_write <= 0;
-					if (cache_line_lru==0) flagdata[current_set][FLAG_CW1_DIRTY] <= 0;
-					if (cache_line_lru==1) flagdata[current_set][FLAG_CW2_DIRTY] <= 0;
+					//Un-dirtied flags are already prepared in the combinatorial logic; we just need to
+					//write it.
+					flag_wen <= 1;
 				end
 			end else if (qpi_do_read && qpi_next_byte) begin
-				`CACHEDATA(cache_line_lru, current_set, qpi_addr[2+CACHE_OFFSET_BITS-1:2]) <= qpi_rdata;
 				qpi_addr[2+CACHE_OFFSET_BITS-1:2] <= qpi_addr[2+CACHE_OFFSET_BITS-1:2] + 1;
+				cache_refill_offset <= cache_refill_offset + 1;
+				cache_refill_wen <= 'hf;
 				if (&qpi_addr[2+CACHE_OFFSET_BITS-1:2]) begin
-					`TAGDATA(cache_line_lru, `SET_FROM_ADDR(addr)) <= `TAG_FROM_ADDR(addr);
+					if (cache_line_lru == 0) begin
+						tag_wen[0] <= 1;
+					end else begin
+						tag_wen[1] <= 1;
+					end
 					qpi_do_read <= 0;
 				end
 			end
