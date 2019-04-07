@@ -66,11 +66,19 @@ bss_clear:
 	j bss_clear
 bss_clear_done:
 
+
+	la a1, PERI_LED
+	sw zero, 0(a1)
+
 	addi a1, zero, 0
 	addi a2, zero, 0
 	
+# sp = top of 8m of memory
+	la sp, 0x7ffffc
+
 #start app
 	call app_main
 
+#reset
 	j 0
 

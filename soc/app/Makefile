@@ -2,8 +2,8 @@ TOOLCHAIN_DIR := /home/jeroen/hackaday2019/poc/toolchain/toolchain/bin
 TOOLCHAIN_PREFIX := $(TOOLCHAIN_DIR)/riscv32-unknown-elf-
 CC := $(TOOLCHAIN_PREFIX)gcc
 OBJCOPY := $(TOOLCHAIN_PREFIX)objcopy
-OBJS:=start.o main.o xprintf.o lcd.o
-CFLAGS := -Os
+OBJS:=start.o main.o xprintf.o lcd.o UGUI/ugui.o
+CFLAGS := -Os -IUGUI -I.
 
 default: program
 
@@ -18,14 +18,11 @@ app.elf: $(OBJS) ldscript.ld
 
 app.bin: app.elf
 	$(OBJCOPY) -O binary $< $@
+	$(TOOLCHAIN_PREFIX)objdump -S $< > app.disasm
 	chmod -x $@
 
-
-send: send.c
-	gcc -Wall -ggdb -o send send.c
-
-program: send app.bin
-	./send app.bin /dev/ttyUSB0
+program: app.bin
+	../boot/send app.bin /dev/ttyUSB0
 
 clean:
 	rm -f send

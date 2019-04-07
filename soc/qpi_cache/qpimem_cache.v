@@ -2,7 +2,7 @@ module qpimem_cache #(
 	//Simple 2-way cache.
 	parameter integer CACHELINE_WORDS=4,
 	parameter integer CACHELINE_CT=32,
-	parameter integer ADDR_WIDTH=22 //addresses words
+	parameter integer ADDR_WIDTH=21 //addresses words
 	//Cache size is CACHELINE_WORDS*CACHELINE_CT*4 bytes.
 ) (
 	input clk,
@@ -97,7 +97,13 @@ for (i=0; i<2; i=i+1) begin
 	simple_mem #(
 		.WORDS(CACHE_SETS),
 		.WIDTH(CACHE_TAG_BITS),
+`ifdef verilator
+		//First block is modified by verilator harness. Make sure it isn't cached.
+		.INITIAL_FILL((1<<(CACHE_TAG_BITS-1))-2+i)
+`else
+		//Cache maps to first block of memory.
 		.INITIAL_FILL(i)
+`endif
 	) tagdata (
 		.clk(clk),
 		.wen(tag_wen[i]),
@@ -132,23 +138,27 @@ reg found_tag; //this being 0 indicates a cache miss
 wire doing_cache_refill;
 reg [CACHE_OFFSET_BITS-1:0] cache_refill_offset;
 reg [3:0] cache_refill_wen;
+reg cache_refill_flag_wen;
 always @(*) begin
 	found_tag=0;
 	cachehit_way=0;
-	flag_wdata = flag_rdata;
 	qpi_wdata = cachedata_rdata;
+	flag_wdata = flag_rdata;
+	flag_wen <= 0;
 	if (tag_rdata[0]==`TAG_FROM_ADDR(addr)) begin
 		found_tag=1;
 		cachehit_way=0; //DO U KNOW THE WAY
 		flag_wdata[FLAG_CW1_DIRTY] = flag_rdata[FLAG_CW1_DIRTY] || (wen != 0);
 		flag_wdata[FLAG_CW2_DIRTY] = flag_rdata[FLAG_CW2_DIRTY];
 		flag_wdata[FLAG_LRU]=1;
+		flag_wen <= 1;
 	end else if (tag_rdata[1]==`TAG_FROM_ADDR(addr)) begin
 		found_tag=1;
 		cachehit_way=1;
 		flag_wdata[FLAG_CW1_DIRTY] = flag_rdata[FLAG_CW1_DIRTY];
-		flag_wdata[FLAG_CW2_DIRTY] = flag_wdata[FLAG_CW2_DIRTY] || (wen != 0);
+		flag_wdata[FLAG_CW2_DIRTY] = flag_rdata[FLAG_CW2_DIRTY] || (wen != 0);
 		flag_wdata[FLAG_LRU]=0;
+		flag_wen <= 1;
 	end
 	if (found_tag && !doing_cache_refill) begin
 		//Tag is found. Route the read or write to the cache data store
@@ -163,6 +173,7 @@ always @(*) begin
 		flag_wdata[FLAG_CW1_DIRTY] = (flag_rdata[FLAG_LRU]==0) ? 0 : flag_rdata[FLAG_CW1_DIRTY];
 		flag_wdata[FLAG_CW2_DIRTY] = (flag_rdata[FLAG_LRU]==1) ? 0 : flag_rdata[FLAG_CW2_DIRTY];
 		flag_wdata[FLAG_LRU] = flag_rdata[FLAG_LRU]; //doesn't matter actually
+		flag_wen <= cache_refill_flag_wen;
 		cachedata_wdata = qpi_rdata;
 		cachedata_wen = cache_refill_wen;
 	end
@@ -198,20 +209,19 @@ always @(posedge clk) begin
 		qpi_do_write <= 0;
 		qpi_addr <= 0;
 		ready <= 0;
-		flag_wen <= 0;
+		cache_refill_flag_wen <= 0;
 		tag_wen <= 0;
 		cache_refill_offset <= 0;
 		write_words_left <= 0;
 		cache_refill_wen <= 0;
 	end else begin
 		ready <= 0;
-		flag_wen <= 0;
+		cache_refill_flag_wen <= 0;
 		tag_wen[0] <= 0;
 		tag_wen[1] <= 0;
 		cache_refill_wen <= 0;
 		if (found_tag && (ren || wen!=0) && !doing_cache_refill) begin
-			//Cache hit. Write back flags, 
-			if (!ready) flag_wen <= 1;
+			//Cache hit
 			ready <= 1;
 		end else if (!need_cache_refill) begin
 			//Nothing going on. Idle.
@@ -249,7 +259,7 @@ always @(posedge clk) begin
 					qpi_do_write <= 0;
 					//Un-dirtied flags are already prepared in the combinatorial logic; we just need to
 					//write it.
-					flag_wen <= 1;
+					cache_refill_flag_wen <= 1;
 				end
 			end else if (qpi_do_read && qpi_next_byte) begin
 				qpi_addr[2+CACHE_OFFSET_BITS-1:2] <= qpi_addr[2+CACHE_OFFSET_BITS-1:2] + 1;

@@ -1,3 +1,6 @@
 [submodule "soc/picorv32"]
 	path = soc/picorv32
 	url = https://github.com/cliffordwolf/picorv32.git
+[submodule "soc/app/UGUI"]
+	path = soc/app/UGUI
+	url = https://github.com/PocketSprite/UGUI.git

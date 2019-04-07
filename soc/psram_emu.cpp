@@ -7,32 +7,42 @@
 #include <fcntl.h>
 
 
-#define MEMSIZE 8*1024*1024
+#define MEMSIZE (8*1024*1024)
+#define APP_START 0x400
 
 static uint8_t *mem;
-static uint8_t rom[0x1000];
 static int romsize;
+static int appsize;
 
 extern int do_abort;
 
 FILE *lafd;
 
 void psram_emu_init() {
-#if 1
-	int m=open("psram_contents.bin", O_RDWR|O_CREAT, 0666);
-	mem=(uint8_t*)mmap(NULL, MEMSIZE, PROT_READ|PROT_WRITE, MAP_SHARED, m, 0);
-	if (mem==(uint8_t*)MAP_FIXED) {
-		perror("mmap failed");
-		exit(1);
-	}
-	printf("%x %x %x %x\n", mem[0], mem[1], mem[2], mem[3]);
-#else
 	mem=(uint8_t*)malloc(MEMSIZE);
-	for (int i=0; i<MEMSIZE; i++) mem[i]=rand();
-#endif
+	for (int i=0; i<MEMSIZE; i+=4) {
+		mem[i]=0xBE;
+		mem[i+1]=0xBA;
+		mem[i+2]=0xFE;
+		mem[i+3]=0xCA;
+	}
 
 	FILE *f=fopen("boot/rom.bin", "rb");
-	romsize=fread(rom, 1, 0x1000, f);
+	if (f==NULL) {
+		perror("bootrom");
+		exit(1);
+	}
+	romsize=fread(mem, 1, 0x1000, f);
+	printf("ROM: %d bytes\n", romsize);
+	fclose(f);
+
+	f=fopen("app/app.bin", "rb");
+	if (f==NULL) {
+		perror("app");
+		exit(1);
+	}
+	appsize=fread(&mem[APP_START], 1, MEMSIZE-APP_START, f);
+	printf("APP: %d bytes\n", appsize);
 	fclose(f);
 
 	lafd=fopen("lafd.txt", "w");
@@ -40,20 +50,14 @@ void psram_emu_init() {
 
 void verify_write(int addr, uint8_t val) {
 #if 1
-	if (addr<0x10000) {
-		if (addr<romsize && val!=rom[addr]) {
+	if (addr<APP_START) {
+		if (addr<romsize && mem[addr]!=val) {
 			printf("ERROR! Overwriting boot ROM addr 0x%08X with 0x%02X!\n", addr, val);
 			do_abort=1;
 		}
-	} else {
-		uint32_t tw=0xaaaaaaaa+((addr-0x10000)/4);
-		uint8_t tb;
-		if ((addr&3)==0) tb=(tw>>0);
-		if ((addr&3)==1) tb=(tw>>8);
-		if ((addr&3)==2) tb=(tw>>16);
-		if ((addr&3)==3) tb=(tw>>24);
-		if (val!=tb) {
-			printf("ERROR! invalid test byte addr 0x%08X written 0x%02X expected %02X!\n", addr, val, tb);
+	} else if (addr >= APP_START && addr < APP_START+appsize) {
+		if (mem[addr]!=val) {
+			printf("ERROR! Overwriting app addr 0x%X with 0x%X!\n", addr, val);
 			do_abort=1;
 		}
 	}
@@ -64,13 +68,13 @@ void verify_write(int addr, uint8_t val) {
 static int nib=0;
 static uint8_t cmd;
 static uint32_t addr;
-static int qpi_mode=0; //note: hw has 0 here on reset
+static int qpi_mode=1; //note: hw has 0 here on reset
 static int sout_next=0, sout_cur=0;
 static int oldclk;
+static uint8_t b;
 //Called on clock changes.
 int psram_emu(int clk, int ncs, int sin, int oe) {
 	if (clk && clk!=oldclk) fprintf(lafd, "0.000012340000000,0x%04X\n", (oe?sin:sout_next)|(ncs?0x80:0));
-
 	if (ncs==1) {
 		nib=0;
 		cmd=0;
@@ -113,10 +117,11 @@ int psram_emu(int clk, int ncs, int sin, int oe) {
 			if (nib>=8 && (cmd==0x2 || cmd==0x38)) {
 				//write of data
 				if ((nib&1)==0) {
-					mem[addr]=(sin<<4);
+					b=(sin<<4);
 				} else {
-					mem[addr]|=sin;
-					verify_write(addr, mem[addr]);
+					b|=sin;
+					verify_write(addr, b);
+					mem[addr]=b;
 					addr++;
 				}
 			}

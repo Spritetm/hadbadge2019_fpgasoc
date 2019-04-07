@@ -8,7 +8,7 @@ means.
 */
 
 MEMORY {
-	ram : ORIGIN = 0x00000000, LENGTH = 0x2000
+	ram : ORIGIN = 0x00000000, LENGTH = 0x400
 }
 
 SECTIONS {

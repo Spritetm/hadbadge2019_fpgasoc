@@ -101,6 +101,13 @@ module soc(
 	reg lcd_select;
 	wire lcd_ready;
 
+	wire [31:0] soc_version;
+`ifdef verilator
+	assign soc_version = 'h8000;
+`else
+	assign soc_version = 'h0000;
+`endif
+
 	always @(*) begin
 		mem_select = 0;
 		uart_div_select = 0;
@@ -121,6 +128,7 @@ module soc(
 			end
 		end else if (mem_addr[31:28]=='h2) begin
 			led_select = mem_valid;
+			mem_rdata = soc_version;
 			//todo: led/psram/... readback
 		end else if (mem_addr[31:28]=='h3) begin
 			lcd_select = mem_valid;

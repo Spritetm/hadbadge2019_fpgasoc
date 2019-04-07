@@ -106,6 +106,7 @@ void lcd_init() {
 	WriteData(0x01);
 	WriteData(0xDF);
 
+	//Stupid test pattern
 	WriteComm(0x2c); //Write mem start
 	for (int y=0; y<320; y++) {
 		for (int x=0; x<480; x++) {
@@ -113,3 +114,17 @@ void lcd_init() {
 		}
 	}
 }
+
+void lcd_write_fb(uint32_t *fb) {
+	WriteComm(0x2c); //Write mem start
+	for (int y=0; y<320; y++) {
+		for (int x=0; x<480; x++) {
+			int r=((*fb)&0xff)>>2;
+			int g=((*fb>>8)&0xff)>>2;
+			int b=((*fb>>16)&0xff)>>2;
+			WriteData((b<<12)|(g<<6)|(r));
+		}
+	}
+}
+
+

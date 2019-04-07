@@ -13,24 +13,39 @@ reset_vec:
 //	picorv32_waitirq_insn(zero)
 //	picorv32_maskirq_insn(zero, zero)
 
+	//Check if we are running in a simulation. If so, immediately jump to app that the simulator already
+	//preloaded in psram.
+
+	li a2, PERI_LED //bitbang port
+	lw a2, 0(a2)
+//	srli a2, a2, 31 //should work, does not, no clue why.
+	beq a2, zero, bbpsraminit
+
+	li a1, 0x400
+	jalr zero, a1, 0
+
+
 //Bitbang PSRAM port initialization command
+bbpsraminit:
 	la a1, psram_init
-	li a2, PERI_LED+4
+	li a2, PERI_LED+4 //bitbang port
 bbloop:
 	lbu a3, 0(a1)
 	sw a3, 0(a2)
 	addi a1, a1, 1
 	bne zero, a3, bbloop
 
-#if 1
-	//LEDS: 0 for init
+	//LEDS: 0xff for init
 	li a1, PERI_LED
 	li a2, 0xff
 	sw a2, 0(a1)
 
+
+//Memtest
+memtest_start:
 	//Test: writeback/cache line reload
-	li a1, 0x10000
-	li a4, 0x12000
+	li a1, 0x000400 //start
+	li a4, 0x800000 //end
 	li a3, 0xAAAAAAAA
 memtestwloop:
 	sw a3, 0(a1)
@@ -43,8 +58,8 @@ memtestwloop:
 	li a2, 1
 	sw a2, 0(a1)
 
-	li a1, 0x10000
-	li a4, 0x12000
+	li a1, 0x000400 //start
+	li a4, 0x800000 //end
 	li a3, 0xAAAAAAAA
 memtestrloop:
 	lw a5, 0(a1)
@@ -64,13 +79,11 @@ memtestok:
 	li a1, PERI_LED
 	sw a2, 0(a1)
 
-hangtest: j hangtest
-#endif
 
 	//Set up UART divider
 	li a1, PERI_UART_DIV
-//	li a2, 416 //115200 with a clock of 48MHz
-	li a2, 69 //115200 with a clock of 8MHz
+	li a2, 416 //115200 with a clock of 48MHz
+//	li a2, 69 //115200 with a clock of 8MHz
 	sw a2, 0(a1)
 
 	//Set up LEDs
@@ -79,6 +92,8 @@ hangtest: j hangtest
 	sw a2, 0(a1)
 
 	la a1, txt
+	call sendstr
+	la a1, okay
 	call sendstr
 
 rettohang:
@@ -114,13 +129,16 @@ recv:
 
 dowrite:
 	call getbyte
-	slli a3, a1, 8
+	slli a3, a1, 16
+	call getbyte
+	slli a1, a1, 8
+	add a3, a3, a1
 	call getbyte
 	add a3, a3, a1
 	li a4, 0
 writeloop:
 	call getbyte
-	sb a1, 0x200(a4)
+	sb a1, 0x400(a4)
 
 	li a2, PERI_UART_DATA
 	li a1, 'B'
@@ -137,13 +155,16 @@ writeloop:
 
 doread:
 	call getbyte
-	slli a3, a1, 8
+	slli a3, a1, 16
+	call getbyte
+	slli a1, a1, 8
+	add a3, a3, a1
 	call getbyte
 	add a3, a3, a1
-	li a4, 0x200
+	li a4, 0
 	li a2, PERI_UART_DATA
 readloop:
-	lb a1, 0x200(a4)
+	lb a1, 0x400(a4)
 	sw a1, 0(a2)
 	addi a4, a4, 1
 	bne a3, a4, readloop
@@ -156,7 +177,10 @@ readloop:
 
 dogo:
 	call getbyte
-	slli a4, a1, 8
+	slli a4, a1, 16
+	call getbyte
+	slli a1, a1, 8
+	add a4, a4, a1
 	call getbyte
 	add a4, a4, a1
 
@@ -191,8 +215,7 @@ sendstr_end:
 
 
 txt:
-//	.asciz "ROM ldr v1.0\r\n"
-	.asciz "x"
+	.asciz "ROM ldr v1.0\r\n"
 
 err:
 	.asciz "?"

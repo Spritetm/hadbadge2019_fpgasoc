@@ -9,6 +9,9 @@ int uart_get(int ts) {
 }
 
 int do_abort=0;
+#define TAGMEM0 soc__DOT__qpimem_cache__DOT__genblk0__BRA__1__KET____DOT__tagdata__DOT__mem
+#define TAGMEM1 soc__DOT__qpimem_cache__DOT__genblk1__BRA__1__KET____DOT__tagdata__DOT__mem
+
 
 int main(int argc, char **argv) {
 	// Initialize Verilators variables
@@ -23,11 +26,11 @@ int main(int argc, char **argv) {
 	trace->open("soctrace.vcd");
 
 	tb->btn=0xff; //no buttons pressed
-	int do_trace=1;
+	int do_trace=0;
 
 	psram_emu_init();
 	int oldled=0;
-	for (int i=0; i<480000; i++) {
+	for (int i=0; i<10000000; i++) {
 		if (do_abort) break;
 		tb->uart_rx=uart_get(i*21);
 		int sin = psram_emu(tb->psrama_sclk, tb->psrama_nce, tb->psrama_sout, tb->psrama_oe);
@@ -44,7 +47,9 @@ int main(int argc, char **argv) {
 			oldled=tb->led;
 			printf("LEDs: 0x%X\n", oldled);
 		}
+//		printf("%X\n", tb->soc__DOT__cpu__DOT__reg_pc);
 	};
+	printf("Verilator sim exited, pc 0x%08X\n", tb->soc__DOT__cpu__DOT__reg_pc);
 	trace->flush();
 
 	trace->close();
