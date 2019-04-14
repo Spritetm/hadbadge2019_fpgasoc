@@ -1,15 +1,16 @@
 TOOLCHAIN_DIR := /home/jeroen/prog/fpga/picorv32/toolchain/bin
 TOOLCHAIN_PREFIX := $(TOOLCHAIN_DIR)/riscv32-unknown-elf-
-
-OBJS:=rom.o
+CC=$(TOOLCHAIN_PREFIX)gcc
+CFLAGS=-Os -ggdb
+OBJS:=rom.o irq.o gdbstub.o
 
 default: rom.bin
 
 %.o: %.S
-	$(TOOLCHAIN_PREFIX)gcc -c -o $@ $^
+	$(CC) -c -o $@ $^
 
 rom.elf: $(OBJS) sections.lds
-	$(TOOLCHAIN_PREFIX)gcc -Os -ffreestanding -nostdlib -o $@ \
+	$(CC) -Os -ffreestanding -nostdlib -o $@ \
 		-Wl,-Bstatic,-T,sections.lds,-Map,rom.map,--strip-debug \
 		$(OBJS) -lgcc
 

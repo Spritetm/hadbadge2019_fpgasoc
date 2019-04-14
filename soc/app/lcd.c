@@ -1,6 +1,6 @@
 #include <stdint.h>
-#include "xprintf.h"
-#include "mach_defines.h"
+#include <stdio.h>
+#include "gloss/mach_defines.h"
 
 extern volatile uint32_t LCD[];
 #define LCD_REG(i) LCD[(i)/4]

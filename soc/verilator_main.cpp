@@ -2,7 +2,9 @@
 #include "Vsoc.h"
 #include <verilated.h>
 #include <verilated_vcd_c.h>
-#include "psram_emu.h"
+#include "psram_emu.hpp"
+#include "uart_emu.hpp"
+#include "uart_emu_gdb.hpp"
 
 int uart_get(int ts) {
 	return 1;
@@ -28,17 +30,31 @@ int main(int argc, char **argv) {
 	tb->btn=0xff; //no buttons pressed
 	int do_trace=0;
 
-	psram_emu_init();
+	Psram_emu psram=Psram_emu(8*1024*1024);
+	psram.load_file("boot/rom.bin", 0, true);
+//	psram.load_file("app/app.bin", 0x400, true);
+
+	Uart_emu_gdb uart=Uart_emu_gdb(416);
+//	Uart_emu uart=Uart_emu(416);
+
 	int oldled=0;
-	for (int i=0; i<10000000; i++) {
+//	for (int i=0; i<48000000; i++) {
+	int i=0;
+	while(1) {
+		i++;
 		if (do_abort) break;
 		tb->uart_rx=uart_get(i*21);
-		int sin = psram_emu(tb->psrama_sclk, tb->psrama_nce, tb->psrama_sout, tb->psrama_oe);
+		int sin, rx;
+		do_abort |= psram.eval(tb->psrama_sclk, tb->psrama_nce, tb->psrama_sout, tb->psrama_oe, &sin);
+		uart.eval(tb->clk48m, tb->uart_tx, &rx);
+		tb->uart_rx=rx;
 		tb->clk48m = 1;
 		tb->eval();
 		tb->psrama_sin=sin;
 		if (do_trace) trace->dump(i*21);
-		sin=tb->psrama_sin = psram_emu(tb->psrama_sclk, tb->psrama_nce, tb->psrama_sout, tb->psrama_oe);
+		do_abort |= psram.eval(tb->psrama_sclk, tb->psrama_nce, tb->psrama_sout, tb->psrama_oe, &sin);
+		uart.eval(tb->clk48m, tb->uart_tx, &rx);
+		tb->uart_rx=rx;
 		tb->clk48m = 0;
 		tb->eval();
 		tb->psrama_sin = sin;

@@ -31,11 +31,6 @@ module soc(
 		output psramb_oe
 	);
 
-	parameter integer MEM_WORDS = 4096;
-	parameter [31:0] STACKADDR = (MEM_WORDS*4);
-	parameter [31:0] PROGADDR_RESET = 32'h0;
-	parameter [31:0] PROGADDR_IRQ = 31'h10;
-
 	reg [5:0] reset_cnt = 0;
 	wire resetn = &reset_cnt;
 	wire rst = !resetn;
@@ -62,16 +57,31 @@ module soc(
 
 /* verilator lint_off PINMISSING */
 	picorv32 #(
-		.STACKADDR(STACKADDR),
-		.PROGADDR_RESET(PROGADDR_RESET),
-		.PROGADDR_IRQ(PROGADDR_IRQ),
+		.STACKADDR('h1000), /* dummy */
+		.PROGADDR_RESET('h0),
+		.PROGADDR_IRQ('h10),
+		.TWO_STAGE_SHIFT(0),
 		.BARREL_SHIFTER(1),
-		.COMPRESSED_ISA(1),
 		.ENABLE_COUNTERS(0),
-		.ENABLE_MUL(1),
+		.ENABLE_COUNTERS64(0),
+		.ENABLE_REGS_16_31(1),
+		.ENABLE_REGS_DUALPORT(1),
+		.ENABLE_MUL(0),
+		.ENABLE_FAST_MUL(1),
 		.ENABLE_DIV(1),
-		.ENABLE_IRQ(0),
-		.ENABLE_IRQ_QREGS(0)
+		.ENABLE_IRQ(1),
+		.ENABLE_IRQ_QREGS(1),
+		.TWO_CYCLE_COMPARE(0),
+		.TWO_CYCLE_ALU(0),
+		.COMPRESSED_ISA(1),
+		.CATCH_MISALIGN(1),
+		.CATCH_ILLINSN(1),
+		.ENABLE_PCPI(1),
+		.ENABLE_IRQ_TIMER(1),
+		.ENABLE_TRACE(0),
+		.REGS_INIT_ZERO(0),
+		.MASKED_IRQ(0),
+		.LATCHED_IRQ(0)
 	) cpu (
 		.clk         (clk48m     ),
 		.resetn      (resetn     ),

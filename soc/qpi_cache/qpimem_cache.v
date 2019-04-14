@@ -97,13 +97,8 @@ for (i=0; i<2; i=i+1) begin
 	simple_mem #(
 		.WORDS(CACHE_SETS),
 		.WIDTH(CACHE_TAG_BITS),
-`ifdef verilator
-		//First block is modified by verilator harness. Make sure it isn't cached.
-		.INITIAL_FILL((1<<(CACHE_TAG_BITS-1))-2+i)
-`else
 		//Cache maps to first block of memory.
 		.INITIAL_FILL(i)
-`endif
 	) tagdata (
 		.clk(clk),
 		.wen(tag_wen[i]),

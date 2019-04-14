@@ -12,19 +12,13 @@
 reset_vec:
 //	picorv32_waitirq_insn(zero)
 //	picorv32_maskirq_insn(zero, zero)
+	j do_reset
 
-	//Check if we are running in a simulation. If so, immediately jump to app that the simulator already
-	//preloaded in psram.
+.balign 16
+irq_vec_entry:
+	j irq_vec
 
-	li a2, PERI_LED //bitbang port
-	lw a2, 0(a2)
-//	srli a2, a2, 31 //should work, does not, no clue why.
-	beq a2, zero, bbpsraminit
-
-	li a1, 0x400
-	jalr zero, a1, 0
-
-
+do_reset:
 //Bitbang PSRAM port initialization command
 bbpsraminit:
 	la a1, psram_init
@@ -41,10 +35,33 @@ bbloop:
 	sw a2, 0(a1)
 
 
+	//Check if we are running in a simulation. If so, immediately jump to app that the simulator already
+	//preloaded in psram.
+	li a2, PERI_LED
+	lw a2, 0(a2)
+//	srli a2, a2, 31 //should work, does not, no clue why.
+	beq a2, zero, bbpsraminit
+
+	li a2, PERI_LED
+	li a1, 0x23
+	sw a1, 0(a2)
+
+	li a1, PERI_UART_DIV
+	li a2, 416 //115200 with a clock of 48MHz
+	sw a2, 0(a1)
+
+	//crash to gdbstub
+	j irq_vec
+
+	//jump to app
+	li a1, 0x2000
+	jalr zero, a1, 0
+
+
 //Memtest
 memtest_start:
 	//Test: writeback/cache line reload
-	li a1, 0x000400 //start
+	li a1, 0x0002000 //start
 	li a4, 0x800000 //end
 	li a3, 0xAAAAAAAA
 memtestwloop:
@@ -58,7 +75,7 @@ memtestwloop:
 	li a2, 1
 	sw a2, 0(a1)
 
-	li a1, 0x000400 //start
+	li a1, 0x002000 //start
 	li a4, 0x800000 //end
 	li a3, 0xAAAAAAAA
 memtestrloop:
@@ -128,6 +145,7 @@ recv:
 
 
 dowrite:
+	//get count
 	call getbyte
 	slli a3, a1, 16
 	call getbyte
@@ -135,10 +153,11 @@ dowrite:
 	add a3, a3, a1
 	call getbyte
 	add a3, a3, a1
-	li a4, 0
+	li a4, 0x2000
+	add a3, a4, a3
 writeloop:
 	call getbyte
-	sb a1, 0x400(a4)
+	sb a1, 0(a4)
 
 	li a2, PERI_UART_DATA
 	li a1, 'B'
@@ -161,10 +180,11 @@ doread:
 	add a3, a3, a1
 	call getbyte
 	add a3, a3, a1
-	li a4, 0
+	li a4, 0x2000
+	add a3, a4, a3 //len -> end addr
 	li a2, PERI_UART_DATA
 readloop:
-	lb a1, 0x400(a4)
+	lb a1, 0(a4)
 	sw a1, 0(a2)
 	addi a4, a4, 1
 	bne a3, a4, readloop

@@ -8,7 +8,7 @@ means.
 */
 
 MEMORY {
-	ram : ORIGIN = 0x00000000, LENGTH = 0x400
+	ram : ORIGIN = 0x00000000, LENGTH = 0x2000
 }
 
 SECTIONS {
@@ -22,3 +22,6 @@ SECTIONS {
 		*(.bss);
 	} > ram
 }
+PROVIDE ( UART = 0x10000000 );
+PROVIDE ( LED  = 0x20000000 );
+PROVIDE ( LCD =  0x30000000 );

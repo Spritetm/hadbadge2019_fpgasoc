@@ -1,5 +1,6 @@
 app.bin
 app.elf
 app.map
+app.disasm
 send
 *.o

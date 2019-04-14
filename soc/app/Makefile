@@ -1,31 +1,44 @@
-TOOLCHAIN_DIR := /home/jeroen/hackaday2019/poc/toolchain/toolchain/bin
-TOOLCHAIN_PREFIX := $(TOOLCHAIN_DIR)/riscv32-unknown-elf-
-CC := $(TOOLCHAIN_PREFIX)gcc
-OBJCOPY := $(TOOLCHAIN_PREFIX)objcopy
-OBJS:=start.o main.o xprintf.o lcd.o UGUI/ugui.o
-CFLAGS := -Os -IUGUI -I.
+TC_PATH := /home/jeroen/hackaday2019/poc/toolchain/toolchain/bin
+NEWLIB_PATH := /home/jeroen/hackaday2019/poc/toolchain/toolchain/bin
 
-default: program
+PREFIX := $(TC_PATH)/riscv32-unknown-elf-
+CC := $(PREFIX)gcc
+AR := $(PREFIX)ar
+LD := $(PREFIX)ld
+OBJCOPY := $(PREFIX)objcopy
+OBJDUMP := $(PREFIX)objdump
+SIZE := $(PREFIX)size
 
-%.o: %.S
-	$(TOOLCHAIN_PREFIX)gcc $(CFLAGS) -c -o $@ $^
+APPNAME := app
+TARGET_ELF := $(APPNAME).elf
+TARGET_BIN := $(APPNAME).bin
+TARGET_MAP := $(APPNAME).map
+OBJS := main.o lcd.o start.o
+LIBS := gloss/libgloss.a
+LDSCRIPT := gloss/ldscript.ld
 
-#no-relax because https://github.com/riscv/riscv-binutils-gdb/issues/144
-app.elf: $(OBJS) ldscript.ld
-	$(CC) $(CFLAGS) -o $@ -ffreestanding -nostdlib \
-		-Wl,-Bstatic -Wl,-T,ldscript.ld -Wl,-Map,app.map -Wl,--no-relax \
-		$(OBJS) -lgcc
+CFLAGS := -Os -ggdb -I.
+LDFLAGS := -Wl,-Bstatic -Wl,--gc-sections  -Wl,-T,$(LDSCRIPT) -Wl,-Map,$(TARGET_MAP) -lgcc -nostartfiles -Lgloss 
+export PREFIX CC AR LD OBJCOPY CFLAGS LDFLAGS APPNAME
 
-app.bin: app.elf
-	$(OBJCOPY) -O binary $< $@
-	$(TOOLCHAIN_PREFIX)objdump -S $< > app.disasm
-	chmod -x $@
+$(TARGET_BIN): $(TARGET_ELF)
+	$(SIZE) $^
+	$(OBJCOPY) -O binary $^ $@
+	$(OBJDUMP) -S $^ > $(APPNAME).disasm
 
-program: app.bin
-	../boot/send app.bin /dev/ttyUSB0
-
-clean:
-	rm -f send
-	rm -f app.elf app.bin $(OBJS)
+$(TARGET_ELF): $(LIBS) $(OBJS) $(LDSCRIPT)
+	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS) -lm
 
 .PHONY: clean
+clean:
+	rm -f $(TARGET_ELF) $(TARGET_BIN) $(OBJS) $(TARGET_MAP) app.disasm
+	$(MAKE) -C gloss clean
+
+.PHONY: prog
+prog: $(TARGET_BIN)
+	../boot/send $(TARGET_BIN) /dev/ttyUSB0
+
+
+.PHONY: gloss/libgloss.a
+gloss/libgloss.a:
+	$(MAKE) -C gloss
