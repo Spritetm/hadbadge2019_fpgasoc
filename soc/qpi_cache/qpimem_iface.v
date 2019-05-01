@@ -167,14 +167,14 @@ always @(posedge clk) begin
 			end
 		end else if (state == 4) begin
 			//Data state.
-			if (curr_is_read) begin
+			if (curr_is_read) begin //read
 				if (bitno==0) begin
 					rdata_be <= {data_shifted[31:4], spi_sin_sampled[3:0]};
 					next_byte <= 1;
 					bitno <= 7;
 					if (!do_read) begin //abort?
 						state <= 5;
-						spi_ncs <= 0;
+						spi_ncs <= 1;
 					end
 				end else begin
 					data_shifted[bitno*4+3 -: 4]<=spi_sin_sampled;
@@ -196,7 +196,7 @@ always @(posedge clk) begin
 					bitno<=bitno-1;
 				end
 			end
-		end else begin
+		end else begin //state=5
 			spi_ncs <= 1;
 			spi_oe <= 0;
 			state <= 0;

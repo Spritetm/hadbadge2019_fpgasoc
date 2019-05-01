@@ -66,11 +66,13 @@ module top_fpga(
 		.psramb_oe(psramb_oe)
 	);
 
+/*
 	pll_8_48 pll(
 		.clki(clk),
 		.clko(clk48m)
 	);
-//	assign clk=clk48m;
+*/
+	assign clk=clk48m;
 
 	genvar i;
 	//Note: TRELLIS_IO has a T-ristate input, which does the opposite of OE.

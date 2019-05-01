@@ -7,6 +7,10 @@
 #include <stdio.h>
 #include "uart.h"
 
+extern volatile uint32_t LED[];
+#define LED_REG(i) LED[(i)/4]
+
+
 int _access(const char *file, int mode) {
 	return 0;
 }
@@ -32,7 +36,7 @@ int _execve(const char *name, char *const argv[], char *const env[]) {
 }
 
 void _exit(int exit_status) {
-  while (1);
+	return -1;
 }
 
 int _faccessat(int dirfd, const char *file, int mode, int flags) {

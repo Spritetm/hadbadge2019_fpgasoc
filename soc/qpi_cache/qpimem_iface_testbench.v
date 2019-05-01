@@ -62,7 +62,7 @@ initial begin
 	while (!next_byte) #1;
 	wdata <= 'h11223344;
 	while (!next_byte) #1;
-	wdata <= 'h55667788;
+	wdata <= 'hF5667788;
 	while (!next_byte) #1;
 	#1 do_write <= 0;
 	while (!is_idle) #1;

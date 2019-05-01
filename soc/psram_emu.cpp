@@ -12,7 +12,7 @@ Psram_emu::Psram_emu(int memsize) {
 	m_mem=new uint8_t[memsize];
 	m_roflag=new uint8_t[memsize]();
 	for (int i=0; i<m_size; i++) m_mem[i]=rand();
-	m_qpi_mode=1;
+	m_qpi_mode=0;
 }
 
 int Psram_emu::load_file(const char *file, int offset, bool is_ro) {
@@ -108,7 +108,7 @@ int Psram_emu::eval(int clk, int ncs, int sin, int oe, int *sout) {
 		m_sout_cur=m_sout_next;
 	}
 	m_oldclk=clk;
-	*sout=m_sout_next;
+	*sout=ncs?0:m_sout_next;
 	return 0;
 }
 

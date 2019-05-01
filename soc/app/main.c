@@ -15,13 +15,18 @@ extern volatile uint32_t LCD[];
 
 void main() {
 	LED_REG(0)=0xff;
+//	volatile char *p=0;
+//	*p++;
 	printf("Hello world!\n");
 	LED_REG(0)=0x5;
+
 	LCD_REG(LCD_CONTROL_REG)=1; //enable bl, un-reset, enable cs
 //	lcd_init();
 	printf("SoC ver reg: %x\n", LCD_REG(0));
 	printf("Done!\n");
 	//Crash test
+	printf("Eeek! %s\n", NULL);
+	//loop
 	while(1) {
 		printf("%x\n", uart_getchar());
 	}

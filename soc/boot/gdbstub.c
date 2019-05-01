@@ -187,6 +187,7 @@ static int stub_strncmp(char *str1, char *str2, int len) {
 		b=*str2++;
 		if (a>=97 && a<=122) a-=(97-65);
 		if (b>=97 && b<=122) b-=(97-65);
+		if (a==0 && b==0) return 0;
 	} while (a==b);
 	return (a>b)?1:-1;
 }
@@ -194,7 +195,7 @@ static int stub_strncmp(char *str1, char *str2, int len) {
 //Register file in the format gdb expects it.
 //ref riscv-gdb/gdb/features/riscv/*
 typedef struct {
-	uint32_t x[32]; //note: pc is stored in x[0]. x0 always reads 0.
+	uint32_t x[32]; //note: pc is stored in x[0]. x0 always reads 0 in hw, so we don't need to save that.
 } GdbRegFile;
 
 
@@ -210,7 +211,7 @@ static void sendReason(GdbRegFile *gdbRegFile) {
 //	if (i<sizeof(exceptionSignal)) {
 //		gdbPacketHex(exceptionSignal[i], 8); 
 //	} else {
-		gdbPacketHex(11, 8);
+		gdbPacketHex(0, 8);
 //	}
 	gdbPacketEnd();
 }
@@ -222,9 +223,9 @@ static int gdbHandleCommand(unsigned char *cmd, int len, GdbRegFile *frame) {
 	unsigned char *data=cmd+1;
 	if (cmd[0]=='g') {		//send all registers to gdb
 		gdbPacketStart();
-		gdbPacketHex(0, 32); //x0 aka zero
-		for (int i=1; i<32; i++) gdbPacketHex(iswap(frame->x[i]), 32);
-		gdbPacketHex(iswap(frame->x[0]), 32); //pc
+		gdbPacketHex(0, 32); //x0 aka zero; can be ignored
+		for (int i=1; i<32; i++) gdbPacketHex(iswap(frame->x[i]), 32); //reg 1-31
+		gdbPacketHex(iswap(frame->x[0]), 32); //pc - stored at pos 0
 		gdbPacketEnd();
 	} else if (cmd[0]=='G') {	//receive content for all registers from gdb
 		for (int i=0; i<32; i++) frame->x[i]=iswap(gdbGetHexVal(&data, 32));;
@@ -264,10 +265,14 @@ static int gdbHandleCommand(unsigned char *cmd, int len, GdbRegFile *frame) {
 //		gdbstub_savedRegs.ps=(gdbstub_savedRegs.ps & ~0xf)|(XCHAL_DEBUGLEVEL-1);
 //		gdbstub_icount_ena_single_step();
 		return ST_CONT;
+	} else if (stub_strncmp((char*)cmd, "vCont?", 6)==0) {	//query
+		gdbPacketStart();
+		gdbPacketStr("vCont;c;s");
+		gdbPacketEnd();
 	} else if (cmd[0]=='q') {	//Extended query
 		if (stub_strncmp((char*)&cmd[1], "Supported", 9)==0) { //Capabilities query
 			gdbPacketStart();
-			gdbPacketStr("swbreak+;hwbreak+;PacketSize=255");
+			gdbPacketStr("swbreak+;hwbreak+;PacketSize=255;vContSupported+");
 			gdbPacketEnd();
 		} else {
 			//We don't support other queries.

@@ -28,16 +28,29 @@ assign lcd_cs = out_ctl[2];
 assign lcd_rst = ~out_ctl[1]; //note: inverted inverted
 assign lcd_blen = out_ctl[0];
 
+reg [31:0] rdata_c;
+reg ready_c;
+
 always @(*) begin
 	if (addr=='h2) begin //xx08
-		rdata = out_ctl;
-		ready = wen || ren;
+		rdata_c = out_ctl;
+		ready_c = wen || ren;
 	end else if (addr=='h3) begin //xx0c
-		rdata = {lcd_id, lcd_fmark};
-		ready = wen || ren;
+		rdata_c = {lcd_id, lcd_fmark};
+		ready_c = wen || ren;
 	end else begin
-		rdata = lcd_readbuf;
-		ready = (state == 3);
+		rdata_c = lcd_readbuf;
+		ready_c = (state == 3);
+	end
+end
+
+always @(posedge clk) begin
+	if (!nrst) begin
+		rdata <= 0;
+		ready <= 0;
+	end else begin
+		rdata <= rdata_c;
+		ready <= ready_c;
 	end
 end
 

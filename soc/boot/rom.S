@@ -3,7 +3,9 @@
 
 	.section .text
 
-#define RAM_START		0x00000000
+#define RAM_START		0x40000000
+//#define RAM_SIZE		0x800000 //8MiB
+#define RAM_SIZE		0x20000  //128KiB
 #define PERI_UART_DATA	0x10000000
 #define PERI_UART_DIV	0x10000004
 #define PERI_LED		0x20000000
@@ -19,6 +21,11 @@ irq_vec_entry:
 	j irq_vec
 
 do_reset:
+	//LEDS: 1 for init
+	li a1, PERI_LED
+	li a2, 1
+	sw a2, 0(a1)
+
 //Bitbang PSRAM port initialization command
 bbpsraminit:
 	la a1, psram_init
@@ -29,79 +36,98 @@ bbloop:
 	addi a1, a1, 1
 	bne zero, a3, bbloop
 
-	//LEDS: 0xff for init
-	li a1, PERI_LED
-	li a2, 0xff
-	sw a2, 0(a1)
-
-
-	//Check if we are running in a simulation. If so, immediately jump to app that the simulator already
-	//preloaded in psram.
-	li a2, PERI_LED
-	lw a2, 0(a2)
-//	srli a2, a2, 31 //should work, does not, no clue why.
-	beq a2, zero, bbpsraminit
-
-	li a2, PERI_LED
-	li a1, 0x23
-	sw a1, 0(a2)
-
-	li a1, PERI_UART_DIV
-	li a2, 416 //115200 with a clock of 48MHz
-	sw a2, 0(a1)
-
-	//crash to gdbstub
-	j irq_vec
-
-	//jump to app
-	li a1, 0x2000
-	jalr zero, a1, 0
-
-
-//Memtest
-memtest_start:
-	//Test: writeback/cache line reload
-	li a1, 0x0002000 //start
-	li a4, 0x800000 //end
-	li a3, 0xAAAAAAAA
-memtestwloop:
-	sw a3, 0(a1)
-	addi a3, a3, 1
-	addi a1, a1, 4
-	bne a1, a4, memtestwloop
-
-	//LEDS: 1 for write loop done
-	li a1, PERI_LED
-	li a2, 1
-	sw a2, 0(a1)
-
-	li a1, 0x002000 //start
-	li a4, 0x800000 //end
-	li a3, 0xAAAAAAAA
-memtestrloop:
-	lw a5, 0(a1)
-	bne a5, a3, memtesterr
-	addi a3, a3, 1
-	addi a1, a1, 4
-	bne a1, a4, memtestrloop
-
-	//LEDS: 2 for OK
-	li a2, 0x02
-	j memtestok
-
-memtesterr:
-	//LEDs: 0 for error
-	li a2, 0x00
-memtestok:
-	li a1, PERI_LED
-	sw a2, 0(a1)
-
 
 	//Set up UART divider
 	li a1, PERI_UART_DIV
 	li a2, 416 //115200 with a clock of 48MHz
 //	li a2, 69 //115200 with a clock of 8MHz
 	sw a2, 0(a1)
+
+	//Check if we are running in a simulation. If so, immediately jump to app that the simulator already
+	//preloaded in psram.
+	li a2, PERI_LED
+	lw a2, 0(a2)
+//	srli a2, a2, 31 //should work, does not, no clue why.
+	beq a2, zero, memtest_start
+
+	li a2, PERI_LED
+	li a1, 0x2
+	sw a1, 0(a2)
+
+	li a1, PERI_UART_DIV
+	li a2, 64 //dummy for verilator
+	sw a2, 0(a1)
+
+	//irqs: enable 1 (ecall), 2 (unaligned mem), 3 (bus error) to bring us to gdbstub
+	li a1, 0xffffffff-0xE
+	picorv32_maskirq_insn(a1, a1)
+
+
+	//crash to gdbstub
+//	j irq_vec
+
+	//jump to app
+//	li a1, 0x40002000
+//	jalr zero, a1, 0
+
+
+//Memtest
+memtest_start:
+	li a2, PERI_LED
+	li a1, 0x3
+	sw a1, 0(a2)
+
+
+	//Test: writeback/cache line reload
+	li a1, RAM_START+RAM_SIZE-0x40 //end
+	li a4, RAM_START+0x2000 //start
+	li a3, 0xAAAAAAAA
+memtestwloop:
+	addi a1, a1, -4
+	sw a3, 0(a1)
+	add a3, a3, a3
+	add a3, a3, a1
+	bne a1, a4, memtestwloop
+
+	//LEDS: 4 for write loop done
+	li a1, PERI_LED
+	li a2, 4
+	sw a2, 0(a1)
+
+	li a1, RAM_START+RAM_SIZE-0x40 //end
+	li a4, RAM_START+0x2000 //start
+	li a3, 0xAAAAAAAA
+memtestrloop:
+	addi a1, a1, -4
+	lw a5, 0(a1)
+	bne a5, a3, memtesterr
+	add a3, a3, a3
+	add a3, a3, a1
+	bne a1, a4, memtestrloop
+
+	//LEDS: 5 for OK
+	li a2, 0x05
+	j memtestok
+
+memtesterr:
+	//LEDs: 6 for error
+	li a2, 6
+	li a1, PERI_LED
+	sw a2, 0(a1)
+	j memtesterr
+
+memtestok:
+	li a1, PERI_LED
+	sw a2, 0(a1)
+
+	//irqs: enable 1 (ecall), 2 (unaligned mem), 3 (bus error) to bring us to gdbstub
+	li a1, 0xffffffff-0xE
+	picorv32_maskirq_insn(a1, a1)
+
+	li a1, 0
+	sw a1, 0(a1)
+
+// ---- Serial loader ----
 
 	//Set up LEDs
 	li a1, PERI_LED
@@ -153,7 +179,7 @@ dowrite:
 	add a3, a3, a1
 	call getbyte
 	add a3, a3, a1
-	li a4, 0x2000
+	li a4, RAM_START+0x2000
 	add a3, a4, a3
 writeloop:
 	call getbyte
@@ -180,7 +206,7 @@ doread:
 	add a3, a3, a1
 	call getbyte
 	add a3, a3, a1
-	li a4, 0x2000
+	li a4, RAM_START+0x2000
 	add a3, a4, a3 //len -> end addr
 	li a2, PERI_UART_DATA
 readloop:
@@ -203,7 +229,8 @@ dogo:
 	add a4, a4, a1
 	call getbyte
 	add a4, a4, a1
-
+	li a1, RAM_START
+	add a4, a4, a1
 	la a1, okay
 	call sendstr
 

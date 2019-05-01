@@ -5,3 +5,9 @@ soc.json
 soc.svf
 soc_out.config
 soctrace.vcd
+corr_synth_for_verilator
+soc-postsyn.blif
+soc-postsyn.json
+*.bak
+soc_syn.v
+soc_syn_corr.v

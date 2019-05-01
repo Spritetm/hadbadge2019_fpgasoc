@@ -1,7 +1,7 @@
 #include <stdint.h>
 #pragma once
 
-#define MACH_RAM_START	0
+#define MACH_RAM_START	0x40000000
 #define MACH_RAM_SIZE	(8*1024)
 
 #define UART_OFFSET		0x10000000

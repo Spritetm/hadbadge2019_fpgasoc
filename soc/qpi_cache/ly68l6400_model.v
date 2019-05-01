@@ -4,7 +4,7 @@ Simplified SPI SRAM model. Supports qpi only.
 
 module spiram (
 	input spi_clk,
-	input spi_cs,
+	input spi_ncs,
 	input [3:0] spi_sin,
 	output reg [3:0] spi_sout,
 	input spi_oe
@@ -30,7 +30,7 @@ initial begin
 end
 
 always @(posedge spi_clk) begin
-	if (spi_cs) begin
+	if (spi_ncs) begin
 		state <= 0;
 		hinib <= 1;
 	end else begin

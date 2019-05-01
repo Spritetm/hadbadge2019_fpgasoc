@@ -22,7 +22,7 @@ rom.bin: rom.elf
 clean:
 	rm -f rom.bin rom.elf $(OBJS)
 
-send:
+send: send.c
 	gcc -O2 -ggdb -o send send.c
 
 .PHONY: clean

@@ -60,7 +60,6 @@ void write_brambuf(FILE *f, uint16_t *buf) {
 
 void create_brambuf(uint16_t *out, uint32_t *in, int bits, int bpos) {
 	uint32_t mask=(0xffffffff^(0xffffffff<<bits))<<bpos;
-//	printf("bits %d bpos %d mask %X\n", bits, bpos, mask);
 	int pos=0;
 	int j;
 	for (j=0; j<2048; j++) {
@@ -77,7 +76,8 @@ void create_brambuf(uint16_t *out, uint32_t *in, int bits, int bpos) {
 
 int try_replace_brambuf(uint16_t *brambuf, uint32_t *rnd, uint32_t *hex, int len) {
 	uint16_t tstbuf[2048];
-	for (int bits=1; bits<8; bits<<=1) {
+	for (int bits=1; bits<=8; bits<<=1) {
+		if ((len*bits) < 2048*8) continue;
 		for (int bpos=0; bpos<32; bpos+=bits) {
 			create_brambuf(tstbuf, rnd, bits, bpos);
 			if (memcmp(brambuf, tstbuf, sizeof(tstbuf))==0) {

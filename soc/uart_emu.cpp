@@ -16,7 +16,7 @@ Uart_emu::Uart_emu(int divisor) {
 }
 
 void Uart_emu::char_to_host(char c) {
-	printf("%c", c);
+	fprintf(stderr, "%c", c);
 }
 
 int Uart_emu::char_from_host() {

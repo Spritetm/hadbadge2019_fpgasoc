@@ -28,13 +28,14 @@ int main(int argc, char **argv) {
 	trace->open("soctrace.vcd");
 
 	tb->btn=0xff; //no buttons pressed
-	int do_trace=0;
+	int do_trace=1;
 
 	Psram_emu psram=Psram_emu(8*1024*1024);
 	psram.load_file("boot/rom.bin", 0, true);
-//	psram.load_file("app/app.bin", 0x400, true);
+	psram.load_file("app/app.bin", 0x2000, false);
 
-	Uart_emu_gdb uart=Uart_emu_gdb(416);
+	Uart_emu uart=Uart_emu(64);
+//	Uart_emu_gdb uart=Uart_emu_gdb(64);
 //	Uart_emu uart=Uart_emu(416);
 
 	int oldled=0;

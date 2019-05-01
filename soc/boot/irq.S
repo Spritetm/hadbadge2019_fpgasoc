@@ -8,6 +8,7 @@
 irq_vec:
 	/* save registers */
 
+	//save x1 and x2 to q2 and q3
 	picorv32_setq_insn(q2, x1)
 	picorv32_setq_insn(q3, x2)
 
@@ -17,10 +18,10 @@ irq_vec:
 	picorv32_getq_insn(x2, q0)
 	sw x2,   0*4(x1)
 
-	picorv32_getq_insn(x2, q2)
+	picorv32_getq_insn(x2, q2) //=x1
 	sw x2,   1*4(x1)
 
-	picorv32_getq_insn(x2, q3)
+	picorv32_getq_insn(x2, q3) //=x2
 	sw x2,   2*4(x1)
 
 	sw x3,   3*4(x1)

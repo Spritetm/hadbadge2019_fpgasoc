@@ -78,7 +78,11 @@ reg [CACHE_SET_BITS+CACHE_OFFSET_BITS:0] cachedata_addr;
 //Cache memory, tag memory, flags memory.
 simple_mem_words #(
 	.WORDS(CACHELINE_CT*CACHELINE_WORDS),
+`ifdef verilator
 	.INITIAL_HEX("rom.hex")
+`else
+	.INITIAL_HEX("rom_random_seeds0x123456.hex")
+`endif
 ) cachedata (
 	.clk(clk),
 	.wen(cachedata_wen),
@@ -98,7 +102,7 @@ for (i=0; i<2; i=i+1) begin
 		.WORDS(CACHE_SETS),
 		.WIDTH(CACHE_TAG_BITS),
 		//Cache maps to first block of memory.
-		.INITIAL_FILL(i)
+		.INITIAL_FILL(i*10) //*10 is random: we want only the first 8K for simulation as the app is in the 2nd.
 	) tagdata (
 		.clk(clk),
 		.wen(tag_wen[i]),
@@ -114,7 +118,7 @@ wire [2:0] flag_rdata;
 
 simple_mem #(
 	.WORDS(CACHE_SETS),
-	.WIDTH(3),
+	.WIDTH(4),
 	.INITIAL_FILL('b110)
 ) flagdata (
 	.clk(clk),
@@ -139,21 +143,21 @@ always @(*) begin
 	cachehit_way=0;
 	qpi_wdata = cachedata_rdata;
 	flag_wdata = flag_rdata;
-	flag_wen <= 0;
+	flag_wen = 0;
 	if (tag_rdata[0]==`TAG_FROM_ADDR(addr)) begin
 		found_tag=1;
 		cachehit_way=0; //DO U KNOW THE WAY
 		flag_wdata[FLAG_CW1_DIRTY] = flag_rdata[FLAG_CW1_DIRTY] || (wen != 0);
 		flag_wdata[FLAG_CW2_DIRTY] = flag_rdata[FLAG_CW2_DIRTY];
 		flag_wdata[FLAG_LRU]=1;
-		flag_wen <= 1;
+		flag_wen = 1;
 	end else if (tag_rdata[1]==`TAG_FROM_ADDR(addr)) begin
 		found_tag=1;
 		cachehit_way=1;
 		flag_wdata[FLAG_CW1_DIRTY] = flag_rdata[FLAG_CW1_DIRTY];
 		flag_wdata[FLAG_CW2_DIRTY] = flag_rdata[FLAG_CW2_DIRTY] || (wen != 0);
 		flag_wdata[FLAG_LRU]=0;
-		flag_wen <= 1;
+		flag_wen = 1;
 	end
 	if (found_tag && !doing_cache_refill) begin
 		//Tag is found. Route the read or write to the cache data store
@@ -168,7 +172,7 @@ always @(*) begin
 		flag_wdata[FLAG_CW1_DIRTY] = (flag_rdata[FLAG_LRU]==0) ? 0 : flag_rdata[FLAG_CW1_DIRTY];
 		flag_wdata[FLAG_CW2_DIRTY] = (flag_rdata[FLAG_LRU]==1) ? 0 : flag_rdata[FLAG_CW2_DIRTY];
 		flag_wdata[FLAG_LRU] = flag_rdata[FLAG_LRU]; //doesn't matter actually
-		flag_wen <= cache_refill_flag_wen;
+		flag_wen = cache_refill_flag_wen;
 		cachedata_wdata = qpi_rdata;
 		cachedata_wen = cache_refill_wen;
 	end

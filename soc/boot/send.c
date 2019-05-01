@@ -95,7 +95,7 @@ int main(int argc, char** argv) {
 	write(com, cmd, 4);
 	char *p=buff;
 	int n=no_bytes;
-	int a=0x200;
+	int a=0x2000;
 	while (n) {
 		int m=n;
 		if (m>32) m=32;
@@ -108,7 +108,7 @@ int main(int argc, char** argv) {
 	}
 	printf("Getting final write ack...\n");
 	getOk(com, 'K', 0);
-#if 0
+#if 1
 	printf("Doing readback of %d bytes...\n", no_bytes);
 	char rcmd[4]={'r', (no_bytes>>16)&0xff, (no_bytes>>8)&0xff, no_bytes&0xff};
 	write(com, rcmd, 4);
@@ -119,7 +119,7 @@ int main(int argc, char** argv) {
 	getOk(com, 'K', 0);
 #endif
 	printf("Starting program...\n");
-	char goCmd[4]={'g', 0x00, 0x04, 0x00};
+	char goCmd[4]={'g', 0x00, 0x20, 0x00};
 	write(com, goCmd, 4);
 	getOk(com,'K', 0);
 	printf("Running. Dumping serial output, press ctrl-c to exit.\n");
@@ -134,6 +134,7 @@ int main(int argc, char** argv) {
 			if (buf=='\n') printf("\n");
 		}
 	}
+
 }
 
 

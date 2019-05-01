@@ -10,13 +10,13 @@ TRELLIS=/usr/share/trellis
 
 all: $(PROJ).svf
 
-$(PROJ).json: $(SRC) $(SRC_SYNTH) $(EXTRA_DEPEND)
-	yosys -p "synth_ecp5 -top top_fpga -json $@" $(SRC) $(SRC_SYNTH)
+$(PROJ).json $(PROJ).blif: $(SRC) $(SRC_SYNTH) $(EXTRA_DEPEND)
+	yosys -p "synth_ecp5 -top top_fpga -json $(PROJ).json -blif $(PROJ).blif" $(SRC) $(SRC_SYNTH)
 
 %_out_synth.config: %.json
 	nextpnr-ecp5 --json $< --lpf $(CONSTR) --textcfg $@ --um-45k --package CABGA381 --speed 8  --freq 48
 
-%_out.config: %_out_synth.config bram_replace/bram_replace
+%_out.config: %_out_synth.config bram_replace/bram_replace rom.hex
 	bram_replace/bram_replace -l 4096 -r $< $@ rom.hex
 
 bram_replace/bram_replace:
@@ -36,10 +36,33 @@ clean:
 	make -C boot clean
 	rm -f rom.hex
 
+verilator-postsyn: verilator-postsyn-build/Vsoc $(EXTRA_DEPEND)
+	./verilator-postsyn-build/Vsoc
+
+$(PROJ)-postsyn.json $(PROJ)-postsyn.blif: $(SRC) $(SRC_SYNTH) $(EXTRA_DEPEND)
+	yosys -p "synth_ecp5 -top soc -json $(PROJ)-postsyn.json -blif $(PROJ)-postsyn.blif" $(SRC) $(SRC_SYNTH)
+
+$(PROJ)_syn.v: $(PROJ)-postsyn.blif
+	yosys -o $@ $^
+
+ECP5_SIM_BASE_DIR := /usr/src/symbiflow-arch-defs/ecp5/
+ECP5_SIM_FILES :=  primitives/misc/INV/INV.sim.v primitives/io/OBZ/OBZ.sim.v primitives/io/TRELLIS_IO/TRELLIS_IO.sim.v \
+	primitives/io/OB/OB.sim.v primitives/io/IB/IB.sim.v primitives/io/BB/BB.sim.v primitives/slice/TRELLIS_RAM16X2/TRELLIS_RAM16X2.sim.v \
+	primitives/slice/LUT4/LUT4.sim.v primitives/slice/LUT2/LUT2.sim.v primitives/slice/DPR16X4C/DPR16X4C.sim.v \
+	primitives/slice/TRELLIS_DPR16X4/TRELLIS_DPR16X4.sim.v primitives/slice/TRELLIS_FF/TRELLIS_FF.sim.v primitives/slice/CCU2C/CCU2C.sim.v \
+	primitives/slice/PFUMX/PFUMX.sim.v primitives/slice/L6MUX21/L6MUX21.sim.v
+ECP5_SIM_EXTRA := $(addprefix $(ECP5_SIM_BASE_DIR),$(ECP5_SIM_FILES))
+
+verilator-postsyn-build/Vsoc: $(PROJ)_syn.v $(SRC_SIM) $(BRAMFILE) corr_synth_for_verilator
+	./corr_synth_for_verilator < $(PROJ)_syn.v > $(PROJ)_syn_corr.v 
+	verilator -CFLAGS "-ggdb" --trace --Mdir verilator-build -Wno-style -Wno-pinmissing -Wno-fatal \
+			-cc --top-module soc --exe $(PROJ)_syn_corr.v $(SRC_SIM) $(ECP5_SIM_EXTRA) 
+	make OPT_FAST="-O2 -fno-stack-protector" -C verilator-build -f Vsoc.mk
+
 verilator: verilator-build/Vsoc $(EXTRA_DEPEND)
 	./verilator-build/Vsoc
 
-verilator-build/Vsoc: $(SRC) $(SRC_SIM)
+verilator-build/Vsoc: $(SRC) $(SRC_SIM) $(BRAMFILE)
 	verilator -CFLAGS "-ggdb" --trace --Mdir verilator-build -Wno-style -Wno-fatal -cc --top-module soc --exe $(SRC) $(SRC_SIM)
 	make OPT_FAST="-O2 -fno-stack-protector" -C verilator-build -f Vsoc.mk
 
@@ -47,6 +70,13 @@ rom.hex: boot/
 	make -C boot
 	cat boot/rom.bin | hexdump -v -e '/4 "%08X\n"' > rom.hex
 
-.PHONY: prog clean verilator bram_replace
+gdb:
+	/home/jeroen/hackaday2019/riscv-toolchain/bin/riscv32-unknown-elf-gdb -b 115200 -ex "set debug remote 1" -ex "target remote /dev/ttyUSB0" app/app.elf
+
+corr_synth_for_verilator: corr_synth_for_verilator.c
+	gcc -o corr_synth_for_verilator corr_synth_for_verilator.c
+
+
+.PHONY: prog clean verilator bram_replace boot/
 .PRECIOUS: $(PROJ).json $(PROJ)_out_synth.config $(PROJ)_out.config
 

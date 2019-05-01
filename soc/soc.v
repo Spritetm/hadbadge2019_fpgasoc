@@ -49,7 +49,7 @@ module soc(
 	wire [31:0] mem_wdata;
 	wire [3:0] mem_wstrb;
 	reg [31:0] mem_rdata;
-	wire [31:0] irq;
+	reg [31:0] irq;
 	reg [5:0] led;
 	reg [7:0] psrama_ovr;
 	reg [7:0] psramb_ovr;
@@ -57,9 +57,9 @@ module soc(
 
 /* verilator lint_off PINMISSING */
 	picorv32 #(
-		.STACKADDR('h1000), /* dummy */
-		.PROGADDR_RESET('h0),
-		.PROGADDR_IRQ('h10),
+		.STACKADDR('h407ffffc), /* top of 8MByte PSRAM */
+		.PROGADDR_RESET('h40000000),
+		.PROGADDR_IRQ ('h40000010),
 		.TWO_STAGE_SHIFT(0),
 		.BARREL_SHIFTER(1),
 		.ENABLE_COUNTERS(0),
@@ -81,7 +81,7 @@ module soc(
 		.ENABLE_TRACE(0),
 		.REGS_INIT_ZERO(0),
 		.MASKED_IRQ(0),
-		.LATCHED_IRQ(0)
+		.LATCHED_IRQ('b11111111)
 	) cpu (
 		.clk         (clk48m     ),
 		.resetn      (resetn     ),
@@ -96,8 +96,6 @@ module soc(
 	);
 /* verilator lint_on PINMISSING */
 
-	assign irq = 'h0;
-
 	reg mem_select;
 	reg uart_div_select;
 	reg uart_dat_select;
@@ -110,6 +108,7 @@ module soc(
 	wire [31:0] lcd_rdata;
 	reg lcd_select;
 	wire lcd_ready;
+	reg bus_error;
 
 	wire [31:0] soc_version;
 `ifdef verilator
@@ -124,8 +123,8 @@ module soc(
 		uart_dat_select = 0;
 		led_select = 0;
 		lcd_select = 0;
-		mem_rdata = 'hDEADBEEF;
-		if (mem_addr[31:28]=='h0) begin
+		bus_error = 0;
+		if (mem_addr[31:28]=='h4) begin
 			mem_select = mem_valid;
 			mem_rdata = ram_rdata;
 		end else if (mem_addr[31:28]=='h1) begin
@@ -143,10 +142,14 @@ module soc(
 		end else if (mem_addr[31:28]=='h3) begin
 			lcd_select = mem_valid;
 			mem_rdata = lcd_rdata;
+		end else begin
+			//Bus error. Raise IRQ if memory is accessed.
+			mem_rdata = 'hDEADBEEF;
+			bus_error = mem_valid;
 		end
 	end
 
-	assign mem_ready = ram_ready || uart_div_select || led_select || (uart_dat_select && !uart_reg_dat_wait) || lcd_ready;
+	assign mem_ready = ram_ready || uart_div_select || led_select || (uart_dat_select && !uart_reg_dat_wait) || lcd_ready || bus_error;
 
 
 	lcdiface lcdiface(
@@ -189,10 +192,6 @@ module soc(
 		.reg_dat_wait(uart_reg_dat_wait)
 	);
 
-	assign genio[27:4]='h0;
-	assign genio[2]=clk48m;
-	assign genio[3]=uart_rx;
-
 	wire qpi_do_read, qpi_do_write;
 	reg qpi_next_byte;
 	wire [23:0] qpi_addr;
@@ -201,6 +200,9 @@ module soc(
 	reg qpi_is_idle;
 
 	//16 words * 256 lines = 4K words = 16K bytes. Each way can contain 8KByte.
+	//NOTE: Psram needs to have /CE low for at max 5 uS.
+	//At 48MHz, this is 240 clock cycles... given 14 cycles setup time (for qpi read),
+	//that is a max cache line of 113 bytes or 28 words.
 	qpimem_cache #(
 		.CACHELINE_WORDS(16),
 		.CACHELINE_CT(256),
@@ -271,6 +273,38 @@ module soc(
 			end
 		end
 	end
+
+/*
+IRQs used:
+0 - Timer interrupt (internal to PicoRV32)
+1 - EBREAK, ECALL, illegal inst (internal to PicoRV32)
+2 - Unaligned memory access (internal to PicoRV32)
+3 - Bus error - not decoded (e.g. dereferenced NULL)
+*/
+
+	//Interrupt logic
+	always @(posedge clk48m) begin
+		irq <= 'h0;
+		if (bus_error) begin
+			irq[3] <= 1;
+		end
+	end
+
+	reg did_write_zero;
+	always @(posedge clk48m) begin
+		if (rst) begin
+			did_write_zero=0;
+		end else begin
+			if (qpi_addr == 0 && qpi_do_write) begin
+				did_write_zero=1;
+			end
+		end
+	end
+	
+	assign genio[27:5]='h0;
+	assign genio[2]=clk48m;
+	assign genio[3]=uart_rx;
+	assign genio[4]=did_write_zero;
 	
 	//Unused pins
 	assign pwmout = 0;
@@ -281,6 +315,4 @@ module soc(
 	assign psramb_sout = 0;
 	assign genio[0] = 0;
 	assign genio[1] = 0;
-	
-	
 endmodule

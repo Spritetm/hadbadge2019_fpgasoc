@@ -11,7 +11,7 @@ module base_mem #(
 	reg [31:0] mem [0:WORDS-1];
 	
 	initial begin
-		$readmemh("rom.hex", mem);
+		$readmemh("rom_basemem.hex", mem);
 	end
 
 	always @(posedge clk) begin

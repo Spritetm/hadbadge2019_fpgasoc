@@ -21,7 +21,7 @@ module simple_mem_words #(
 		if (INITIAL_HEX == "") begin
 			for (i=0; i<WORDS; i=i+1) mem[i]='hdeadbeef;
 		end else begin
-			$readmemh("rom.hex", mem);
+			$readmemh(INITIAL_HEX, mem);
 		end
 	end
 

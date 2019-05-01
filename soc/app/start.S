@@ -14,7 +14,6 @@
 
 reset_vec:
 	// no more than 16 bytes here !
-//	picorv32_waitirq_insn(zero)
 //	picorv32_maskirq_insn(zero, zero)
 	j start
 
@@ -74,7 +73,7 @@ bss_clear_done:
 	addi a2, zero, 0
 	
 # sp = top of 8m of memory
-	la sp, 0x7ffffc
+	la sp, 0x407ffffc
 
 #start app
 	call app_main
