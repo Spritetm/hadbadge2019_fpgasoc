@@ -24,6 +24,9 @@ extern volatile uint32_t UART[];
 #define UARTREG(i) UART[i/4]
 #define UART_DATA_REG 0
 
+extern volatile uint32_t LED[];
+
+
 //Length of buffer used to reserve GDB commands. Has to be at least able to fit the G command, which
 //implies a minimum size of about 264 bytes.
 #define PBUFLEN 512
@@ -390,8 +393,10 @@ static int gdbReadCommand(GdbRegFile *frame) {
 	}
 }
 
-void gdb_panic_handler(GdbRegFile *frame) {
+GdbRegFile *gdb_panic_handler(GdbRegFile *frame) {
 	sendReason(frame);
 	while(gdbReadCommand(frame)!=ST_CONT);
+	LED[0]=0x3A;
+	return frame;
 }
 

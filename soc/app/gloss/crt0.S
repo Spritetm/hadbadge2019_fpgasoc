@@ -9,8 +9,10 @@
 .global _bss_start
 .global _bss_end
 .global cpu_start
+.global _start
 
 reset_vec:
+_start:
 
 	//setup stack
 	la x2, _stack_start

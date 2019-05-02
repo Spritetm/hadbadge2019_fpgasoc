@@ -51,13 +51,14 @@ ECP5_SIM_FILES :=  primitives/misc/INV/INV.sim.v primitives/io/OBZ/OBZ.sim.v pri
 	primitives/slice/LUT4/LUT4.sim.v primitives/slice/LUT2/LUT2.sim.v primitives/slice/DPR16X4C/DPR16X4C.sim.v \
 	primitives/slice/TRELLIS_DPR16X4/TRELLIS_DPR16X4.sim.v primitives/slice/TRELLIS_FF/TRELLIS_FF.sim.v primitives/slice/CCU2C/CCU2C.sim.v \
 	primitives/slice/PFUMX/PFUMX.sim.v primitives/slice/L6MUX21/L6MUX21.sim.v
-ECP5_SIM_EXTRA := $(addprefix $(ECP5_SIM_BASE_DIR),$(ECP5_SIM_FILES))
+ECP5_SIM_EXTRA := $(addprefix $(ECP5_SIM_BASE_DIR),$(ECP5_SIM_FILES)) DP16KD_sim.v
 
 verilator-postsyn-build/Vsoc: $(PROJ)_syn.v $(SRC_SIM) $(BRAMFILE) corr_synth_for_verilator
-	./corr_synth_for_verilator < $(PROJ)_syn.v > $(PROJ)_syn_corr.v 
 	verilator -CFLAGS "-ggdb" --trace --Mdir verilator-build -Wno-style -Wno-pinmissing -Wno-fatal \
-			-cc --top-module soc --exe $(PROJ)_syn_corr.v $(SRC_SIM) $(ECP5_SIM_EXTRA) 
+			-cc --top-module soc --exe $(PROJ)_syn.v $(SRC_SIM) $(ECP5_SIM_EXTRA) 
 	make OPT_FAST="-O2 -fno-stack-protector" -C verilator-build -f Vsoc.mk
+
+#	./corr_synth_for_verilator < $(PROJ)_syn.v > $(PROJ)_syn_corr.v 
 
 verilator: verilator-build/Vsoc $(EXTRA_DEPEND)
 	./verilator-build/Vsoc

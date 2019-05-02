@@ -13,13 +13,14 @@ APPNAME := app
 TARGET_ELF := $(APPNAME).elf
 TARGET_BIN := $(APPNAME).bin
 TARGET_MAP := $(APPNAME).map
-OBJS := main.o lcd.o start.o
+OBJS := main.o lcd.o
 LIBS := gloss/libgloss.a
 LDSCRIPT := gloss/ldscript.ld
 
 CFLAGS := -Os -ggdb -I.
-LDFLAGS := -Wl,-Bstatic -Wl,--gc-sections  -Wl,-T,$(LDSCRIPT) -Wl,-Map,$(TARGET_MAP) -lgcc -nostartfiles -Lgloss 
+LDFLAGS := -Wl,-Bstatic -Wl,-T,$(LDSCRIPT) -Wl,-Map,$(TARGET_MAP) -lgcc -nostartfiles -Lgloss 
 export PREFIX CC AR LD OBJCOPY CFLAGS LDFLAGS APPNAME
+#-Wl,--gc-sections  
 
 $(TARGET_BIN): $(TARGET_ELF)
 	$(SIZE) $^
@@ -27,7 +28,7 @@ $(TARGET_BIN): $(TARGET_ELF)
 	$(OBJDUMP) -S $^ > $(APPNAME).disasm
 
 $(TARGET_ELF): $(LIBS) $(OBJS) $(LDSCRIPT)
-	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS) -lm
+	$(CC) $(LDFLAGS) -o $@ $(LIBS) -lm $(OBJS) 
 
 .PHONY: clean
 clean:
@@ -38,6 +39,8 @@ clean:
 prog: $(TARGET_BIN)
 	../boot/send $(TARGET_BIN) /dev/ttyUSB0
 
+gdb: $(TARGET_ELF)
+	/home/jeroen/hackaday2019/riscv-toolchain/bin/riscv32-unknown-elf-gdb -b 115200 -ex "target remote /dev/ttyUSB0" app.elf
 
 .PHONY: gloss/libgloss.a
 gloss/libgloss.a:

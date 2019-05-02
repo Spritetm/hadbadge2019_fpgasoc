@@ -58,17 +58,7 @@ bbloop:
 	li a2, 64 //dummy for verilator
 	sw a2, 0(a1)
 
-	//irqs: enable 1 (ecall), 2 (unaligned mem), 3 (bus error) to bring us to gdbstub
-	li a1, 0xffffffff-0xE
-	picorv32_maskirq_insn(a1, a1)
-
-
-	//crash to gdbstub
-//	j irq_vec
-
-	//jump to app
-//	li a1, 0x40002000
-//	jalr zero, a1, 0
+//	j memtestok
 
 
 //Memtest
@@ -124,8 +114,10 @@ memtestok:
 	li a1, 0xffffffff-0xE
 	picorv32_maskirq_insn(a1, a1)
 
-	li a1, 0
-	sw a1, 0(a1)
+	li a1, 0x40002000
+	li a2, 0x00100073 //ebreak
+	sw a2, 0(a1)
+	jalr zero, a1, 0
 
 // ---- Serial loader ----
 

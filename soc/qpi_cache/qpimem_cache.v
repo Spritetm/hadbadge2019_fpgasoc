@@ -67,8 +67,8 @@ parameter CACHE_OFFSET_BITS=$clog2(CACHELINE_WORDS);
 
 //Bits in flag memory
 parameter integer FLAG_LRU=0;
-parameter integer FLAG_CW1_DIRTY=1;
-parameter integer FLAG_CW2_DIRTY=2;
+parameter integer FLAG_CW1_CLEAN=1;
+parameter integer FLAG_CW2_CLEAN=2;
 
 reg [3:0] cachedata_wen;
 reg [31:0] cachedata_wdata;
@@ -102,7 +102,7 @@ for (i=0; i<2; i=i+1) begin
 		.WORDS(CACHE_SETS),
 		.WIDTH(CACHE_TAG_BITS),
 		//Cache maps to first block of memory.
-		.INITIAL_FILL(i*10) //*10 is random: we want only the first 8K for simulation as the app is in the 2nd.
+		.INITIAL_FILL(i) //*10 is random: we want only the first 8K for simulation as the app is in the 2nd.
 	) tagdata (
 		.clk(clk),
 		.wen(tag_wen[i]),
@@ -119,7 +119,7 @@ wire [2:0] flag_rdata;
 simple_mem #(
 	.WORDS(CACHE_SETS),
 	.WIDTH(4),
-	.INITIAL_FILL('b110)
+	.INITIAL_FILL('b0)
 ) flagdata (
 	.clk(clk),
 	.wen(flag_wen),
@@ -147,15 +147,15 @@ always @(*) begin
 	if (tag_rdata[0]==`TAG_FROM_ADDR(addr)) begin
 		found_tag=1;
 		cachehit_way=0; //DO U KNOW THE WAY
-		flag_wdata[FLAG_CW1_DIRTY] = flag_rdata[FLAG_CW1_DIRTY] || (wen != 0);
-		flag_wdata[FLAG_CW2_DIRTY] = flag_rdata[FLAG_CW2_DIRTY];
+		flag_wdata[FLAG_CW1_CLEAN] = flag_rdata[FLAG_CW1_CLEAN] && (wen == 0);
+		flag_wdata[FLAG_CW2_CLEAN] = flag_rdata[FLAG_CW2_CLEAN];
 		flag_wdata[FLAG_LRU]=1;
 		flag_wen = 1;
 	end else if (tag_rdata[1]==`TAG_FROM_ADDR(addr)) begin
 		found_tag=1;
 		cachehit_way=1;
-		flag_wdata[FLAG_CW1_DIRTY] = flag_rdata[FLAG_CW1_DIRTY];
-		flag_wdata[FLAG_CW2_DIRTY] = flag_rdata[FLAG_CW2_DIRTY] || (wen != 0);
+		flag_wdata[FLAG_CW1_CLEAN] = flag_rdata[FLAG_CW1_CLEAN];
+		flag_wdata[FLAG_CW2_CLEAN] = flag_rdata[FLAG_CW2_CLEAN] && (wen == 0);
 		flag_wdata[FLAG_LRU]=0;
 		flag_wen = 1;
 	end
@@ -169,8 +169,8 @@ always @(*) begin
 		cachedata_addr = `CACHEDATA_ADDR(flag_rdata[FLAG_LRU], `SET_FROM_ADDR(addr), cache_refill_offset);
 		//A cache line reload will always un-dirty the LRU page. Prepare the flags that indicate it so the
 		//reload state machine only has to write them.
-		flag_wdata[FLAG_CW1_DIRTY] = (flag_rdata[FLAG_LRU]==0) ? 0 : flag_rdata[FLAG_CW1_DIRTY];
-		flag_wdata[FLAG_CW2_DIRTY] = (flag_rdata[FLAG_LRU]==1) ? 0 : flag_rdata[FLAG_CW2_DIRTY];
+		flag_wdata[FLAG_CW1_CLEAN] = (flag_rdata[FLAG_LRU]==0) ? 1 : flag_rdata[FLAG_CW1_CLEAN];
+		flag_wdata[FLAG_CW2_CLEAN] = (flag_rdata[FLAG_LRU]==1) ? 1 : flag_rdata[FLAG_CW2_CLEAN];
 		flag_wdata[FLAG_LRU] = flag_rdata[FLAG_LRU]; //doesn't matter actually
 		flag_wen = cache_refill_flag_wen;
 		cachedata_wdata = qpi_rdata;
@@ -178,25 +178,16 @@ always @(*) begin
 	end
 end
 
-//Idea here is if we don't find the tag, we have a cache miss. The tag will
-//only be written after a cache hit, so we're ready by then.
-always @(posedge clk) begin
-	if (rst) begin
-		ready <= 0;
-	end else begin
-		ready <= found_tag && (ren || wen!=0) && !doing_cache_refill;
-	end
-end
 
 wire need_cache_refill;
 wire cache_line_lru;
-wire cache_line_lru_dirty;
+wire cache_line_lru_clean;
 //Assumption: ren/wen/addr will stay stable until we have signaled the memory is ready.
 assign need_cache_refill = !found_tag && (ren || wen!=0);
 assign cache_line_lru = flag_rdata[FLAG_LRU];
-assign cache_line_lru_dirty = cache_line_lru ? 
-		flag_rdata[FLAG_CW2_DIRTY] : 
-		flag_rdata[FLAG_CW1_DIRTY];
+assign cache_line_lru_clean = cache_line_lru ? 
+		flag_rdata[FLAG_CW2_CLEAN] : 
+		flag_rdata[FLAG_CW1_CLEAN];
 
 reg [CACHE_OFFSET_BITS-1:0] write_words_left;
 
@@ -230,7 +221,7 @@ always @(posedge clk) begin
 			//Tag not found! Grabbing from SPI memory.
 			if (!qpi_do_read && !qpi_do_write) begin
 				//Start. See if we need to do writeback
-				if (cache_line_lru_dirty) begin
+				if (!cache_line_lru_clean) begin
 					qpi_do_write <= 1;
 					//Address is the address that the LRU has
 					qpi_addr[23:2+CACHE_OFFSET_BITS] <= {cache_line_lru?tag_rdata[1]:tag_rdata[0], current_set};
@@ -251,8 +242,8 @@ always @(posedge clk) begin
 				cache_refill_offset <= cache_refill_offset + 1;
 				write_words_left <= write_words_left - 1;
 				if ((write_words_left)==1) begin
-					//last write of the cache line, un-dirty cache line
-					//Note that because we un-dirtied the cache line but there's still no cache hit,
+					//last write of the cache line, mark cache line clean
+					//Note that because we cleaned the cache line but there's still no cache hit,
 					//the next round (after the qspi machine has gone idle), we'll do the actual
 					//read of the cache line.
 					qpi_do_write <= 0;

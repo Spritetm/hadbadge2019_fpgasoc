@@ -36,7 +36,7 @@ int _execve(const char *name, char *const argv[], char *const env[]) {
 }
 
 void _exit(int exit_status) {
-	return -1;
+	asm("ebreak");
 }
 
 int _faccessat(int dirfd, const char *file, int mode, int flags) {

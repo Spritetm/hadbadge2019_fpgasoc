@@ -23,14 +23,78 @@ void write_fields(char *name, char **fields, int no) {
 	printf("}),\n"); //ToDo: comma is not always needed
 }
 
+
+void fix_module_line(char *line) {
+	//module (bla, \yadda[0] , \yadda[1], ..) -> module bla, yadda -> module bla, [1:0] yadda)
+	char *field[1024]={NULL};
+	int fieldcnt[1024]={0};
+	int fieldpos=0;
+
+	char buf[10240];
+	char *p=strstr(line, "(")+1;
+	strncpy(buf, line, p-line);
+	buf[p-line]=0;
+	printf("%s", buf);
+	while(p!=NULL) {
+		//find end of field
+		char *fe=strstr(p, ",");
+		if (!fe) fe=strstr(p, ")");
+		while (*fe==' ') fe--;
+
+		strcpy(buf, p);
+		buf[fe-p]=0;
+		char *brackstart=strstr(buf, "[");
+		if (brackstart==NULL) {
+			field[fieldpos]=strdup(buf);
+			fieldcnt[fieldpos]=0;
+			fieldpos++;
+		} else {
+			*brackstart=0;
+			int idx=atoi(brackstart+1);
+			int found=0;
+			for (int i=0; i<fieldpos; i++) {
+				if (strcmp(field[i], buf)==0) {
+					if (fieldcnt[i]<idx) fieldcnt[i]=idx;
+					found=1;
+					break;
+				}
+			}
+			if (!found) {
+				field[fieldpos]=strdup(buf);
+				fieldcnt[fieldpos]=idx;
+				fieldpos++;
+			}
+		}
+		//next ele
+		p=strstr(p, ",");
+		if (p!=NULL) {
+			p++; //skip comma
+			while (*p==' ' || *p=='\\') p++; //skip spaces and escape
+		}
+	}
+	for (int i=0; i<fieldpos; i++) {
+		if (fieldcnt[i]==0) {
+			printf("%s", field[i]);
+		} else {
+			printf("input [%d:0] %s", fieldcnt[i], field[i]);
+		}
+		if (i!=fieldpos-1) printf(", ");
+	}
+	printf(");\n");
+}
+
+
 int main() {
 	char buff[10240];
 	char *name=NULL;
 	char *fields[128]={NULL};
 	int no_fields=0;
+	int had_module_line=0;
 	while(fgets(buff, sizeof(buff), stdin)) {
 		char *namestart=strstr(buff, ".\\");
-		if (namestart!=NULL) {
+		if (!had_module_line && (strstr(buff, "module ")!=NULL)) {
+			fix_module_line(buff);
+		} else if (namestart!=NULL) {
 			namestart+=2; //skip past . and backslash
 			char *nameend=strstr(buff, "[");
 			if (name!=NULL && strncmp(namestart, name, nameend-namestart)!=0) {

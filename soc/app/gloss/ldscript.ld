@@ -31,8 +31,12 @@ SECTIONS {
 		*(.srodata.*);
 		*(.data);
 		*(.data.*);
+		*(.gnu.linkonce.d.*)
+		*(.data1)
 		*(.sdata);
 		*(.sdata.*);
+		*(.sdata2)
+		*(.sdata2.*)
 	} > ram
 	.bss (NOLOAD) : {
 		. = ALIGN(4);
@@ -52,6 +56,8 @@ SECTIONS {
 		_stack_end = ORIGIN(ram) + LENGTH(ram) - _stack_size;
 	} > ram
 }
+
+ENTRY(_start)
 
 PROVIDE ( UART = 0x10000000 );
 PROVIDE ( LED  = 0x20000000 );

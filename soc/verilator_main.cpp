@@ -28,14 +28,15 @@ int main(int argc, char **argv) {
 	trace->open("soctrace.vcd");
 
 	tb->btn=0xff; //no buttons pressed
-	int do_trace=1;
+	int do_trace=0;
 
 	Psram_emu psram=Psram_emu(8*1024*1024);
-	psram.load_file("boot/rom.bin", 0, true);
-	psram.load_file("app/app.bin", 0x2000, false);
+	//ToDo: load elfs so we can mark ro sections as read-only
+	psram.load_file("boot/rom.bin", 0, false);
+//	psram.load_file("app/app.bin", 0x2000, false);
 
-	Uart_emu uart=Uart_emu(64);
-//	Uart_emu_gdb uart=Uart_emu_gdb(64);
+//	Uart_emu uart=Uart_emu(64);
+	Uart_emu_gdb uart=Uart_emu_gdb(64);
 //	Uart_emu uart=Uart_emu(416);
 
 	int oldled=0;
@@ -63,6 +64,7 @@ int main(int argc, char **argv) {
 		if (oldled != tb->led) {
 			oldled=tb->led;
 			printf("LEDs: 0x%X\n", oldled);
+//			if (oldled == 0x3A) do_trace=1;
 		}
 //		printf("%X\n", tb->soc__DOT__cpu__DOT__reg_pc);
 	};
