@@ -118,7 +118,7 @@ wire [2:0] flag_rdata;
 
 simple_mem #(
 	.WORDS(CACHE_SETS),
-	.WIDTH(4),
+	.WIDTH(3),
 	.INITIAL_FILL('b0)
 ) flagdata (
 	.clk(clk),
@@ -224,7 +224,7 @@ always @(posedge clk) begin
 				if (!cache_line_lru_clean) begin
 					qpi_do_write <= 1;
 					//Address is the address that the LRU has
-					qpi_addr[23:2+CACHE_OFFSET_BITS] <= {cache_line_lru?tag_rdata[1]:tag_rdata[0], current_set};
+					qpi_addr[ADDR_WIDTH+1:2+CACHE_OFFSET_BITS] <= {cache_line_lru?tag_rdata[1]:tag_rdata[0], current_set};
 					qpi_addr[2+CACHE_OFFSET_BITS-1:0] <= 0;
 					write_words_left <= 'hffff; //all ones
 					cache_refill_offset <= 0;
@@ -232,7 +232,7 @@ always @(posedge clk) begin
 				end else begin
 					qpi_do_read <= 1;
 					//Read from the address the user gave
-					qpi_addr[23:2+CACHE_OFFSET_BITS] <= {`TAG_FROM_ADDR(addr), current_set};
+					qpi_addr[ADDR_WIDTH+1:2+CACHE_OFFSET_BITS] <= {`TAG_FROM_ADDR(addr), current_set};
 					qpi_addr[2+CACHE_OFFSET_BITS-1:0] <= 0;
 					cache_refill_offset <= -1;
 					//note: on refill, cache always writes whatever comes from cachedata mem.

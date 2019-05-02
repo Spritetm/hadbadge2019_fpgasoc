@@ -92,7 +92,11 @@ module soc(
 		.mem_wdata   (mem_wdata  ),
 		.mem_wstrb   (mem_wstrb  ),
 		.mem_rdata   (mem_rdata  ),
-		.irq         (irq        )
+		.irq         (irq        ),
+		.pcpi_wait(0),
+		.pcpi_wr(0),
+		.pcpi_ready(0),
+		.pcpi_rd(0)
 	);
 /* verilator lint_on PINMISSING */
 
@@ -290,21 +294,23 @@ IRQs used:
 		end
 	end
 
-	reg did_write_zero;
+	reg dbgval;
+	reg [15:0] my_dbgdata;
 	always @(posedge clk48m) begin
 		if (rst) begin
-			did_write_zero=0;
+			dbgval=0;
 		end else begin
-			if (qpi_addr == 0 && qpi_do_write) begin
-				did_write_zero=1;
+			if (mem_addr == 'h40000110) begin
+				dbgval=1;
 			end
+			my_dbgdata <= ram_rdata[15:0];
 		end
 	end
 	
-	assign genio[27:5]='h0;
-	assign genio[2]=clk48m;
-	assign genio[3]=uart_rx;
-	assign genio[4]=did_write_zero;
+	assign genio[15:0]=my_dbgdata;
+	assign genio[16]=dbgval;
+	assign genio[17]=clk48m;
+	assign genio[27:18]='h0;
 	
 	//Unused pins
 	assign pwmout = 0;
@@ -313,6 +319,4 @@ IRQs used:
 	assign psramb_sclk = 0;
 	assign psramb_oe = 0;
 	assign psramb_sout = 0;
-	assign genio[0] = 0;
-	assign genio[1] = 0;
 endmodule
