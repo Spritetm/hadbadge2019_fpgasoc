@@ -153,8 +153,15 @@ module soc(
 		end
 	end
 
-	assign mem_ready = ram_ready || uart_div_select || led_select || (uart_dat_select && !uart_reg_dat_wait) || lcd_ready || bus_error;
+`ifdef verilator
+	//Catch stray ready signals when dev is not selected
+	always @(posedge clk48m) begin
+		assert(mem_select || !ram_ready) else $error("Ram is ready when not selected!");
+		assert(lcd_select || !lcd_ready) else $error("LCD peri is ready when not selected!");
+	end
+`endif
 
+	assign mem_ready = ram_ready || uart_div_select || led_select || (uart_dat_select && !uart_reg_dat_wait) || lcd_ready || bus_error;
 
 	lcdiface lcdiface(
 		.clk(clk48m),
@@ -294,22 +301,28 @@ IRQs used:
 		end
 	end
 
-	reg dbgval;
+	reg [7:0] dbgval;
 	reg [15:0] my_dbgdata;
 	always @(posedge clk48m) begin
 		if (rst) begin
-			dbgval=0;
+			dbgval<=0;
 		end else begin
-			if (mem_addr == 'h40000110) begin
-				dbgval=1;
+			if (mem_addr == 'h40000010) begin
+				dbgval<='hff;
+			end else begin
+				if (dbgval!=0) begin
+					dbgval <= dbgval - 1;
+				end
 			end
-			my_dbgdata <= ram_rdata[15:0];
+//			my_dbgdata <= ram_rdata[15:0];
+			my_dbgdata <= mem_addr[31:16];
 		end
 	end
 	
-	assign genio[15:0]=my_dbgdata;
-	assign genio[16]=dbgval;
-	assign genio[17]=clk48m;
+//	assign genio[15:0]={mem_addr[31:17], bus_error};//my_dbgdata;
+	assign genio[15:0]={mem_addr[15:1], bus_error};//my_dbgdata;
+	assign genio[16]=(dbgval!=0);
+	assign genio[17]=bus_error;
 	assign genio[27:18]='h0;
 	
 	//Unused pins

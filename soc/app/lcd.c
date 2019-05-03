@@ -123,6 +123,7 @@ void lcd_write_fb(uint32_t *fb) {
 			int g=((*fb>>8)&0xff)>>2;
 			int b=((*fb>>16)&0xff)>>2;
 			WriteData((b<<12)|(g<<6)|(r));
+			fb++;
 		}
 	}
 }

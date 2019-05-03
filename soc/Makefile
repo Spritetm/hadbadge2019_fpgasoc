@@ -7,6 +7,8 @@ EXTRA_DEPEND=rom_random_seeds0x123456.hex
 BRAMFILE=rom.hex
 CONSTR=had19_proto1.lpf
 TRELLIS=/usr/share/trellis
+#note: 48 actually, but better to be on the safe size.
+FREQ=60
 
 all: $(PROJ).svf
 
@@ -14,7 +16,7 @@ $(PROJ).json $(PROJ).blif: $(SRC) $(SRC_SYNTH) $(EXTRA_DEPEND)
 	yosys -p "synth_ecp5 -top top_fpga -json $(PROJ).json -blif $(PROJ).blif" $(SRC) $(SRC_SYNTH)
 
 %_out_synth.config: %.json
-	nextpnr-ecp5 --json $< --lpf $(CONSTR) --textcfg $@ --um-45k --package CABGA381 --speed 8  --freq 48
+	nextpnr-ecp5 --json $< --lpf $(CONSTR) --textcfg $@ --um-45k --package CABGA381 --speed 8  --freq $(FREQ)
 
 %_out.config: %_out_synth.config bram_replace/bram_replace rom.hex
 	bram_replace/bram_replace -l 4096 -r $< $@ rom.hex
@@ -64,7 +66,7 @@ verilator: verilator-build/Vsoc $(EXTRA_DEPEND)
 	./verilator-build/Vsoc
 
 verilator-build/Vsoc: $(SRC) $(SRC_SIM) $(BRAMFILE)
-	verilator -CFLAGS "-ggdb" --trace --Mdir verilator-build -Wno-style -Wno-fatal -cc --top-module soc --exe $(SRC) $(SRC_SIM)
+	verilator -CFLAGS "-ggdb" --assert --trace --Mdir verilator-build -Wno-style -Wno-fatal -cc --top-module soc --exe $(SRC) $(SRC_SIM)
 	make OPT_FAST="-O2 -fno-stack-protector" -C verilator-build -f Vsoc.mk
 
 rom.hex: boot/

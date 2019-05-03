@@ -13,14 +13,13 @@ APPNAME := app
 TARGET_ELF := $(APPNAME).elf
 TARGET_BIN := $(APPNAME).bin
 TARGET_MAP := $(APPNAME).map
-OBJS := main.o lcd.o
+OBJS := main.o lcd.o UGUI/ugui.o
 LIBS := gloss/libgloss.a
 LDSCRIPT := gloss/ldscript.ld
 
-CFLAGS := -Os -ggdb -I.
-LDFLAGS := -Wl,-Bstatic -Wl,-T,$(LDSCRIPT) -Wl,-Map,$(TARGET_MAP) -lgcc -nostartfiles -Lgloss 
+CFLAGS := -Os -ggdb -I. -IUGUI
+LDFLAGS := -Wl,-Bstatic -Wl,--gc-sections  -Wl,-T,$(LDSCRIPT) -Wl,-Map,$(TARGET_MAP) -lgcc -nostartfiles -Lgloss 
 export PREFIX CC AR LD OBJCOPY CFLAGS LDFLAGS APPNAME
-#-Wl,--gc-sections  
 
 $(TARGET_BIN): $(TARGET_ELF)
 	$(SIZE) $^

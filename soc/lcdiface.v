@@ -6,7 +6,7 @@ module lcdiface(
 	input ren,
 	output reg [31:0] rdata,
 	input [31:0] wdata,
-	output reg ready,
+	output wire ready,
 
 	output reg [17:0] lcd_db,
 	output reg lcd_rd,
@@ -19,7 +19,7 @@ module lcdiface(
 	output lcd_blen
 );
 
-reg [1:0] state;
+reg [2:0] state;
 reg [2:0] out_ctl;
 reg [17:0] lcd_readbuf;
 reg lcd_rw_done;
@@ -30,7 +30,7 @@ assign lcd_blen = out_ctl[0];
 
 reg [31:0] rdata_c;
 reg ready_c;
-
+reg ready_n;
 always @(*) begin
 	if (addr=='h2) begin //xx08
 		rdata_c = out_ctl;
@@ -40,6 +40,8 @@ always @(*) begin
 		ready_c = wen || ren;
 	end else begin
 		rdata_c = lcd_readbuf;
+		//Note we ready on state==3, so the CPU can lower its read line on state==4 so it's low when we re-sample
+		//it on state==0
 		ready_c = (state == 3);
 	end
 end
@@ -47,12 +49,14 @@ end
 always @(posedge clk) begin
 	if (!nrst) begin
 		rdata <= 0;
-		ready <= 0;
+		ready_n <= 0;
 	end else begin
 		rdata <= rdata_c;
-		ready <= ready_c;
+		ready_n <= ready_c;
 	end
 end
+
+assign ready = ready_n & (ren || wen);
 
 always @(posedge clk) begin
 	if (!nrst) begin
@@ -79,10 +83,15 @@ always @(posedge clk) begin
 		end else if (state==2) begin
 			state <= 3;
 		end else if (state==3) begin
+			lcd_readbuf <= lcd_db; //ToDo: LCD_Rin or so
 			lcd_rd <= 1;
 			lcd_wr <= 1;
 			lcd_rw_done <= 1;
-			state <= 0;
+			state <= 4;
+		end else if (state==4) begin
+			if (!(ren || wen)) state <= 0;
+		end else begin
+			state <= 0; //fallback
 		end
 	end
 end
