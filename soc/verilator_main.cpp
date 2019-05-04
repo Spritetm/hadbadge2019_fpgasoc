@@ -35,19 +35,18 @@ int main(int argc, char **argv) {
 	trace->open("soctrace.vcd");
 
 	tb->btn=0xff; //no buttons pressed
-	int do_trace=0;
+	int do_trace=1;
 
 	Psram_emu psram=Psram_emu(8*1024*1024);
 	//ToDo: load elfs so we can mark ro sections as read-only
 	psram.load_file("boot/rom.bin", 0, false);
 //	psram.load_file("app/app.bin", 0x2000, false);
 
-//	Uart_emu uart=Uart_emu(64);
-	Uart_emu_gdb uart=Uart_emu_gdb(64);
+	Uart_emu uart=Uart_emu(64);
+//	Uart_emu_gdb uart=Uart_emu_gdb(64);
 //	Uart_emu uart=Uart_emu(416);
 
 	int oldled=0;
-//	for (int i=0; i<48000000; i++) {
 	while(1) {
 		ts++;
 		if (do_trace) tracepos++;
@@ -73,6 +72,7 @@ int main(int argc, char **argv) {
 			printf("LEDs: 0x%X\n", oldled);
 			//if (oldled == 0x3A) do_trace=1;
 		}
+/*
 		if (tb->soc__DOT__cpu__DOT__reg_pc==0x400060f4) {
 			do_trace=1;
 			printf("Trace start\n");
@@ -81,10 +81,10 @@ int main(int argc, char **argv) {
 			do_trace=0;
 			printf("Trace stop\n");
 		}
-
+*/
 //		printf("%X\n", tb->soc__DOT__cpu__DOT__reg_pc);
 	};
-	printf("Verilator sim exited, pc 0x%08X\n", tb->soc__DOT__cpu__DOT__reg_pc);
+//	printf("Verilator sim exited, pc 0x%08X\n", tb->soc__DOT__cpu__DOT__reg_pc);
 	trace->flush();
 
 	trace->close();

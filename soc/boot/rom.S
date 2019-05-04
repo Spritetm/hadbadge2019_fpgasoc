@@ -25,6 +25,10 @@ do_reset:
 	li a1, PERI_LED
 	li a2, 1
 	sw a2, 0(a1)
+	
+	//see if we are the 2nd cpu
+	lw a2,4(a1)
+	bne a2, zero, secondcpu
 
 //Bitbang PSRAM port initialization command
 bbpsraminit:
@@ -58,7 +62,7 @@ bbloop:
 	li a2, 64 //dummy for verilator
 	sw a2, 0(a1)
 
-//	j memtestok
+	j memtestok
 
 
 //Memtest
@@ -109,6 +113,10 @@ memtesterr:
 memtestok:
 	li a1, PERI_LED
 	sw a2, 0(a1)
+
+	//un-reset 2nd cpu
+	li a2, 2
+	sw a2, 12(a1)
 
 	//irqs: enable 1 (ecall), 2 (unaligned mem), 3 (bus error) to bring us to gdbstub
 	li a1, 0xffffffff-0xE
@@ -239,7 +247,7 @@ getbyte:
 	ret
 
 
-//killa a2, a3
+//kills a2, a3
 sendstr:
 	li a3, PERI_UART_DATA
 sendstr_loop:
@@ -252,6 +260,14 @@ sendstr_loop:
 sendstr_end:
 	ret
 
+secondcpu:
+	la a1, secondcputext
+	call sendstr
+secondcpuhalt:
+	j secondcpuhalt
+
+secondcputext:
+	.asciz "Hello from 2nd cpu\r\n"
 
 txt:
 	.asciz "ROM ldr v1.0\r\n"

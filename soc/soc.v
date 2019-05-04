@@ -42,13 +42,13 @@ module soc(
 		end
 	end
 
-	wire mem_valid;
-	wire mem_instr;
 	wire mem_ready;
+	wire mem_ren;
 	wire [31:0] mem_addr;
 	wire [31:0] mem_wdata;
 	wire [3:0] mem_wstrb;
 	reg [31:0] mem_rdata;
+	wire mem_valid;
 	reg [31:0] irq;
 	reg [5:0] led;
 	reg [7:0] psrama_ovr;
@@ -56,49 +56,87 @@ module soc(
 
 
 /* verilator lint_off PINMISSING */
-	picorv32 #(
-		.STACKADDR('h407ffffc), /* top of 8MByte PSRAM */
-		.PROGADDR_RESET('h40000000),
-		.PROGADDR_IRQ ('h40000010),
-		.TWO_STAGE_SHIFT(0),
-		.BARREL_SHIFTER(1),
-		.ENABLE_COUNTERS(0),
-		.ENABLE_COUNTERS64(0),
-		.ENABLE_REGS_16_31(1),
-		.ENABLE_REGS_DUALPORT(1),
-		.ENABLE_MUL(0),
-		.ENABLE_FAST_MUL(1),
-		.ENABLE_DIV(1),
-		.ENABLE_IRQ(1),
-		.ENABLE_IRQ_QREGS(1),
-		.TWO_CYCLE_COMPARE(0),
-		.TWO_CYCLE_ALU(0),
-		.COMPRESSED_ISA(1),
-		.CATCH_MISALIGN(1),
-		.CATCH_ILLINSN(1),
-		.ENABLE_PCPI(1),
-		.ENABLE_IRQ_TIMER(1),
-		.ENABLE_TRACE(0),
-		.REGS_INIT_ZERO(0),
-		.MASKED_IRQ(0),
-		.LATCHED_IRQ('b11111111)
-	) cpu (
-		.clk         (clk48m     ),
-		.resetn      (resetn     ),
-		.mem_valid   (mem_valid  ),
-		.mem_instr   (mem_instr  ),
-		.mem_ready   (mem_ready  ),
-		.mem_addr    (mem_addr   ),
-		.mem_wdata   (mem_wdata  ),
-		.mem_wstrb   (mem_wstrb  ),
-		.mem_rdata   (mem_rdata  ),
-		.irq         (irq        ),
-		.pcpi_wait(0),
-		.pcpi_wr(0),
-		.pcpi_ready(0),
-		.pcpi_rd(0)
-	);
+
+	`define SLICE_32(v, i) v[32*i+31:32*i]
+	`define SLICE_4(v, i) v[4*i+3:4*i]
+
+	parameter integer MASTERCNT = 2;
+	wire [32*MASTERCNT-1:0] arb_addr;
+	wire [32*MASTERCNT-1:0] arb_wdata;
+	wire [32*MASTERCNT-1:0] arb_rdata;
+	wire [MASTERCNT-1:0] arb_valid;
+	wire [4*MASTERCNT-1:0] arb_wstrb;
+	wire [MASTERCNT-1:0] arb_ready;
+	reg [MASTERCNT-1:0] cpu_resetn;
+	wire[31:0] arb_currcpu;
+
+	genvar i;
+	for (i=0; i<MASTERCNT; i=i+1) begin : gencpus
+		picorv32 #(
+			.STACKADDR('h407ffffc-'h100*i), /* top of 8MByte PSRAM */
+			.PROGADDR_RESET('h40000000),
+			.PROGADDR_IRQ ('h40000010),
+			.TWO_STAGE_SHIFT(0),
+			.BARREL_SHIFTER(1),
+			.ENABLE_COUNTERS(0),
+			.ENABLE_COUNTERS64(0),
+			.ENABLE_REGS_16_31(1),
+			.ENABLE_REGS_DUALPORT(1),
+			.ENABLE_MUL(0),
+			.ENABLE_FAST_MUL(1),
+			.ENABLE_DIV(1),
+			.ENABLE_IRQ(1),
+			.ENABLE_IRQ_QREGS(1),
+			.TWO_CYCLE_COMPARE(0),
+			.TWO_CYCLE_ALU(0),
+			.COMPRESSED_ISA(1),
+			.CATCH_MISALIGN(1),
+			.CATCH_ILLINSN(1),
+			.ENABLE_PCPI(1),
+			.ENABLE_IRQ_TIMER(1),
+			.ENABLE_TRACE(0),
+			.REGS_INIT_ZERO(0),
+			.MASKED_IRQ(0),
+			.LATCHED_IRQ('b11111111)
+		) cpu (
+			.clk         (clk48m     ),
+			.resetn      (cpu_resetn[i] ),
+			.mem_valid   (arb_valid[i]  ),
+			.mem_ready   (arb_ready[i]  ),
+			.mem_addr    (`SLICE_32(arb_addr, i)   ),
+			.mem_wdata   (`SLICE_32(arb_wdata, i)  ),
+			.mem_wstrb   (`SLICE_4(arb_wstrb, i)  ),
+			.mem_rdata   (`SLICE_32(arb_rdata, i)  ),
+			.irq         (irq        ),
+			.pcpi_wait(0),
+			.pcpi_wr(0),
+			.pcpi_ready(0),
+			.pcpi_rd(0)
+		);
+	end
+
 /* verilator lint_on PINMISSING */
+
+	arbiter #(
+		.MASTER_IFACE_CNT(2)
+	) arb (
+		.clk(clk48m),
+		.reset(rst),
+		.s_addr(mem_addr),
+		.s_wdata(mem_wdata),
+		.s_rdata(mem_rdata),
+		.s_valid(mem_valid),
+		.s_wen(mem_wstrb),
+		.s_ready(mem_ready),
+
+		.addr(arb_addr),
+		.wdata(arb_wdata),
+		.rdata(arb_rdata),
+		.valid(arb_valid),
+		.wen(arb_wstrb),
+		.ready(arb_ready),
+		.currmaster(arb_currcpu)
+	);
 
 	reg mem_select;
 	reg uart_div_select;
@@ -141,7 +179,11 @@ module soc(
 			end
 		end else if (mem_addr[31:28]=='h2) begin
 			led_select = mem_valid;
-			mem_rdata = soc_version;
+			if (mem_addr[3:2]==0) begin
+				mem_rdata = soc_version;
+			end else if (mem_addr[3:2]==1) begin
+				mem_rdata=arb_currcpu;
+			end
 			//todo: led/psram/... readback
 		end else if (mem_addr[31:28]=='h3) begin
 			lcd_select = mem_valid;
@@ -274,6 +316,7 @@ module soc(
 			led <= 0;
 			psrama_ovr <= 0;
 			psramb_ovr <= 0;
+			cpu_resetn <= 1;
 		end else if (led_select && mem_wstrb[0]) begin
 			if (mem_addr[4:2]==0) begin
 				led <= mem_wdata[5:0];
@@ -281,6 +324,8 @@ module soc(
 				psrama_ovr <= mem_wdata;
 			end else if (mem_addr[4:2]==2) begin
 				psramb_ovr <= mem_wdata;
+			end else if (mem_addr[4:2]==3) begin
+				cpu_resetn[1] <= mem_wdata[1];
 			end
 		end
 	end
