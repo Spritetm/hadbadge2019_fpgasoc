@@ -57,8 +57,8 @@ module soc(
 
 /* verilator lint_off PINMISSING */
 
-	`define SLICE_32(v, i) v[32*i+31:32*i]
-	`define SLICE_4(v, i) v[4*i+3:4*i]
+	`define SLICE_32(v, i) v[32*i+:32]
+	`define SLICE_4(v, i) v[4*i+:4]
 
 	parameter integer MASTERCNT = 2;
 	wire [32*MASTERCNT-1:0] arb_addr;
@@ -166,6 +166,7 @@ module soc(
 		led_select = 0;
 		lcd_select = 0;
 		bus_error = 0;
+		mem_rdata = 'hx;
 		if (mem_addr[31:28]=='h4) begin
 			mem_select = mem_valid;
 			mem_rdata = ram_rdata;

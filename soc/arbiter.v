@@ -59,9 +59,9 @@ integer i;
 `define SLICE_4(v, i) v[4*i+:4]
 
 reg idle;
-reg [$clog2(MASTER_IFACE_CNT+1)-1:0] active_iface;
+reg [$clog2(MASTER_IFACE_CNT)-1:0] active_iface;
 reg hold;		//if 1, hold_iface is permanently routed to slave iface
-reg [$clog2(MASTER_IFACE_CNT+1)-1:0] hold_iface;
+reg [$clog2(MASTER_IFACE_CNT)-1:0] hold_iface;
 
 assign currmaster = hold_iface;
 
@@ -78,7 +78,7 @@ always @(*) begin
 	end
 	s_addr=`SLICE_32(addr, active_iface);
 	s_wdata=`SLICE_32(wdata,  active_iface);
-	s_valid=valid[ active_iface];
+	s_valid=valid[active_iface];
 	s_wen=`SLICE_4(wen,  active_iface);
 	if (hold) ready[hold_iface]=s_ready; //note: we use the registered hold value here... active_iface leads to circular issues
 end
