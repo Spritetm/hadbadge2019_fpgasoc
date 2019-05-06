@@ -1,4 +1,4 @@
-TOOLCHAIN_DIR := /home/jeroen/prog/fpga/picorv32/toolchain/bin
+TOOLCHAIN_DIR := /home/jeroen/hackaday2019/poc/toolchain/toolchain/bin
 TOOLCHAIN_PREFIX := $(TOOLCHAIN_DIR)/riscv32-unknown-elf-
 CC=$(TOOLCHAIN_PREFIX)gcc
 CFLAGS=-Os -ggdb

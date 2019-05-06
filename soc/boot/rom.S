@@ -51,7 +51,7 @@ bbloop:
 	//preloaded in psram.
 	li a2, PERI_LED
 	lw a2, 0(a2)
-//	srli a2, a2, 31 //should work, does not, no clue why.
+//	srli a2, a2, 31 //mask out 31th bit - does not work?
 	beq a2, zero, memtest_start
 
 	li a2, PERI_LED
@@ -115,12 +115,44 @@ memtestok:
 	sw a2, 0(a1)
 
 	//un-reset 2nd cpu
-	li a2, 2
-	sw a2, 12(a1)
+//	li a2, 2
+//	sw a2, 12(a1)
 
 	//irqs: enable 1 (ecall), 2 (unaligned mem), 3 (bus error) to bring us to gdbstub
 	li a1, 0xffffffff-0xE
 	picorv32_maskirq_insn(a1, a1)
+
+/*
+//Note: We expect:
+s2             0x8c751000	-1938485248
+s3             0x3	3
+s4             0xfffe1dc3	-123453
+s5             0xfffc3b83	-246909
+s6             0xfffffffc	-4
+s7             0x1e23c	123452
+s8             0x1e23c	123452
+s9             0x3	3
+s10            0x3	3
+s11            0x3	3
+*/
+
+
+	li a1, -123456
+	li a2, -123456
+	mul s2, a1, a2
+	mulh s3, a1, a2
+	mulhsu s4, a1, a2
+	mulhu s5, a1, a2
+	li a1, 123456
+	li a2, -123456
+	mulh s6, a1, a2
+	mulhsu s7, a1, a2
+	mulhu s8, a1, a2
+	li a1, 123456
+	li a2, 123456
+	mulh s9, a1, a2
+	mulhsu s10, a1, a2
+	mulhu s11, a1, a2
 
 	li a1, 0x40002000
 	li a2, 0x00100073 //ebreak

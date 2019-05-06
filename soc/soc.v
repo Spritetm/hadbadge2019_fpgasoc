@@ -70,6 +70,15 @@ module soc(
 	reg [MASTERCNT-1:0] cpu_resetn;
 	wire[31:0] arb_currcpu;
 
+	wire [MASTERCNT-1:0] pcpi_valid;
+	wire [MASTERCNT-1:0] pcpi_wait;
+	wire [MASTERCNT-1:0] pcpi_wr;
+	wire [MASTERCNT-1:0] pcpi_ready;
+	wire [31:0] pcpi_insn [0:MASTERCNT-1] ;
+	wire [31:0] pcpi_rs1 [0:MASTERCNT-1] ;
+	wire [31:0] pcpi_rs2 [0:MASTERCNT-1] ;
+	wire [31:0] pcpi_rd [0:MASTERCNT-1] ;
+
 	genvar i;
 	for (i=0; i<MASTERCNT; i=i+1) begin : gencpus
 		picorv32 #(
@@ -83,7 +92,7 @@ module soc(
 			.ENABLE_REGS_16_31(1),
 			.ENABLE_REGS_DUALPORT(1),
 			.ENABLE_MUL(0),
-			.ENABLE_FAST_MUL(1),
+			.ENABLE_FAST_MUL(0),
 			.ENABLE_DIV(1),
 			.ENABLE_IRQ(1),
 			.ENABLE_IRQ_QREGS(1),
@@ -108,10 +117,27 @@ module soc(
 			.mem_wstrb   (`SLICE_4(arb_wstrb, i)  ),
 			.mem_rdata   (`SLICE_32(arb_rdata, i)  ),
 			.irq         (irq        ),
-			.pcpi_wait(0),
-			.pcpi_wr(0),
-			.pcpi_ready(0),
-			.pcpi_rd(0)
+			.pcpi_valid(pcpi_valid[i]),
+			.pcpi_insn(pcpi_insn[i]),
+			.pcpi_rs1(pcpi_rs1[i]),
+			.pcpi_rs2(pcpi_rs2[i]),
+			.pcpi_wr(pcpi_wr[i]),
+			.pcpi_rd(pcpi_rd[i]),
+			.pcpi_wait(pcpi_wait[i]),
+			.pcpi_ready(pcpi_ready[i])
+		);
+
+		pcpi_fastmul_dsp fastmul(
+			.clk(clk48m),
+			.reset(rst),
+			.pcpi_valid(pcpi_valid[i]),
+			.pcpi_insn(pcpi_insn[i]),
+			.pcpi_rs1(pcpi_rs1[i]),
+			.pcpi_rs2(pcpi_rs2[i]),
+			.pcpi_wr(pcpi_wr[i]),
+			.pcpi_rd(pcpi_rd[i]),
+			.pcpi_wait(pcpi_wait[i]),
+			.pcpi_ready(pcpi_ready[i])
 		);
 	end
 

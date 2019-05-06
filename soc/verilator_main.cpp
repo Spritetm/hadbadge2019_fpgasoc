@@ -42,8 +42,8 @@ int main(int argc, char **argv) {
 	psram.load_file("boot/rom.bin", 0, false);
 //	psram.load_file("app/app.bin", 0x2000, false);
 
-	Uart_emu uart=Uart_emu(64);
-//	Uart_emu_gdb uart=Uart_emu_gdb(64);
+//	Uart_emu uart=Uart_emu(64);
+	Uart_emu_gdb uart=Uart_emu_gdb(64);
 //	Uart_emu uart=Uart_emu(416);
 
 	int oldled=0;

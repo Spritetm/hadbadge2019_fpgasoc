@@ -70,17 +70,18 @@ always @(*) begin
 	active_iface=0;
 	for (i=0; i<MASTER_IFACE_CNT; i=i+1) begin : genblk
 		`SLICE_32(rdata, i)=s_rdata; //no need to mux this
-		ready[i]=0; //we pass-through the active ready later
 		if ((hold && (hold_iface==i)) || ((!hold) && (valid[i]))) begin
 			idle=0;
 			active_iface=i;
 		end
 	end
+	ready=0;
 	s_addr=`SLICE_32(addr, active_iface);
 	s_wdata=`SLICE_32(wdata,  active_iface);
 	s_valid=valid[active_iface];
 	s_wen=`SLICE_4(wen,  active_iface);
-	if (hold) ready[hold_iface]=s_ready; //note: we use the registered hold value here... active_iface leads to circular issues
+	//Note: verilator complains about some circular dependency because of this line... no clue what it's on about.
+	if (!idle) ready[active_iface]=s_ready;
 end
 
 always @(posedge clk) begin

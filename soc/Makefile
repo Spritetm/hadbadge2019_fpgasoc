@@ -1,8 +1,8 @@
 PROJ=soc
 SRC=soc.v picorv32/picorv32.v simpleuart.v lcdiface.v qpi_cache/qpimem_cache.v 
 SRC+=qpi_cache/qpimem_iface.v qpi_cache/simple_mem.v qpi_cache/simple_mem_words.v
-SRC+=arbiter.v
-SRC_SYNTH=pll.v top_fpga.v
+SRC+=arbiter.v pcpi_fastmul_dsp.v
+SRC_SYNTH=pll.v top_fpga.v ecp5_dspmul32x32.v
 SRC_SIM=verilator_main.cpp psram_emu.cpp uart_emu.cpp uart_emu_gdb.cpp
 EXTRA_DEPEND=rom_random_seeds0x123456.hex
 BRAMFILE=rom.hex
