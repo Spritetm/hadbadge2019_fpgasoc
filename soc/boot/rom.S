@@ -4,8 +4,8 @@
 	.section .text
 
 #define RAM_START		0x40000000
-//#define RAM_SIZE		0x800000 //8MiB
-#define RAM_SIZE		0x20000  //128KiB
+#define RAM_SIZE		0x800000 //8MiB
+//#define RAM_SIZE		0x20000  //128KiB
 #define PERI_UART_DATA	0x10000000
 #define PERI_UART_DIV	0x10000004
 #define PERI_LED		0x20000000

@@ -6,9 +6,9 @@ module pcpi_fastmul_dsp (
 	input      [31:0] pcpi_rs1,
 	input      [31:0] pcpi_rs2,
 	output            pcpi_wr,
-	output     [31:0] pcpi_rd,
+	output reg     [31:0] pcpi_rd,
 	output            pcpi_wait,
-	output            pcpi_ready
+	output reg            pcpi_ready
 );
 	reg instr_mul, instr_mulh, instr_mulhsu, instr_mulhu;
 	wire shift_out = |{instr_mulh, instr_mulhsu, instr_mulhu};
@@ -32,62 +32,86 @@ module pcpi_fastmul_dsp (
 		end
 	end
 
+	//this is a mess... but a working mess, according to the testbench.
+	wire [17:0] rs1_hi;
+	wire [17:0] rs1_lo;
+	wire [17:0] rs2_hi;
+	wire [17:0] rs2_lo;
+	wire rs1_sign = (instr_mulh||instr_mulhsu)?pcpi_rs1[31]:0;
+	assign rs1_hi[15:0]=pcpi_rs1[31:16];
+	assign rs1_hi[16]=rs1_sign;
+	assign rs1_hi[17]=rs1_sign;
 
-`ifdef verilator
-	//simple and stupid multiply model
-	reg [63:0] rd;
-	reg [32:0] s_rs1;
-	reg [32:0] s_rs2;
-	always @(*) begin
-		if (instr_mulh || instr_mulhsu) begin
-			s_rs1 <= $signed(pcpi_rs1);
-		end else begin
-			s_rs1 <= $unsigned(pcpi_rs1);
-		end
-		if (instr_mulh) begin
-			s_rs2 <= $signed(pcpi_rs2);
-		end else begin
-			s_rs2 <= $unsigned(pcpi_rs2);
-		end
-	end
-	always @(posedge clk) begin
-		if (reset) begin
-			rd<=0;
-		end else begin
-			rd <= $signed(s_rs1) * $signed(s_rs2);
-		end
-	end
-`else
-	//use DSP slices for fast multiply
-	wire [63:0] rd;
-	ecp5_dspmul32x32 mul(
-		.CLK0(clk), 
-		.CE0(active!=0),
-		.RST0(reset),
-		.SignA(instr_mul|instr_mulh|instr_mulhsu),
-		.SignB(instr_mul|instr_mulh), 
-		.A(pcpi_rs1),
-		.B(pcpi_rs2),
-		.P(rd)
+	wire rs2_sign = (instr_mulh)?pcpi_rs2[31]:0;
+	assign rs2_hi[15:0]=pcpi_rs2[31:16];
+	assign rs2_hi[16]=rs2_sign;
+	assign rs2_hi[17]=rs2_sign;
+
+	assign rs1_lo[15:0]=pcpi_rs1[15:0];
+	assign rs1_lo[16]=0;
+	assign rs1_lo[17]=0;
+
+	assign rs2_lo[15:0]=pcpi_rs2[15:0];
+	assign rs2_lo[16]=0;
+	assign rs2_lo[17]=0;
+
+	wire [35:0] res_hh, res_hl, res_lh, res_ll;
+	wire [63:0] res_hh_ex, res_hl_ex, res_lh_ex, res_ll_ex;
+	assign res_hh_ex={res_hh[31:0], 32'h0};
+	assign res_hl_ex={{16{res_hl[32]}}, res_hl[31:0], 16'h0};
+	assign res_lh_ex={{16{res_lh[32]}}, res_lh[31:0], 16'h0};
+	assign res_ll_ex={{32{res_ll[32]}}, res_ll[31:0]};
+
+	wire [63:0] res_tot;
+	assign res_tot=res_hh_ex+res_hl_ex+res_lh_ex+res_ll_ex;
+
+	mul_18x18 mulhh (
+		.clock(clk),
+		.reset(reset),
+		.a(rs1_hi),
+		.b(rs2_hi),
+		.dout(res_hh)
 	);
-`endif
-
-	reg [3:0] active;
+	mul_18x18 mulhl (
+		.clock(clk),
+		.reset(reset),
+		.a(rs1_hi),
+		.b(rs2_lo),
+		.dout(res_hl)
+	);
+	mul_18x18 mullh (
+		.clock(clk),
+		.reset(reset),
+		.a(rs1_lo),
+		.b(rs2_hi),
+		.dout(res_lh)
+	);
+	mul_18x18 mulll (
+		.clock(clk),
+		.reset(reset),
+		.a(rs1_lo),
+		.b(rs2_lo),
+		.dout(res_ll)
+	);
 
 	always @(posedge clk) begin
 		if (reset) begin
-			active <= 'h0;
+			pcpi_ready <= 0;
 		end else begin
-			active[0] <= 0;
-			if (active==0 && any_mul_ins) begin
-				active[0] <= 1;
-			end
-			active[3:1] <= active[2:0];
+			if (any_mul_ins) begin
+				pcpi_ready <= 1;
+				if (instr_mul) begin
+					pcpi_rd <= res_tot[31:0];
+				end else begin
+					pcpi_rd <= res_tot[63:32];
+				end
+			end else begin
+				pcpi_ready <= 0;
+				pcpi_rd <= 'hx;
+			end;
 		end
 	end
 
-	assign pcpi_ready = active[3];
 	assign pcpi_wait = 0; //we can handle this within 16 cycles
 	assign pcpi_wr = pcpi_ready;
-	assign pcpi_rd = shift_out ?  rd[63:32] : rd[31:0];
 endmodule

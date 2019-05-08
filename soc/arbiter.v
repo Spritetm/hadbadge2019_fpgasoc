@@ -66,15 +66,16 @@ reg [$clog2(MASTER_IFACE_CNT)-1:0] hold_iface;
 assign currmaster = hold_iface;
 
 always @(*) begin
-	idle=1;
+	idle=0;
 	active_iface=0;
-	for (i=0; i<MASTER_IFACE_CNT; i=i+1) begin : genblk
-		`SLICE_32(rdata, i)=s_rdata; //no need to mux this
-		if ((hold && (hold_iface==i)) || ((!hold) && (valid[i]))) begin
-			idle=0;
-			active_iface=i;
-		end
-	end
+//	for (i=0; i<MASTER_IFACE_CNT; i=i+1) begin : genblk
+//		`SLICE_32(rdata, i)=s_rdata; //no need to mux this
+//		if ((hold && (hold_iface==i)) || ((!hold) && (valid[i]))) begin
+//			idle=0;
+//			active_iface=i;
+//		end
+//	end
+
 	ready=0;
 	s_addr=`SLICE_32(addr, active_iface);
 	s_wdata=`SLICE_32(wdata,  active_iface);
@@ -82,6 +83,8 @@ always @(*) begin
 	s_wen=`SLICE_4(wen,  active_iface);
 	//Note: verilator complains about some circular dependency because of this line... no clue what it's on about.
 	if (!idle) ready[active_iface]=s_ready;
+//	if (hold) ready[hold_iface]=s_ready;
+
 end
 
 always @(posedge clk) begin
