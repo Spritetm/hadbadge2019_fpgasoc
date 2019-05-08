@@ -94,11 +94,15 @@ module pcpi_fastmul_dsp (
 		.dout(res_ll)
 	);
 
+	reg [3:0] wait_stage;
 	always @(posedge clk) begin
 		if (reset) begin
 			pcpi_ready <= 0;
+			wait_stage <= 0;
 		end else begin
-			if (any_mul_ins) begin
+			if (any_mul_ins && (wait_stage < 4)) begin
+				wait_stage <= wait_stage + 1;
+			end else if (any_mul_ins) begin
 				pcpi_ready <= 1;
 				if (instr_mul) begin
 					pcpi_rd <= res_tot[31:0];
@@ -108,6 +112,7 @@ module pcpi_fastmul_dsp (
 			end else begin
 				pcpi_ready <= 0;
 				pcpi_rd <= 'hx;
+				wait_stage <= 0;
 			end;
 		end
 	end

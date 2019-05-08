@@ -60,7 +60,7 @@ module soc(
 	`define SLICE_32(v, i) v[32*i+:32]
 	`define SLICE_4(v, i) v[4*i+:4]
 
-	parameter integer MASTERCNT = 1;
+	parameter integer MASTERCNT = 2;
 	wire [32*MASTERCNT-1:0] arb_addr;
 	wire [32*MASTERCNT-1:0] arb_wdata;
 	wire [32*MASTERCNT-1:0] arb_rdata;
@@ -111,8 +111,7 @@ module soc(
 			.LATCHED_IRQ('b11111111)
 		) cpu (
 			.clk         (clk48m     ),
-//			.resetn      (cpu_resetn[i] ),
-			.resetn      (resetn ),
+			.resetn      (cpu_resetn_gated[i] ),
 			.mem_valid   (arb_valid[i]  ),
 			.mem_ready   (arb_ready[i]  ),
 			.mem_addr    (`SLICE_32(arb_addr, i)   ),
@@ -121,12 +120,6 @@ module soc(
 			.mem_rdata   (`SLICE_32(arb_rdata, i)  ),
 			.irq         (irq        ),
 
-                       .pcpi_wait(0),
-                       .pcpi_wr(0),
-                       .pcpi_ready(0),
-                       .pcpi_rd(0)
-
-/*
 			.pcpi_valid(pcpi_valid[i]),
 			.pcpi_insn(pcpi_insn[i]),
 			.pcpi_rs1(pcpi_rs1[i]),
@@ -135,12 +128,12 @@ module soc(
 			.pcpi_rd(pcpi_rd[i]),
 			.pcpi_wait(pcpi_wait[i]),
 			.pcpi_ready(pcpi_ready[i])
-*/
+
 		);
 
 		pcpi_fastmul_dsp fastmul(
 			.clk(clk48m),
-			.reset(!cpu_resetn[i]),
+			.reset(!cpu_resetn_gated[i]),
 			.pcpi_valid(pcpi_valid[i]),
 			.pcpi_insn(pcpi_insn[i]),
 			.pcpi_rs1(pcpi_rs1[i]),

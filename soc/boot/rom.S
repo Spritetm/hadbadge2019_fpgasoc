@@ -115,8 +115,8 @@ memtestok:
 	sw a2, 0(a1)
 
 	//un-reset 2nd cpu
-//	li a2, 2
-//	sw a2, 12(a1)
+	li a2, 2
+	sw a2, 12(a1)
 
 	//irqs: enable 1 (ecall), 2 (unaligned mem), 3 (bus error) to bring us to gdbstub
 	li a1, 0xffffffff-0xE
