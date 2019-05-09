@@ -122,8 +122,11 @@ memtestok:
 	li a1, 0xffffffff-0xE
 	picorv32_maskirq_insn(a1, a1)
 
+
+#if 0
 /*
-//Note: We expect:
+Hardware multiplier tests. Run 'i reg' in gdb to see the results.
+Note: We expect:
 s2             0x8c751000	-1938485248
 s3             0x3	3
 s4             0xfffe1dc3	-123453
@@ -135,7 +138,6 @@ s9             0x3	3
 s10            0x3	3
 s11            0x3	3
 */
-
 
 	li a1, -123456
 	li a2, -123456
@@ -153,6 +155,7 @@ s11            0x3	3
 	mulh s9, a1, a2
 	mulhsu s10, a1, a2
 	mulhu s11, a1, a2
+#endif
 
 	li a1, 0x40002000
 	li a2, 0x00100073 //ebreak

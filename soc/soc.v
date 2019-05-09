@@ -128,7 +128,6 @@ module soc(
 			.pcpi_rd(pcpi_rd[i]),
 			.pcpi_wait(pcpi_wait[i]),
 			.pcpi_ready(pcpi_ready[i])
-
 		);
 
 		pcpi_fastmul_dsp fastmul(

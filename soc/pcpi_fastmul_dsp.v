@@ -5,7 +5,7 @@ module pcpi_fastmul_dsp (
 	input      [31:0] pcpi_insn,
 	input      [31:0] pcpi_rs1,
 	input      [31:0] pcpi_rs2,
-	output            pcpi_wr,
+	output reg     pcpi_wr,
 	output reg     [31:0] pcpi_rd,
 	output            pcpi_wait,
 	output reg            pcpi_ready
@@ -99,24 +99,29 @@ module pcpi_fastmul_dsp (
 		if (reset) begin
 			pcpi_ready <= 0;
 			wait_stage <= 0;
+			pcpi_wr <= 0;
 		end else begin
-			if (any_mul_ins && (wait_stage < 4)) begin
+			//note: limit on wait_stage is semi-random... but less seems not to work somehow. Madness.
+			//This could be a timing issue, by the way, as seemingly the mul18x18 hardware doesn't have proper
+			//timing info associated with it in the current (as of writing) prjtrellis definitions.
+			if (any_mul_ins && (wait_stage < 3)) begin
 				wait_stage <= wait_stage + 1;
 			end else if (any_mul_ins) begin
 				pcpi_ready <= 1;
+				pcpi_wr <= 1;
 				if (instr_mul) begin
 					pcpi_rd <= res_tot[31:0];
 				end else begin
 					pcpi_rd <= res_tot[63:32];
 				end
 			end else begin
+				wait_stage <= 0;
 				pcpi_ready <= 0;
 				pcpi_rd <= 'hx;
-				wait_stage <= 0;
+				pcpi_wr <= 0;
 			end;
 		end
 	end
 
 	assign pcpi_wait = 0; //we can handle this within 16 cycles
-	assign pcpi_wr = pcpi_ready;
 endmodule
