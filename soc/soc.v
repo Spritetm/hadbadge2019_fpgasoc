@@ -28,8 +28,36 @@ module soc(
 		output psramb_sclk,
 		input [3:0] psramb_sin,
 		output [3:0] psramb_sout,
-		output psramb_oe
+		output psramb_oe,
+		
+		input vid_pixelclk,
+		input vid_fetch_next,
+		input vid_next_line,
+		input vid_next_field,
+		output [7:0] vid_red,
+		output [7:0] vid_green,
+		output [7:0] vid_blue
 	);
+
+//video testcode
+reg [9:0] xpos;
+reg [9:0] ypos;
+//Note: vid_next_field and vid_next_line can both go high
+always @(posedge vid_pixelclk) begin
+	if (vid_next_field) begin
+		ypos <= 0;
+		xpos <= 0;
+	end else if (vid_next_line) begin
+		ypos<=ypos+1;
+		xpos<=0;
+	end else begin
+		xpos <= xpos + 1;
+	end
+end
+assign vid_red=xpos[7:0];
+assign vid_green=ypos[7:0];
+assign vid_blue=xpos[9:2];
+
 
 	reg [5:0] reset_cnt = 0;
 	wire resetn = &reset_cnt;

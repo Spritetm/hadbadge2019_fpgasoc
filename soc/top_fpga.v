@@ -25,7 +25,8 @@ module top_fpga(
 		inout [3:0] psrama_sio,
 		output psramb_nce,
 		output psramb_sclk,
-		inout [3:0] psramb_sio
+		inout [3:0] psramb_sio,
+		output [3:0] gpdi_dp, gpdi_dn
 	);
 
 	wire clk48m;
@@ -36,6 +37,14 @@ module top_fpga(
 	wire [3:0] psramb_sout;
 	wire [3:0] psramb_sin;
 	wire psramb_oe;
+
+	wire vid_pixelclk;
+	wire vid_fetch_next;
+	wire vid_next_line;
+	wire vid_next_field;
+	wire [7:0] vid_red;
+	wire [7:0] vid_green;
+	wire [7:0] vid_blue;
 
 	soc soc (
 		.clk48m(clk48m),
@@ -63,7 +72,15 @@ module top_fpga(
 		.psramb_sclk(psramb_sclk),
 		.psramb_sin(psramb_sin),
 		.psramb_sout(psramb_sout),
-		.psramb_oe(psramb_oe)
+		.psramb_oe(psramb_oe),
+
+		.vid_pixelclk(vid_pixelclk),
+		.vid_fetch_next(vid_fetch_next),
+		.vid_red(vid_red),
+		.vid_green(vid_green),
+		.vid_blue(vid_blue),
+		.vid_next_line(vid_next_line),
+		.vid_next_field(vid_next_field),
 	);
 
 
@@ -72,6 +89,20 @@ module top_fpga(
 		.clko(clk48m)
 	);
 //	assign clk=clk48m;
+
+	hdmi_encoder hdmi_encoder(
+		.clk_8m(clk),
+		.gpdi_dp(gpdi_dp),
+		.gpdi_dn(gpdi_dn),
+
+		.pixelclk(vid_pixelclk),
+		.fetch_next(vid_fetch_next),
+		.red(vid_red),
+		.green(vid_green),
+		.blue(vid_blue),
+		.next_line(vid_next_line),
+		.next_field(vid_next_field),
+	);
 
 	genvar i;
 	//Note: TRELLIS_IO has a T-ristate input, which does the opposite of OE.

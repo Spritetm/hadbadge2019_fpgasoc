@@ -11,3 +11,5 @@ soc-postsyn.json
 *.bak
 soc_syn.v
 soc_syn_corr.v
+*.vcd
+*.vvp

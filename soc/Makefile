@@ -1,8 +1,10 @@
 PROJ=soc
 SRC=soc.v picorv32/picorv32.v simpleuart.v lcdiface.v qpi_cache/qpimem_cache.v 
 SRC+=qpi_cache/qpimem_iface.v qpi_cache/simple_mem.v qpi_cache/simple_mem_words.v
-SRC+=arbiter.v pcpi_fastmul_dsp.v
-SRC_SYNTH=pll.v top_fpga.v mul_18x18_ecp5.v
+SRC+=arbiter.v pcpi_fastmul_dsp.v video/ram_dp_24x2048_ecp5.v video/vid_linerenderer.v
+SRC+=video/video_mem.v
+SRC_SYNTH=pll.v top_fpga.v mul_18x18_ecp5.v hdmi/clk_8_250_125_25.v hdmi/fake_differential.v
+SRC_SYNTH+=hdmi/hdmi-encoder.v hdmi/tmds_encoder.v hdmi/vga2dvid.v hdmi/vga.v
 SRC_SIM=verilator_main.cpp psram_emu.cpp uart_emu.cpp uart_emu_gdb.cpp mul_18x18_sim.v
 EXTRA_DEPEND=rom_random_seeds0x123456.hex
 BRAMFILE=rom.hex

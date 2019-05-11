@@ -194,6 +194,27 @@ IOBUF PORT "psramb_sio[1]" IO_TYPE=LVCMOS33 PULLMODE=UP;
 IOBUF PORT "psramb_sio[2]" IO_TYPE=LVCMOS33 PULLMODE=UP;
 IOBUF PORT "psramb_sio[3]" IO_TYPE=LVCMOS33 PULLMODE=UP;
 
+# GPDI differential interface (Video)
+LOCATE COMP "gpdi_dp[0]" SITE "N19"; # Blue +
+LOCATE COMP "gpdi_dn[0]" SITE "N20"; # Blue -
+LOCATE COMP "gpdi_dp[1]" SITE "N17"; # Green +
+LOCATE COMP "gpdi_dn[1]" SITE "P16"; # Green -
+LOCATE COMP "gpdi_dp[2]" SITE "P20"; # Red +
+LOCATE COMP "gpdi_dn[2]" SITE "R20"; # Red -
+LOCATE COMP "gpdi_dp[3]" SITE "N16"; # Clock +
+LOCATE COMP "gpdi_dn[3]" SITE "M17"; # Clock -
+LOCATE COMP "gpdi_ethp" SITE "L20"; # Ethernet +
+LOCATE COMP "gpdi_ethn" SITE "M20"; # Ethernet -
+IOBUF PORT "gpdi_dp[0]" IO_TYPE=LVCMOS33 DRIVE=4;
+IOBUF PORT "gpdi_dn[0]" IO_TYPE=LVCMOS33 DRIVE=4;
+IOBUF PORT "gpdi_dp[1]" IO_TYPE=LVCMOS33 DRIVE=4;
+IOBUF PORT "gpdi_dn[1]" IO_TYPE=LVCMOS33 DRIVE=4;
+IOBUF PORT "gpdi_dp[2]" IO_TYPE=LVCMOS33 DRIVE=4;
+IOBUF PORT "gpdi_dn[2]" IO_TYPE=LVCMOS33 DRIVE=4;
+IOBUF PORT "gpdi_dp[3]" IO_TYPE=LVCMOS33 DRIVE=4;
+IOBUF PORT "gpdi_dn[3]" IO_TYPE=LVCMOS33 DRIVE=4;
+IOBUF PORT "gpdi_ethp" IO_TYPE=LVCMOS33 DRIVE=4;
+IOBUF PORT "gpdi_ethn" IO_TYPE=LVCMOS33 DRIVE=4;
 
 
 
