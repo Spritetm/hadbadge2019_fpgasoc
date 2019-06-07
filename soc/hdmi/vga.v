@@ -104,24 +104,23 @@ wire [7:0] shift_red; wire [7:0] shift_green; wire [7:0] shift_blue;  // RENAME 
 wire [7:0] W; wire [7:0] A; wire [7:0] T; reg [7:0] test_red; reg [7:0] test_green; reg [7:0] test_blue;
 wire [5:0] Z;
 
+  assign next_line = (CounterX == C_resolution_x);
+  assign next_field = (CounterY == C_resolution_y);
+
   // wire fetcharea; // when to fetch data, must be 1 byte earlier than draw area
   assign fetcharea = CounterX < C_resolution_x && CounterY < C_resolution_y ? 1'b1 : 1'b0;
   // output request to fetch new data every pixel
   assign fetch_next = fetcharea;
   // increment and wraparound X and Y counters
   always @(posedge clk_pixel) begin
-    next_line <= 0;
-    next_field <= 0;
     // DrawArea is fetcharea delayed one clock later
     DrawArea <= fetcharea;
     // on end of each X line, reset CounterX
     // and increment Y counter, also reset Y at bottom of screen
     if(CounterX == (C_frame_x - 1)) begin
       CounterX <= {(((C_bits_x - 1))-((0))+1){1'b0}};
-      next_line <= 1;
       if(CounterY == (C_frame_y - 1)) begin
         CounterY <= {(((C_bits_y - 1))-((0))+1){1'b0}};
-        next_field <= 1;
       end else begin
         CounterY <= CounterY + 1;
       end

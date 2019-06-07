@@ -4,12 +4,15 @@
 	.section .text
 
 #define RAM_START		0x40000000
-#define RAM_SIZE		0x800000 //8MiB
+#define RAM_SIZE		0x00800000 //8MiB
 //#define RAM_SIZE		0x20000  //128KiB
+#define RAM_FB 0x407C0000
 #define PERI_UART_DATA	0x10000000
 #define PERI_UART_DIV	0x10000004
 #define PERI_LED		0x20000000
 #define PERI_LCD		0x30000000
+#define PERI_LINERDR	0x50000000
+#define PERI_LINERDR_VIDEO 0x50100000
 
 reset_vec:
 //	picorv32_waitirq_insn(zero)
@@ -62,7 +65,8 @@ bbloop:
 	li a2, 64 //dummy for verilator
 	sw a2, 0(a1)
 
-	j memtestok
+//if verilator, we skip the memtest
+//	j memtestok
 
 
 //Memtest
@@ -70,7 +74,6 @@ memtest_start:
 	li a2, PERI_LED
 	li a1, 0x3
 	sw a1, 0(a2)
-
 
 	//Test: writeback/cache line reload
 	li a1, RAM_START+RAM_SIZE-0x40 //end
@@ -298,8 +301,25 @@ sendstr_end:
 secondcpu:
 	la a1, secondcputext
 	call sendstr
-secondcpuhalt:
-	j secondcpuhalt
+	la a1, PERI_LINERDR_VIDEO
+	sw a1, 0(a1)
+	la a1, secondcputext
+	call sendstr
+
+secondcpuloop:
+	la a1, RAM_FB-0x10000
+	la a2, RAM_START+RAM_SIZE
+	la a5, 0x11112222 //pixel data
+render_line:
+	sw a5, 0(a1)
+	addi a1, a1, 4
+	addi a5, a5, 1
+	ble a1, a2, render_line
+
+	la a1, secondcputext
+	call sendstr
+
+	j secondcpuloop
 
 secondcputext:
 	.asciz "Hello from 2nd cpu\r\n"

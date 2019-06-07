@@ -7,6 +7,14 @@ Instructions needed:
 ly68l6400: 0x35 <- goto qio mode
 w25q32: 0x50, 0x31 0x02 <- enable qio mode
 
+How to use:
+- Wait until is_idle is 1
+- Put first word on wdata if write
+- Put address to start reading/writing on addr
+- Activate do_rdata or do_wdata
+- When next_word is high, put next word on wdata or read word from rdata
+- De-activate do_rdata or do_wdata when done
+
 Note:
 - Do_read/do_write should stay active as long as there's data to read/write. If it goes inactive,
   the current word will finish writing.

@@ -39,25 +39,6 @@ module soc(
 		output [7:0] vid_blue
 	);
 
-//video testcode
-reg [9:0] xpos;
-reg [9:0] ypos;
-//Note: vid_next_field and vid_next_line can both go high
-always @(posedge vid_pixelclk) begin
-	if (vid_next_field) begin
-		ypos <= 0;
-		xpos <= 0;
-	end else if (vid_next_line) begin
-		ypos<=ypos+1;
-		xpos<=0;
-	end else begin
-		xpos <= xpos + 1;
-	end
-end
-assign vid_red=xpos[7:0];
-assign vid_green=ypos[7:0];
-assign vid_blue=xpos[9:2];
-
 
 	reg [5:0] reset_cnt = 0;
 	wire resetn = &reset_cnt;
@@ -209,6 +190,9 @@ assign vid_blue=xpos[9:2];
 	reg lcd_select;
 	wire lcd_ready;
 	reg bus_error;
+	reg linerenderer_select;
+	wire [31:0] linerenderer_rdata;
+	wire linerenderer_ready;
 
 	wire [31:0] soc_version;
 `ifdef verilator
@@ -223,12 +207,10 @@ assign vid_blue=xpos[9:2];
 		uart_dat_select = 0;
 		led_select = 0;
 		lcd_select = 0;
+		linerenderer_select=0;
 		bus_error = 0;
 		mem_rdata = 'hx;
-		if (mem_addr[31:28]=='h4) begin
-			mem_select = mem_valid;
-			mem_rdata = ram_rdata;
-		end else if (mem_addr[31:28]=='h1) begin
+		if (mem_addr[31:28]=='h1) begin
 			if (mem_addr[2]==0) begin
 				uart_dat_select = mem_valid;
 				mem_rdata = uart_reg_dat_do;
@@ -247,6 +229,12 @@ assign vid_blue=xpos[9:2];
 		end else if (mem_addr[31:28]=='h3) begin
 			lcd_select = mem_valid;
 			mem_rdata = lcd_rdata;
+		end else if (mem_addr[31:28]=='h4) begin
+			mem_select = mem_valid;
+			mem_rdata = ram_rdata;
+		end else if (mem_addr[31:28]=='h5) begin
+			linerenderer_select = mem_valid;
+			mem_rdata = linerenderer_rdata;
 		end else begin
 			//Bus error. Raise IRQ if memory is accessed.
 			mem_rdata = 'hDEADBEEF;
@@ -262,7 +250,14 @@ assign vid_blue=xpos[9:2];
 	end
 `endif
 
-	assign mem_ready = ram_ready || uart_div_select || led_select || (uart_dat_select && !uart_reg_dat_wait) || lcd_ready || bus_error;
+	assign mem_ready = ram_ready || uart_div_select || led_select || (uart_dat_select && !uart_reg_dat_wait) || lcd_ready || linerenderer_ready || bus_error;
+
+	wire [19:0] vidmem_addr;
+	wire [23:0] vidmem_data_out;
+	wire vidmem_wen, vidmem_ren;
+	wire [23:0] vidmem_data_in;
+	wire [19:0] curr_vid_addr;
+
 
 	lcdiface lcdiface(
 		.clk(clk48m),
@@ -283,6 +278,28 @@ assign vid_blue=xpos[9:2];
 		.lcd_rst(lcd_rst),
 		.lcd_fmark(lcd_fmark),
 		.lcd_blen(lcd_blen)
+	);
+
+	wire next_field;
+
+	video_mem video_mem (
+		.clk(clk48m),
+		.reset(rst),
+		.addr(vidmem_addr),
+		.data_in(vidmem_data_in),
+		.wen(vidmem_wen),
+		.ren(vidmem_ren),
+		.data_out(vidmem_data_out),
+		.curr_vid_addr(curr_vid_addr),
+		.next_field_out(next_field),
+
+		.pixel_clk(vid_pixelclk),
+		.fetch_next(vid_fetch_next),
+		.next_line(vid_next_line),
+		.next_field(vid_next_field),
+		.red(vid_red),
+		.green(vid_green),
+		.blue(vid_blue)
 	);
 
 
@@ -311,6 +328,40 @@ assign vid_blue=xpos[9:2];
 	wire [31:0] qpi_wdata;
 	reg qpi_is_idle;
 
+	parameter integer QPI_MASTERCNT = 2;
+
+	wire [32*QPI_MASTERCNT-1:0] qpimem_arb_addr;
+	wire [32*QPI_MASTERCNT-1:0] qpimem_arb_wdata;
+	wire [32*QPI_MASTERCNT-1:0] qpimem_arb_rdata;
+	wire [QPI_MASTERCNT-1:0] qpimem_arb_do_read;
+	wire [QPI_MASTERCNT-1:0] qpimem_arb_do_write;
+	wire [QPI_MASTERCNT-1:0] qpimem_arb_next_byte;
+	wire [QPI_MASTERCNT-1:0] qpimem_arb_is_idle;
+
+	qpimem_arbiter #(
+		.MASTER_IFACE_CNT(QPI_MASTERCNT)
+	) qpi_arb (
+		.clk(clk48m),
+		.reset(rst),
+		
+		.addr(qpimem_arb_addr),
+		.wdata(qpimem_arb_wdata),
+		.rdata(qpimem_arb_rdata),
+		.do_read(qpimem_arb_do_read),
+		.do_write(qpimem_arb_do_write),
+		.next_byte(qpimem_arb_next_byte),
+		.is_idle(qpimem_arb_is_idle),
+
+		.s_addr(qpi_addr),
+		.s_wdata(qpi_wdata),
+		.s_rdata(qpi_rdata),
+		.s_do_write(qpi_do_write),
+		.s_do_read(qpi_do_read),
+		.s_is_idle(qpi_is_idle),
+		.s_next_byte(qpi_next_byte)
+	);
+
+
 	//16 words * 256 lines = 4K words = 16K bytes. Each way can contain 8KByte.
 	//NOTE: Psram needs to have /CE low for at max 5 uS.
 	//At 48MHz, this is 240 clock cycles... given 14 cycles setup time (for qpi read),
@@ -323,13 +374,13 @@ assign vid_blue=xpos[9:2];
 		.clk(clk48m),
 		.rst(rst),
 		
-		.qpi_do_read(qpi_do_read),
-		.qpi_do_write(qpi_do_write),
-		.qpi_next_byte(qpi_next_byte),
-		.qpi_addr(qpi_addr),
-		.qpi_wdata(qpi_wdata),
-		.qpi_rdata(qpi_rdata),
-		.qpi_is_idle(qpi_is_idle),
+		.qpi_do_read(qpimem_arb_do_read[0]),
+		.qpi_do_write(qpimem_arb_do_write[0]),
+		.qpi_next_byte(qpimem_arb_next_byte[0]),
+		.qpi_addr(`SLICE_32(qpimem_arb_addr, 0)),
+		.qpi_wdata(`SLICE_32(qpimem_arb_wdata, 0)),
+		.qpi_rdata(`SLICE_32(qpimem_arb_rdata, 0)),
+		.qpi_is_idle(qpimem_arb_is_idle[0]),
 	
 		.wen((mem_valid && !mem_ready && mem_select) ? mem_wstrb : 4'b0),
 		.ren(mem_valid && !mem_ready && mem_select && mem_wstrb==0),
@@ -338,6 +389,35 @@ assign vid_blue=xpos[9:2];
 		.rdata(ram_rdata),
 		.ready(ram_ready)
 	);
+
+	vid_linerenderer linerenderer (
+		.clk(clk48m),
+		.reset(rst),
+		.addr(mem_addr),
+		.din(mem_wdata),
+		.wen(linerenderer_select && mem_wstrb==4'b1111), //todo: byte/halfword access
+		.ren(linerenderer_select && mem_wstrb==4'b0000),
+		.dout(linerenderer_rdata),
+		.ready(linerenderer_ready),
+
+		.vid_addr(vidmem_addr),
+		.vid_data_out(vidmem_data_in),
+		.vid_wen(vidmem_wen),
+		.vid_ren(vidmem_ren),
+		.vid_data_in(vidmem_data_out),
+		.curr_vid_addr(curr_vid_addr),
+		.next_field(next_field),
+
+		.m_do_read(qpimem_arb_do_read[1]),
+		.m_next_byte(qpimem_arb_next_byte[1]),
+		.m_addr(`SLICE_32(qpimem_arb_addr, 1)),
+		.m_rdata(`SLICE_32(qpimem_arb_rdata, 1)),
+		.m_is_idle(qpimem_arb_is_idle[1])
+	);
+
+	//video renderer does not write
+	assign qpimem_arb_do_write[1] = 0;
+	assign `SLICE_32(qpimem_arb_wdata, 1) = 0;
 
 	wire qpsrama_sclk;
 	wire qpsrama_nce;

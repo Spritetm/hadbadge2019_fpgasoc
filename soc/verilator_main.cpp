@@ -5,6 +5,7 @@
 #include "psram_emu.hpp"
 #include "uart_emu.hpp"
 #include "uart_emu_gdb.hpp"
+#include "video/video_renderer.hpp"
 
 int uart_get(int ts) {
 	return 1;
@@ -35,18 +36,24 @@ int main(int argc, char **argv) {
 	trace->open("soctrace.vcd");
 
 	tb->btn=0xff; //no buttons pressed
-	int do_trace=1;
+	int do_trace=0;
 
 	Psram_emu psram=Psram_emu(8*1024*1024);
 	//ToDo: load elfs so we can mark ro sections as read-only
 	psram.load_file("boot/rom.bin", 0, false);
 //	psram.load_file("app/app.bin", 0x2000, false);
 
-//	Uart_emu uart=Uart_emu(64);
-	Uart_emu_gdb uart=Uart_emu_gdb(64);
+	Uart_emu uart=Uart_emu(64);
+//	Uart_emu_gdb uart=Uart_emu_gdb(64);
 //	Uart_emu uart=Uart_emu(416);
 
+	Video_renderer *vid=new Video_renderer();
+
 	int oldled=0;
+	int fetch_next=0;
+	int next_line=0;
+	int next_field=0;
+	int pixel_clk=0;
 	while(1) {
 		ts++;
 		if (do_trace) tracepos++;
@@ -56,6 +63,8 @@ int main(int argc, char **argv) {
 		do_abort |= psram.eval(tb->psrama_sclk, tb->psrama_nce, tb->psrama_sout, tb->psrama_oe, &sin);
 		uart.eval(tb->clk48m, tb->uart_tx, &rx);
 		tb->uart_rx=rx;
+		pixel_clk=!pixel_clk;
+		tb->vid_pixelclk=pixel_clk?1:0;
 		tb->clk48m = 1;
 		tb->eval();
 		tb->psrama_sin=sin;
@@ -67,6 +76,12 @@ int main(int argc, char **argv) {
 		tb->eval();
 		tb->psrama_sin = sin;
 		if (do_trace) trace->dump(tracepos*21+10);
+		if (pixel_clk) {
+			vid->next_pixel(tb->vid_red, tb->vid_green, tb->vid_blue, &fetch_next, &next_line, &next_field);
+			tb->vid_fetch_next=fetch_next;
+			tb->vid_next_line=next_line;
+			tb->vid_next_field=next_field;
+		}
 		if (oldled != tb->led) {
 			oldled=tb->led;
 			printf("LEDs: 0x%X\n", oldled);
