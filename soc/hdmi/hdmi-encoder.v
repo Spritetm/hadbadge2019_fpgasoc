@@ -38,8 +38,6 @@ module hdmi_encoder (
 	// VGA signal generator
 	wire [7:0] vga_r, vga_g, vga_b;
 	wire vga_hsync, vga_vsync, vga_blank;
-	assign hsync = vga_hsync;
-	assign vsync = vga_vsync;
 	vga vga_instance (
 		.clk_pixel(clk_pixel),
 		.test_picture(1'b0), // enable test picture generation

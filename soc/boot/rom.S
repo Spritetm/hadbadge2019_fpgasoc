@@ -6,7 +6,7 @@
 #define RAM_START		0x40000000
 #define RAM_SIZE		0x00800000 //8MiB
 //#define RAM_SIZE		0x20000  //128KiB
-#define RAM_FB 0x407C0000
+#define RAM_FB			0x407C0000
 #define PERI_UART_DATA	0x10000000
 #define PERI_UART_DIV	0x10000004
 #define PERI_LED		0x20000000
@@ -301,14 +301,13 @@ sendstr_end:
 secondcpu:
 	la a1, secondcputext
 	call sendstr
-	la a1, PERI_LINERDR_VIDEO
-	sw a1, 0(a1)
+
 	la a1, secondcputext
 	call sendstr
 
 secondcpuloop:
-	la a1, RAM_FB-0x10000
-	la a2, RAM_START+RAM_SIZE
+	la a1, RAM_FB-0x1000
+	la a2, RAM_START+RAM_SIZE-0x100
 	la a5, 0x11112222 //pixel data
 render_line:
 	sw a5, 0(a1)

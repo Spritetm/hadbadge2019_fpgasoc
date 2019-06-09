@@ -10,8 +10,8 @@ module vid_linerenderer (
 	input [24:0] addr,
 	input [31:0] din,
 	input wen, ren,
-	output [31:0] dout,
-	output reg ready,
+	output reg [31:0] dout,
+	output ready,
 	
 	//Video mem iface
 	output reg [19:0] vid_addr, //assume 1 meg-words linebuf mem max
@@ -22,9 +22,9 @@ module vid_linerenderer (
 	input next_field,
 
 	//Master iface to spi mem
-	output m_do_read,
+	output reg m_do_read,
 	input m_next_byte,
-	output [23:0] m_addr,
+	output reg [23:0] m_addr,
 	input [31:0] m_rdata,
 	input m_is_idle
 );
@@ -98,21 +98,30 @@ always @(posedge clk) begin
 		//vid_addr is write_vid_addr delayed by one cycle, so we can make
 		//decisions of the data to write depending on the contents of write_vid_addr.
 		vid_addr <= write_vid_addr;
+
 		if (write_vid_addr[19:9]==320) begin
+			//We're finished with this frame. Wait until the video generator starts drawing the next frame.
 			if (next_field) begin
 				write_vid_addr <= 0;
 			end else begin
+				//Not yet, keep idling
 				m_do_read <= 0;
 				vid_wen <= 0;
 			end
 		end else if (write_vid_addr[10:9] != curr_vid_addr[10:9]) begin
-			if (m_do_read == 0 && m_is_idle) begin //cs was lowered but iface is idle again: we can go
+			//If we're here, there is room in the line memory to write a new line into.
+			if (m_do_read == 0 && m_is_idle) begin
+				//cs was lowered (see below) but iface is idle again: we can restart the read.
 				m_do_read <= 1;
 				m_addr <= fb_addr + (write_vid_addr/2);
 			end else if (write_vid_addr[6:0] == 'h70) begin
+				//We need to abort the read at times, to give the RAM time to refresh. We do that here.
 				m_do_read <= 0; //lower cs until iface is idle
 			end
 			if (m_next_byte || write_vid_addr[2:0]!=0) begin
+				//We have a word in m_rdata and we're working on parsing its pixels into the line memory buffer.
+				//Note! This assumes a read of the next word takes at least 8 cycles. If it's quicker, we need
+				//to buffer the data read from SPI.
 				if (write_vid_addr[2:0]==0) vid_data_out <= palette[m_rdata[31:28]];
 				if (write_vid_addr[2:0]==1) vid_data_out <= palette[m_rdata[27:24]];
 				if (write_vid_addr[2:0]==2) vid_data_out <= palette[m_rdata[23:20]];
@@ -128,6 +137,7 @@ always @(posedge clk) begin
 				end
 				vid_wen <= 1;
 			end else begin
+				//waiting for the spiram to return data...
 				vid_wen <= 0;
 			end
 		end else begin
