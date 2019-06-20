@@ -257,6 +257,18 @@ static int gdbHandleCommand(unsigned char *cmd, int len, GdbRegFile *frame) {
 		gdbPacketStart();
 		gdbPacketStr("OK");
 		gdbPacketEnd();
+	} else if (cmd[0]=='x') {	//binary write memory from gdb
+		i=gdbGetHexVal(&data, -1); //addr
+		data++; //skip ,
+		j=gdbGetHexVal(&data, -1); //length
+		data++; //skip :
+		for (k=0; k<j; k++) {
+			writeByte(i, data[k]);
+			i++;
+		}
+		gdbPacketStart();
+		gdbPacketStr("OK");
+		gdbPacketEnd();
 	} else if (cmd[0]=='?') {	//Reply with stop reason
 		sendReason(frame);
 	} else if (stub_strncmp((char*)cmd, "vCont;c", 7)==0 || cmd[0]=='c') {	//continue execution

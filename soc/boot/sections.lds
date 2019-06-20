@@ -13,7 +13,7 @@ MEMORY {
 
 SECTIONS {
 	.ram : {
-		. = 0x000000;
+/*		. = 0; */
 		start*(.text);
 		*(.text);
 		*(.rodata);
@@ -22,6 +22,7 @@ SECTIONS {
 		*(.bss);
 	} > ram
 }
+
 PROVIDE ( UART = 0x10000000 );
 PROVIDE ( LED  = 0x20000000 );
 PROVIDE ( LCD =  0x30000000 );

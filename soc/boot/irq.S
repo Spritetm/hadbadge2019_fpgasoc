@@ -123,8 +123,10 @@ irq_vec:
 irq_regs:
 	// registers are saved to this memory region during interrupt handling
 	// the program counter is saved as register 0
+	.align 4
 	.fill 32,4
 
 	// stack for the interrupt handler
+	.align 8
 	.fill 128,4
 irq_stack:

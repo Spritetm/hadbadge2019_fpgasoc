@@ -66,7 +66,7 @@ bbloop:
 	sw a2, 0(a1)
 
 //if verilator, we skip the memtest
-//	j memtestok
+	j memtestok
 
 
 //Memtest
@@ -118,8 +118,8 @@ memtestok:
 	sw a2, 0(a1)
 
 	//un-reset 2nd cpu
-	li a2, 2
-	sw a2, 12(a1)
+//	li a2, 2
+//	sw a2, 12(a1)
 
 	//irqs: enable 1 (ecall), 2 (unaligned mem), 3 (bus error) to bring us to gdbstub
 	li a1, 0xffffffff-0xE
@@ -302,9 +302,6 @@ secondcpu:
 	la a1, secondcputext
 	call sendstr
 
-	la a1, secondcputext
-	call sendstr
-
 secondcpuloop:
 	la a1, RAM_FB-0x1000
 	la a2, RAM_START+RAM_SIZE-0x100
@@ -315,10 +312,8 @@ render_line:
 	addi a5, a5, 1
 	ble a1, a2, render_line
 
-	la a1, secondcputext
-	call sendstr
-
-	j secondcpuloop
+secondcpuhang:
+	j secondcpuhang
 
 secondcputext:
 	.asciz "Hello from 2nd cpu\r\n"

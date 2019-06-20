@@ -12,8 +12,16 @@ EXTRA_DEPEND=rom_random_seeds0x123456.hex
 BRAMFILE=rom.hex
 CONSTR=had19_proto1.lpf
 TRELLIS=/usr/share/trellis
-#note: 48 actually, but better to be on the safe size.
+#frequency in MHz to use as a goal for the timing calculations
+#note: 48MHz actually, but better to be on the safe size.
 FREQ=55
+
+
+#Image read mode: qspi, dual-spi, fast-read
+FLASH_MODE=qspi
+#Image read freq, in MHz: 2.4, 4.8, 9.7, 19.4, 38.8, 62.0
+FLASH_FREQ=38.8 #MHz
+
 
 all: $(PROJ).svf
 
@@ -30,12 +38,15 @@ bram_replace/bram_replace:
 	make -C bram_replace
 
 %.bit: %_out.config
-	ecppack --svf-rowsize 100000 --svf $(PROJ).svf --input $< --bit $@
+	ecppack --spimode $(FLASH_MODE) --freq $(FLASH_FREQ) --svf-rowsize 100000 --svf $(PROJ).svf --input $< --bit $@
 
 $(PROJ).svf: $(PROJ).bit
 
 prog: $(PROJ).svf
 	openocd -f ../openocd.cfg -c "init; svf  $<; exit"
+
+flash: $(PROJ).bit
+	tinyprog -p $(PROJ).bit -a 0x180000
 
 clean:
 	rm -f $(PROJ).json $(PROJ).svf $(PROJ).bit $(PROJ)_out.config

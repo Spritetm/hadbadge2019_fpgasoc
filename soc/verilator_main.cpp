@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
 	trace->open("soctrace.vcd");
 
 	tb->btn=0xff; //no buttons pressed
-	int do_trace=0;
+	int do_trace=1;
 
 	Psram_emu psram=Psram_emu(8*1024*1024);
 	//ToDo: load elfs so we can mark ro sections as read-only
@@ -47,7 +47,8 @@ int main(int argc, char **argv) {
 //	Uart_emu_gdb uart=Uart_emu_gdb(64);
 //	Uart_emu uart=Uart_emu(416);
 
-	Video_renderer *vid=new Video_renderer();
+//	Video_renderer *vid=new Video_renderer();
+	Video_renderer *vid=NULL;
 
 	int oldled=0;
 	int fetch_next=0;
@@ -76,7 +77,7 @@ int main(int argc, char **argv) {
 		tb->eval();
 		tb->psrama_sin = sin;
 		if (do_trace) trace->dump(tracepos*21+10);
-		if (pixel_clk) {
+		if (vid && pixel_clk) {
 			vid->next_pixel(tb->vid_red, tb->vid_green, tb->vid_blue, &fetch_next, &next_line, &next_field);
 			tb->vid_fetch_next=fetch_next;
 			tb->vid_next_line=next_line;
