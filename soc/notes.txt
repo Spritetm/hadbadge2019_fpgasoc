@@ -1,0 +1,120 @@
+
+GPU:
+- We need 60FPS @ 480*320
+- Display has 100nS write cycle -> 10MHz at most.
+- 1 pixel / write -> 65Hz max @ 10MHz
+
+Raw 32-bit framebuffer:
+- 614.400 bytes
+- 36.864.000 byte/sec throughput -> we have max 24MByte/sec, NoGo.
+
+4bpp framebuffer?
+- 4.608.000 bytes/sec throughput - more amenable
+
+RiscV as GPU
+* Have a double-buffered line of data (480px wide)
+* Need to finish rendering a line at 19KHz -> 2500 cycles/line
+* Have quick-blit assembly instructions: tile data from mem loc p to pos x in line, using lut z
+
+
+
+Memory infrastructure:
+- For now: Arbiter. We'll need one anyway...
+- For later: Crossbar switch. Possibly created from the arbiter.
+
+
+
+Start:
+Info: 	       TRELLIS_SLICE: 11465/21924    52%
+Info: 	          TRELLIS_IO:    84/  244    34%
+Info: 	                DCCA:     1/   56     1%
+Info: 	              DP16KD:     8/  108     7%
+Info: 	          MULT18X18D:     0/   72     0%
+
+Without mul:
+Info: 	       TRELLIS_SLICE:  6873/21924    31%
+Info: 	          TRELLIS_IO:    84/  244    34%
+Info: 	                DCCA:     1/   56     1%
+Info: 	              DP16KD:     8/  108     7%
+Info: 	          MULT18X18D:     0/   72     0%
+
+without mul or div:
+Info: 	       TRELLIS_SLICE:  5824/21924    26%
+Info: 	          TRELLIS_IO:    84/  244    34%
+Info: 	                DCCA:     1/   56     1%
+Info: 	              DP16KD:     8/  108     7%
+Info: 	          MULT18X18D:     0/   72     0%
+
+MUL18x18 examples:
+https://github.com/daveshah1/hilotof/blob/master/ecp5/tests/030-dsp/dut.v
+https://github.com/C-Elegans/single_sdr/tree/master/rtl
+
+32x32bit from 16-bit should take 4 insns...
+al*bl
+al*ah<<16
+ah*bl<<16
+ah*bh<<32
+
+
+
+3d:
+http://www.sunshine2k.de/coding/java/TriangleRasterization/TriangleRasterization.html
+http://www-users.mat.uni.torun.pl/~wrona/3d_tutor/tri_fillers.html
+
+mods:
+https://modarchive.org/index.php?request=view_by_moduleid&query=102874
+https://modarchive.org/index.php?request=view_by_moduleid&query=104125
+https://modarchive.org/index.php?request=view_by_moduleid&query=181562
+https://modarchive.org/index.php?request=view_by_moduleid&query=181703
+https://modarchive.org/index.php?request=view_by_moduleid&query=178973
+https://modarchive.org/index.php?request=view_by_moduleid&query=103413 <- nice!
+
+
+
+- CPU @ 48MHz
+- Pixelclock @ 25MHz
+- 796 pixels per line
+- 1528 cycles/line
+- Atm: 1 store + 1 inc = 14 cycli = 7 cycli/instr (can be 5)
+- Min: load/store/inc/inc = 28 cycli (can be 20)
+- Load/store is 8 pixels
+- (1528/28)*8=432 pixels/line throughput (can be 611)
+
+If hardcoded instead:
+- Separate blockram for tiles
+- Separate blockram for tilemap and OAM
+- Tiles are 16x16
+- Tilemap is 64x64
+- 256 16x16x4bit tiles - 
+
+
+Memory bandwidth: (assuming 16-word blocks)
+- Read of 64 bytes: 14+128 cycles = 142 cycles, plus some overhead - say 150 cycles
+- Write of 64 bytes: 8+128 cycles = 136 cycles, plus some overhead - say 140 cycles
+* 10.5MByte/S: Absolute minimum through the cache, 1 chip, 48MHz, all lines dirty
+* 20.4MByte/S: Read-only, bypassing cache
+
+NOTE: 48 MHz and an inter-/cs-time of 2uS means we only have 96 cycles to do our thing. So
+140 cycles would be slightly out-of-spec.
+
+Screen is 796*523, inc sync. Line freq is 31.4KHz
+We do on average 1.5 VGA lines per 'real' line, so our avg line freq is 20.9KHz.
+We need to fetch 480 pixels at a rate of 20.9KHz, so pixel rate is 10.048 MHz.
+
+
+On JTAG: Assume clock of 5MHz, each dr will have 5 extra clocks.
+32-bit data entry: 552KByte/sec data
+Cache lines work per 64 bytes, a full cache read/write will take 300 48MHz cycles,
+which is 31 5MHz cycles. Hmm, this means we can do a refresh in the time it takes to read in a new
+32bit word.
+
+
+
+
+
+
+
+
+
+
+

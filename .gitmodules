@@ -4,3 +4,6 @@
 [submodule "soc/app/UGUI"]
 	path = soc/app/UGUI
 	url = https://github.com/PocketSprite/UGUI.git
+[submodule "TinyFPGA-Bootloader"]
+	path = TinyFPGA-Bootloader
+	url = git@github.com:Spritetm/hadbadge2019_tinyfpgabootloader.git
