@@ -13,6 +13,7 @@ APPNAME := app
 TARGET_ELF := $(APPNAME).elf
 TARGET_BIN := $(APPNAME).bin
 TARGET_MAP := $(APPNAME).map
+TARGET_SVF := $(APPNAME).svf
 OBJS := main.o lcd.o UGUI/ugui.o
 LIBS := gloss/libgloss.a
 LDSCRIPT := gloss/ldscript.ld
@@ -31,12 +32,16 @@ $(TARGET_ELF): $(LIBS) $(OBJS) $(LDSCRIPT)
 
 .PHONY: clean
 clean:
-	rm -f $(TARGET_ELF) $(TARGET_BIN) $(OBJS) $(TARGET_MAP) app.disasm
+	rm -f $(TARGET_ELF) $(TARGET_BIN) $(OBJS) $(TARGET_MAP) $(TARGET_SVF) app.disasm
 	$(MAKE) -C gloss clean
 
 .PHONY: prog
-prog: $(TARGET_BIN)
-	../boot/send $(TARGET_BIN) /dev/ttyUSB0
+prog: $(TARGET_SVF)
+	openocd -f ../../openocd.cfg -c "init; svf  $<; exit"
+#	../boot/send $(TARGET_BIN) /dev/ttyUSB0
+
+$(TARGET_SVF): $(TARGET_BIN)
+	../jtagload/jtagload < $(TARGET_BIN) > $(TARGET_SVF)
 
 gdb: $(TARGET_ELF)
 	/home/jeroen/hackaday2019/riscv-toolchain/bin/riscv32-unknown-elf-gdb -b 115200 -ex "target remote /dev/ttyUSB0" app.elf

@@ -23,6 +23,8 @@ static void Delay(int n) {
 }
 
 void lcd_init() {
+	LCD_REG(LCD_CONTROL_REG)=1; //enable bl, un-reset, enable cs
+	Delay(10);	
 	WriteComm(0x11);
 	Delay(130);	
 	WriteComm(0x13);
@@ -106,26 +108,13 @@ void lcd_init() {
 	WriteData(0x01);
 	WriteData(0xDF);
 
-	//Stupid test pattern
+	//Connect to FB mem
 	WriteComm(0x2c); //Write mem start
-	for (int y=0; y<320; y++) {
-		for (int x=0; x<480; x++) {
-			WriteData((y&0x3f)+(x<<12)+(((x+y)/4)<<6));
-		}
-	}
+	for (int x=0; x<480*320; x++) WriteData(x);
+
+	WriteComm(0x2c); //Write mem start
+	LCD_REG(LCD_CONTROL_REG)=1|LCD_CONTROL_FBENA|LCD_CONTROL_FBSTART; //start automatically sending framebuffer
 }
 
-void lcd_write_fb(uint32_t *fb) {
-	WriteComm(0x2c); //Write mem start
-	for (int y=0; y<320; y++) {
-		for (int x=0; x<480; x++) {
-			int r=((*fb)&0xff)>>2;
-			int g=((*fb>>8)&0xff)>>2;
-			int b=((*fb>>16)&0xff)>>2;
-			WriteData((b<<12)|(g<<6)|(r));
-			fb++;
-		}
-	}
-}
 
 

@@ -65,6 +65,11 @@ bbloop:
 	li a2, 64 //dummy for verilator
 	sw a2, 0(a1)
 
+	//start lcd
+	li a1, PERI_LCD+0x8
+	li a2, 0x09
+	sw a2, 0(a1)
+
 //if verilator, we skip the memtest
 	j memtestok
 
@@ -160,6 +165,26 @@ s11            0x3	3
 	mulhu s11, a1, a2
 #endif
 
+	li a2, 7
+	li a1, PERI_LED
+	sw a2, 0(a1)
+
+
+jtagwait:
+	li a1, 0x40000000
+	lw a3, 0(a1)
+	li a2, 0xdeadbeef
+	bne a3, a2, jtagwait
+
+	li a2, 8
+	li a1, PERI_LED
+	sw a2, 0(a1)
+
+
+	li a1, 0x40002000
+	jalr zero, a1, 0
+
+	//break to gdbstub
 	li a1, 0x40002000
 	li a2, 0x00100073 //ebreak
 	sw a2, 0(a1)

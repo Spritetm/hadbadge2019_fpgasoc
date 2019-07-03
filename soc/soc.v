@@ -36,7 +36,12 @@ module soc(
 		input vid_next_field,
 		output [7:0] vid_red,
 		output [7:0] vid_green,
-		output [7:0] vid_blue
+		output [7:0] vid_blue,
+		
+		output [31:0] dbgreg_out,
+		input [31:0] dbgreg_in,
+		input dbgreg_strobe,
+		input dbgreg_sel
 	);
 
 
@@ -69,29 +74,30 @@ module soc(
 	`define SLICE_32(v, i) v[32*i+:32]
 	`define SLICE_4(v, i) v[4*i+:4]
 
-	parameter integer MASTERCNT = 2;
+	parameter integer MASTERCNT = 3;
+	parameter integer CPUCNT = 2;
 	wire [32*MASTERCNT-1:0] arb_addr;
 	wire [32*MASTERCNT-1:0] arb_wdata;
 	wire [32*MASTERCNT-1:0] arb_rdata;
 	wire [MASTERCNT-1:0] arb_valid;
 	wire [4*MASTERCNT-1:0] arb_wstrb;
 	wire [MASTERCNT-1:0] arb_ready;
-	wire [MASTERCNT-1:0] cpu_resetn_gated;
-	reg [MASTERCNT-1:0] cpu_resetn;
+	wire [CPUCNT-1:0] cpu_resetn_gated;
+	reg [CPUCNT-1:0] cpu_resetn;
 	wire[31:0] arb_currcpu;
 	assign cpu_resetn_gated = (rst ? 'h0 : cpu_resetn);
 
-	wire [MASTERCNT-1:0] pcpi_valid;
-	wire [MASTERCNT-1:0] pcpi_wait;
-	wire [MASTERCNT-1:0] pcpi_wr;
-	wire [MASTERCNT-1:0] pcpi_ready;
-	wire [31:0] pcpi_insn [0:MASTERCNT-1] ;
-	wire [31:0] pcpi_rs1 [0:MASTERCNT-1] ;
-	wire [31:0] pcpi_rs2 [0:MASTERCNT-1] ;
-	wire [31:0] pcpi_rd [0:MASTERCNT-1] ;
+	wire [CPUCNT-1:0] pcpi_valid;
+	wire [CPUCNT-1:0] pcpi_wait;
+	wire [CPUCNT-1:0] pcpi_wr;
+	wire [CPUCNT-1:0] pcpi_ready;
+	wire [31:0] pcpi_insn [0:CPUCNT-1] ;
+	wire [31:0] pcpi_rs1 [0:CPUCNT-1] ;
+	wire [31:0] pcpi_rs2 [0:CPUCNT-1] ;
+	wire [31:0] pcpi_rd [0:CPUCNT-1] ;
 
 	genvar i;
-	for (i=0; i<MASTERCNT; i=i+1) begin : gencpus
+	for (i=0; i<CPUCNT; i=i+1) begin : gencpus
 		picorv32 #(
 			.STACKADDR('h407ffefc-'h100*i), /* top of 8MByte PSRAM */
 			.PROGADDR_RESET('h40000000),
@@ -155,9 +161,57 @@ module soc(
 
 /* verilator lint_on PINMISSING */
 
+	//Final master is to writr memory over the JTAG port. It's kinda janky, as JTAG at this point
+	//does not have the option to feed back the fact that RAM may be busy. We work around that for
+	//now by assuming JTAG is slow enough not to overflow.
+
+	//0x38 = address, 0x32 is data
+
+	parameter integer JTAG_ARB_PRT = CPUCNT;
+	reg [31:0] jtag_addr;
+	reg jtag_mem_valid;
+	assign `SLICE_32(arb_addr, JTAG_ARB_PRT) = jtag_addr;
+	assign arb_valid[JTAG_ARB_PRT] = jtag_mem_valid;
+	assign `SLICE_4(arb_wstrb, JTAG_ARB_PRT) = 'hf; //write only for now
+	assign genio[0] = dbgreg_sel;
+	assign genio[1] = dbgreg_strobe;
+	assign genio[15:3] = dbgreg_in;
+	reg [32:0] dbgfifo [32:0];
+	reg [4:0] dbgfifo_w;
+	reg [4:0] dbgfifo_r;
+	reg [32:0] dbg_write_data;
+	assign `SLICE_32(arb_wdata, JTAG_ARB_PRT) = dbg_write_data;
+
+	always @(posedge clk48m) begin
+		if (rst) begin
+			jtag_addr <= 0;
+			jtag_mem_valid <= 0;
+			dbgfifo_r <= 0;
+			dbgfifo_w <= 0;
+		end else begin
+			if (dbgreg_strobe) begin
+				dbgfifo[dbgfifo_w] <= {dbgreg_sel, dbgreg_in};
+				dbgfifo_w <= dbgfifo_w + 1;
+			end else if (jtag_mem_valid) begin
+				//Transaction in progress. Wait till it finishes.
+				if (arb_ready[JTAG_ARB_PRT]) begin
+					jtag_mem_valid <= 0;
+					jtag_addr <= jtag_addr + 4;
+				end
+			end else if (dbgfifo_r != dbgfifo_w) begin
+				if (dbgfifo[dbgfifo_r][32]) begin
+					jtag_addr <= dbgfifo[dbgfifo_r][31:0];
+				end else begin
+					dbg_write_data <= dbgfifo[dbgfifo_r][31:0];
+					jtag_mem_valid <= 1;
+				end
+				dbgfifo_r <= dbgfifo_r + 1;
+			end
+		end
+	end
 
 	arbiter #(
-		.MASTER_IFACE_CNT(2)
+		.MASTER_IFACE_CNT(MASTERCNT)
 	) arb (
 		.clk(clk48m),
 		.reset(rst),
@@ -258,6 +312,12 @@ module soc(
 	wire [23:0] vidmem_data_in;
 	wire [19:0] curr_vid_addr;
 
+	wire lcdvm_next_pixel;
+	wire lcdvm_next_field;
+	wire lcdvm_wait;
+	wire [7:0] lcdvm_red;
+	wire [7:0] lcdvm_green;
+	wire [7:0] lcdvm_blue;
 
 	lcdiface lcdiface(
 		.clk(clk48m),
@@ -268,6 +328,13 @@ module soc(
 		.rdata(lcd_rdata),
 		.wdata(mem_wdata),
 		.ready(lcd_ready),
+
+		.lcdvm_next_pixel(lcdvm_next_pixel),
+		.lcdvm_newfield(lcdvm_newfield),
+		.lcdvm_wait(lcdvm_wait),
+		.lcdvm_red(lcdvm_red),
+		.lcdvm_green(lcdvm_green),
+		.lcdvm_blue(lcdvm_blue),
 
 		.lcd_db(lcd_db),
 		.lcd_rd(lcd_rd),
@@ -292,6 +359,13 @@ module soc(
 		.data_out(vidmem_data_out),
 		.curr_vid_addr(curr_vid_addr),
 		.next_field_out(next_field),
+
+		.lcd_next_pixel(lcdvm_next_pixel),
+		.lcd_newfield(lcdvm_newfield),
+		.lcd_wait(lcdvm_wait),
+		.lcd_red(lcdvm_red),
+		.lcd_green(lcdvm_green),
+		.lcd_blue(lcdvm_blue),
 
 		.pixel_clk(vid_pixelclk),
 		.fetch_next(vid_fetch_next),
@@ -485,6 +559,8 @@ IRQs used:
 		end
 	end
 
+
+//Debugging stuff
 	reg [7:0] dbgval;
 	reg [15:0] my_dbgdata;
 	always @(posedge clk48m) begin
@@ -504,10 +580,10 @@ IRQs used:
 	end
 	
 //	assign genio[15:0]={mem_addr[31:17], bus_error};//my_dbgdata;
-	assign genio[15:0]={mem_addr[15:1], bus_error};//my_dbgdata;
-	assign genio[16]=(dbgval!=0);
-	assign genio[17]=bus_error;
-	assign genio[27:18]='h0;
+//	assign genio[15:0]={mem_addr[15:1], bus_error};//my_dbgdata;
+//	assign genio[16]=(dbgval!=0);
+//	assign genio[17]=bus_error;
+//	assign genio[27:18]='h0;
 	
 	//Unused pins
 	assign pwmout = 0;

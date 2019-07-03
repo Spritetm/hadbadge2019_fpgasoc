@@ -47,8 +47,8 @@ int main(int argc, char **argv) {
 //	Uart_emu_gdb uart=Uart_emu_gdb(64);
 //	Uart_emu uart=Uart_emu(416);
 
-//	Video_renderer *vid=new Video_renderer();
-	Video_renderer *vid=NULL;
+	Video_renderer *vid=new Video_renderer();
+//	Video_renderer *vid=NULL;
 
 	int oldled=0;
 	int fetch_next=0;

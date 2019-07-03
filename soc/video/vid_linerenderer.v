@@ -122,14 +122,14 @@ always @(posedge clk) begin
 				//We have a word in m_rdata and we're working on parsing its pixels into the line memory buffer.
 				//Note! This assumes a read of the next word takes at least 8 cycles. If it's quicker, we need
 				//to buffer the data read from SPI.
-				if (write_vid_addr[2:0]==0) vid_data_out <= palette[m_rdata[31:28]];
-				if (write_vid_addr[2:0]==1) vid_data_out <= palette[m_rdata[27:24]];
-				if (write_vid_addr[2:0]==2) vid_data_out <= palette[m_rdata[23:20]];
-				if (write_vid_addr[2:0]==3) vid_data_out <= palette[m_rdata[19:16]];
-				if (write_vid_addr[2:0]==4) vid_data_out <= palette[m_rdata[15:12]];
-				if (write_vid_addr[2:0]==5) vid_data_out <= palette[m_rdata[11:8]];
-				if (write_vid_addr[2:0]==6) vid_data_out <= palette[m_rdata[7:4]];
-				if (write_vid_addr[2:0]==7) vid_data_out <= palette[m_rdata[3:0]];
+				if (write_vid_addr[2:0]==7) vid_data_out <= palette[m_rdata[31:28]];
+				if (write_vid_addr[2:0]==6) vid_data_out <= palette[m_rdata[27:24]];
+				if (write_vid_addr[2:0]==5) vid_data_out <= palette[m_rdata[23:20]];
+				if (write_vid_addr[2:0]==4) vid_data_out <= palette[m_rdata[19:16]];
+				if (write_vid_addr[2:0]==3) vid_data_out <= palette[m_rdata[15:12]];
+				if (write_vid_addr[2:0]==2) vid_data_out <= palette[m_rdata[11:8]];
+				if (write_vid_addr[2:0]==1) vid_data_out <= palette[m_rdata[7:4]];
+				if (write_vid_addr[2:0]==0) vid_data_out <= palette[m_rdata[3:0]];
 				if (write_vid_addr[8:0]==480) begin
 					write_vid_addr <= write_vid_addr + 'h20; //skip invisible pixels
 				end else begin
