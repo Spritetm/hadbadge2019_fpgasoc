@@ -8,7 +8,7 @@ using namespace std;
 
 class Video_renderer {
 	public:
-	Video_renderer();
+	Video_renderer(bool show_display);
 	int next_pixel(int red, int green, int blue, int *fetch_next, int *next_line, int *next_field);
 
 	private:
@@ -17,4 +17,5 @@ class Video_renderer {
 	int beam_x;
 	int beam_y;
 	Uint32 last_update;
+	bool do_display;
 };

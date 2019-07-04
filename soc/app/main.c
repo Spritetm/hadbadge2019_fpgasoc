@@ -52,11 +52,17 @@ void main() {
 	UG_Init(&ugui, lcd_pset, 480, 320);
 	UG_FontSelect(&FONT_12X16);
 	UG_SetForecolor(C_WHITE);
-	for (int y=0; y<320; y+=200) UG_PutString(y, y, "Hello world!");
 
-	memset(dummy, 0, 128*1024);
 	//loop
+	int p;
+	char buf[10];
+	UG_PutString(0, 0, "Hello world!");
+	UG_PutString(16, 16, "This is a test of the fb to lcd adapter thingamajig, Hope it works.");
 	while(1) {
-		printf("%x\n", uart_getchar());
+		p++;
+		sprintf(buf, "%d", p);
+		UG_PutString(48, 48, buf);
+		memset(dummy, 0, 128*1024);
+
 	}
 }

@@ -1,8 +1,8 @@
 /*
 This instantiates the video memory and connects it to the HDMI encoder. On the CPU end, it has 
 direct access to the line buffer; on the video end, it allows a 640x480 image generator to 
-connect to the other end of the video memory.
-
+connect to the other end of the video memory. It also takes care of generating the video data for
+the LCD.
 */
 
 module video_mem #(
@@ -102,9 +102,9 @@ always @(posedge clk) begin
 			lcd_wait <= 0;
 			if (lcd_next_pixel) begin
 				lcd_newfield <= 0;
-				if (video_addr_lcd[9:0] == 479) begin
+				if (video_addr_lcd[8:0] == 479) begin
 					video_addr_lcd[ADDR_WIDTH-1:9] <= video_addr_lcd[ADDR_WIDTH-1:9] + 1;
-					video_addr_lcd[9:0] <= 0;
+					video_addr_lcd[8:0] <= 0;
 					if (lcd_curr_line != 319) begin
 						lcd_curr_line <= lcd_curr_line + 1;
 					end else begin
@@ -142,18 +142,23 @@ always @(posedge clk) begin
 	next_field_xing[0] <= next_field;
 end
 
+reg [9:0] cur_line;
+
 always @(posedge pixel_clk) begin
 	if (reset) begin
 		video_addr <= 0;
+		cur_line <= 0;
 	end else begin
 		if (next_field) begin
 			x_skip_ctr <= 0;
 			y_skip_ctr <= 0;
 			video_addr <= 0;
+			cur_line <= 0;
 		end else if (next_line) begin
 			y_skip_ctr <= (y_skip_ctr == 2) ? 0 : y_skip_ctr+1;
-			if (y_skip_ctr != 2) begin
+			if (y_skip_ctr != 2 && cur_line < 320) begin
 				video_addr[ADDR_WIDTH-1:9] <= video_addr[ADDR_WIDTH-1:9]+1;
+				cur_line <= cur_line + 1;
 			end
 			video_addr[8:0] <= 0;
 		end else if (fetch_next) begin

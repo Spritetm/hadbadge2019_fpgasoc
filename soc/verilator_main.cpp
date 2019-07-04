@@ -6,6 +6,7 @@
 #include "uart_emu.hpp"
 #include "uart_emu_gdb.hpp"
 #include "video/video_renderer.hpp"
+#include "video/lcd_renderer.hpp"
 
 int uart_get(int ts) {
 	return 1;
@@ -47,8 +48,9 @@ int main(int argc, char **argv) {
 //	Uart_emu_gdb uart=Uart_emu_gdb(64);
 //	Uart_emu uart=Uart_emu(416);
 
-	Video_renderer *vid=new Video_renderer();
-//	Video_renderer *vid=NULL;
+	Video_renderer *vid=new Video_renderer(false);
+	Lcd_renderer *lcd=new Lcd_renderer();
+//	Lcd_renderer *lcd=NULL;
 
 	int oldled=0;
 	int fetch_next=0;
@@ -83,6 +85,7 @@ int main(int argc, char **argv) {
 			tb->vid_next_line=next_line;
 			tb->vid_next_field=next_field;
 		}
+		if (lcd) lcd->update(tb->lcd_db, tb->lcd_wr, tb->lcd_rd, tb->lcd_rs);
 		if (oldled != tb->led) {
 			oldled=tb->led;
 			printf("LEDs: 0x%X\n", oldled);
