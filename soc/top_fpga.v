@@ -56,7 +56,7 @@ module top_fpga(
 		.clk48m(clk48m),
 		.btn(btn),
 		.led(led),
-		.genio(genio),
+//		.genio(genio),
 		.uart_tx(uart_tx),
 		.uart_rx(uart_rx),
 		.pwmout(pwmout),
@@ -126,20 +126,31 @@ module top_fpga(
 
 	//Note: JTAG specs say we should sample on the rising edge of TCK. However, the LA readings show that 
 	//this would be cutting it very close wrt sample/hold times... what's wise here?
-	//Edit: Rising edge seems not to work. Using fallong edge instead.
+	//Edit: Rising edge seems not to work. Using falling edge instead.
 	//Note: TDO is not implemented atm.
-	wire jtdi, jtck, jshift, jupdate, jce1, jce2, jrstn;
+	wire jtdi, jtck, jshift, jupdate, jce1, jce2, jrstn, jrti1, jrti2;
 	JTAGG jtag(
 		.JTDI(jtdi), //gets data
 		.JTCK(jtck), //clock in
-//		.JRTI2(),  //1 if reg is selected and state is r/t idle
-//		.JRTI1(),
+		.JRTI2(jrti1),  //1 if reg is selected and state is r/t idle
+		.JRTI1(jrti2),
 		.JSHIFT(jshift), //1 if data is shifted in
 		.JUPDATE(jupdate), //1 for 1 tck on finish shifting
 		.JRSTN(jrstn),
 		.JCE2(jce2),  //1 if data shifted into this reg
 		.JCE1(jce1)
 	);
+
+	assign genio[15]=jtdi;
+	assign genio[14]=jtck;
+	assign genio[13]=jshift;
+	assign genio[12]=jupdate;
+	assign genio[11]=jrstn;
+	assign genio[10]=jce2;
+	assign genio[9]=jce1;
+	assign genio[8]=jrti2;
+	assign genio[7]=jrti1;
+
 
 	//Janky JTAG DR implementation.
 	reg oldjshift;

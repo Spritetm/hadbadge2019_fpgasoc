@@ -10,7 +10,7 @@ SRC_SIM=verilator_main.cpp psram_emu.cpp uart_emu.cpp uart_emu_gdb.cpp mul_18x18
 SRC_SIM+=video/video_renderer.cpp video/lcd_renderer.cpp video/ram_dp_24x2048_sim.v
 EXTRA_DEPEND=rom_random_seeds0x123456.hex
 BRAMFILE=rom.hex
-CONSTR=had19_proto1.lpf
+CONSTR=had19_proto2.lpf
 TRELLIS=/usr/share/trellis
 #frequency in MHz to use as a goal for the timing calculations
 #note: 48MHz actually, but better to be on the safe size.
@@ -29,7 +29,7 @@ $(PROJ).json $(PROJ).blif: $(SRC) $(SRC_SYNTH) $(EXTRA_DEPEND)
 	yosys -p "synth_ecp5 -top top_fpga -json $(PROJ).json -blif $(PROJ).blif" $(SRC) $(SRC_SYNTH)
 
 %_out_synth.config: %.json
-	nextpnr-ecp5 --json $< --lpf $(CONSTR) --textcfg $@ --um-45k --package CABGA381 --speed 8  --freq $(FREQ)
+	nextpnr-ecp5 --json $< --lpf $(CONSTR) --textcfg $@ --45k --package CABGA381 --speed 8  --freq $(FREQ)
 
 %_out.config: %_out_synth.config bram_replace/bram_replace rom.hex
 	bram_replace/bram_replace -l 4096 -r $< $@ rom.hex
@@ -37,8 +37,14 @@ $(PROJ).json $(PROJ).blif: $(SRC) $(SRC_SYNTH) $(EXTRA_DEPEND)
 bram_replace/bram_replace:
 	make -C bram_replace
 
+#Note: can't generate bit and svf at the same time as some silicon revs of the ECP5 don't seem to accept
+#bitstreams with SPI-specific things over JTAG.
+
+#ToDo: separate
 %.bit: %_out.config
-	ecppack --spimode $(FLASH_MODE) --freq $(FLASH_FREQ) --svf-rowsize 100000 --svf $(PROJ).svf --input $< --bit $@
+	ecppack --svf-rowsize 100000 --spimode $(FLASH_MODE) --freq $(FLASH_FREQ) --svf $(PROJ).svf --input $< --bit $@
+
+
 
 $(PROJ).svf: $(PROJ).bit
 

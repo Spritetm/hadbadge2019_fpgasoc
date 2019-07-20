@@ -131,7 +131,7 @@ always @(posedge clk) begin
 					sent_newfield <= 1;
 				end else if (!lcdvm_wait) begin
 					lcd_rs <= 1;
-					lcd_db <= {lcdvm_red[5:0], lcdvm_green[5:0], lcdvm_blue[5:0]};
+					lcd_db <= {lcdvm_blue[5:0], lcdvm_green[5:0], lcdvm_red[5:0]};
 					lcdvm_next_pixel <= 1;
 					state <= 1;
 					is_write <= 1;

@@ -25,88 +25,138 @@ static void Delay(int n) {
 void lcd_init() {
 	LCD_REG(LCD_CONTROL_REG)=1; //enable bl, un-reset, enable cs
 	Delay(10);	
-	WriteComm(0x11);
-	Delay(130);	
-	WriteComm(0x13);
-	Delay(120);
-
-	WriteComm(0x00D0);
-	WriteData(0x0007);//P115
-	WriteData(0x0045);//P115
-	WriteData(0x0018);//P115-116
-	WriteComm( 0x00D1);
-	WriteData( 0x0003);
-	WriteData( 0x0010);//VCM
-	WriteData( 0x000f);//VDV
-
-// 	WriteComm(0x00D1);//VCOM Control，有3个参数，P117
-// 	WriteData(0x0000);//P118
-// 	WriteData(0x0001);//P117
-// 	WriteData(0x001F);//P117-118
-
-	WriteComm(0x00D2);//Power Setting for Normal Mode，有2个参数，P119
-	WriteData(0x0001);//P118
-	WriteData(0x0011);//P119
-
-	WriteComm(0x00C0);//Panel Driving Setting，有6个参数，P102，主要设置行扫描
-	WriteData(0x0000);//P102-103 GS=0
-	WriteData(0x003B);//P103，(0x3B + 1) * 8 = 480行
-	WriteData(0x0000);//P103
-	WriteData(0x0000);//P103
-	WriteData(0x0011);//P103-104
-	WriteData(0x0000);//P103-104
-
-	WriteComm(0x00C1);//Didsplay Timing Setting for Normal Mode，有3个参数，P106
-	WriteData(0x0010);//P106
-	WriteData(0x000B);//P106
-	WriteData(0x0088);//P107
-
-	WriteComm(0x00C5);//Frame Rate and Inversion control，有1个参数，P112
-	WriteData(0x0000);//P112
-
-	WriteComm(0x00C8);//Gamma Setting，有12个参数，P114
-	WriteData(0x0000);//P114
-	WriteData(0x0014);//P114
-	WriteData(0x0033);//P114
-	WriteData(0x0010);//P114
-	WriteData(0x0000);//P114
-	WriteData(0x0016);//P114
-	WriteData(0x0044);//P114
-	WriteData(0x0036);//P114
-	WriteData(0x0077);//P114
-	WriteData(0x0000);//P114
-	WriteData(0x000F);//P114
-	WriteData(0x0000);//P114
-	 
-
-	WriteComm(0x36); //Set_address_mode
-	WriteData(0x48); //
-  
-	WriteComm(0x3A);//Set Pixel Format
-	WriteData(0x66);//18bpp all-around
-
-	Delay(120);
-	WriteComm(0x29);
-
-	Delay(10);
-	WriteComm(0x21);
-
-	Delay(10);
-	WriteComm(0x36); //Set_address_mode
-	WriteData(0xE0); //
-
-
-	WriteComm(0x2B);
+	WriteComm(0xF0);
+	WriteData(0x5A);
+	WriteData(0x5A);
+	
+	WriteComm(0xF1);
+	WriteData(0x5A);
+	WriteData(0x5A);
+	
+	
+	
+	WriteComm(0xF2);
+	WriteData(0x3B);
+	WriteData(0x40);
+	WriteData(0x03);
+	WriteData(0x04);
+	WriteData(0x02);
+	WriteData(0x08);
+	WriteData(0x08);
+	WriteData(0x00);
+	WriteData(0x08);
+	WriteData(0x08);
+	WriteData(0x00);
+	WriteData(0x00);
+	WriteData(0x00);
+	WriteData(0x00);
+	WriteData(0x40);
+	WriteData(0x08);
+	WriteData(0x08);
+	WriteData(0x08);
+	WriteData(0x08);
+	
+	
+	WriteComm(0xF4);
+	WriteData(0x08);
+	WriteData(0x00);
+	WriteData(0x00);
+	WriteData(0x00);
+	WriteData(0x00);
+	WriteData(0x00);
+	WriteData(0x00);
+	WriteData(0x00);
+	WriteData(0x00);
+	WriteData(0x6d);
+	WriteData(0x03);
+	WriteData(0x00);
+	WriteData(0x70);
+	WriteData(0x03);
+	
+	
+	WriteComm(0xF5);
+	WriteData(0x00);
+	WriteData(0x54);//Set VCOMH
+	WriteData(0x73);//Set VCOM Amplitude
+	WriteData(0x00);
+	WriteData(0x00);
+	WriteData(0x04);
+	WriteData(0x00);
+	WriteData(0x00);
+	WriteData(0x04);
+	WriteData(0x00);
+	WriteData(0x53);
+	WriteData(0x71);
+	
+	WriteComm(0xF6);
+	WriteData(0x04);
+	WriteData(0x00);
+	WriteData(0x08);
+	WriteData(0x03);
+	WriteData(0x01);
+	WriteData(0x00);
+	WriteData(0x01);
+	WriteData(0x00);
+	
+	WriteComm(0xF7);
+	WriteData(0x48);
+	WriteData(0x80);
+	WriteData(0x10);
+	WriteData(0x02);
+	WriteData(0x00);
+	
+	WriteComm(0xF8);
+	WriteData(0x11);
+	WriteData(0x00);
+	
+	WriteComm(0xF9); //Gamma Selection
+	WriteData(0x27);
+	
+	WriteComm(0xFA); //Positive Gamma Control
+	WriteData(0x0B);
+	WriteData(0x0B);
+	WriteData(0x0F);
+	WriteData(0x26);
+	WriteData(0x2A);
+	WriteData(0x30);
+	WriteData(0x33);
+	WriteData(0x12);
+	WriteData(0x1F);
+	WriteData(0x25);
+	WriteData(0x31);
+	WriteData(0x30);
+	WriteData(0x24);
+	WriteData(0x00);
+	WriteData(0x00);
+	WriteData(0x01);
+	
 	WriteData(0x00);
 	WriteData(0x00);
 	WriteData(0x01);
 	WriteData(0x3F);
-
-	WriteComm(0x2A);
+	
+	WriteComm(0x2a);
 	WriteData(0x00);
 	WriteData(0x00);
 	WriteData(0x01);
 	WriteData(0xDF);
+	
+	WriteComm(0x2b);
+	WriteData(0x00);
+	WriteData(0x00);
+	WriteData(0x01);
+	WriteData(0x3F);
+	
+	WriteComm(0x36);//Memory Data Access Control
+	WriteData(0xA0);
+	
+	WriteComm(0x3A);//SET 18bit Color
+	WriteData(0x55); //55=16bit, 66=18bit, 77=24bit
+	
+	WriteComm(0x11); 
+	Delay(120);
+	
+	WriteComm(0x29);//Display on
 
 	//Connect to FB mem
 	WriteComm(0x2c); //Write mem start

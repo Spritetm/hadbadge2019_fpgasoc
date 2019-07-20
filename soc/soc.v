@@ -161,7 +161,7 @@ module soc(
 
 /* verilator lint_on PINMISSING */
 
-	//Final master is to writr memory over the JTAG port. It's kinda janky, as JTAG at this point
+	//Final master is to write memory over the JTAG port. It's kinda janky, as JTAG at this point
 	//does not have the option to feed back the fact that RAM may be busy. We work around that for
 	//now by assuming JTAG is slow enough not to overflow.
 
