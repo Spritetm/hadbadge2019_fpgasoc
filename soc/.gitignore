@@ -13,3 +13,4 @@ soc_syn.v
 soc_syn_corr.v
 *.vcd
 *.vvp
+jtagload/jtagload

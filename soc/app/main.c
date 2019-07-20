@@ -44,7 +44,7 @@ void main() {
 	LED_REG(0)=0xff;
 	dummy=calloc(128*1024, 1);
 	lcd_init();
-	lcdfb=calloc(320*480/2, 1);
+	lcdfb=calloc(320*512/2, 1);
 	GFX_REG(GFX_FBADDR_REG)=((uint32_t)lcdfb)&0x7FFFFF;
 	UG_Init(&ugui, lcd_pset, 480, 320);
 	UG_FontSelect(&FONT_12X16);
@@ -54,13 +54,14 @@ void main() {
 	int p;
 	char buf[10];
 	UG_PutString(0, 0, "Hello world!");
+	UG_PutString(0, 320-20, "Narf!");
 	UG_SetForecolor(C_GREEN);
-	UG_PutString(16, 16, "This is a test of the fb to lcd adapter thingamajig, Hope it works.");
+	UG_PutString(0, 16, "This is a test of the framebuffer to HDMI and LCD thingamajig. What you see now is the framebuffer memory.");
 	while(1) {
 		p++;
 		sprintf(buf, "%d", p);
 		UG_SetForecolor(C_RED);
-		UG_PutString(48, 48, buf);
+		UG_PutString(48, 64, buf);
 		memset(dummy, 0, 128*1024);
 
 	}

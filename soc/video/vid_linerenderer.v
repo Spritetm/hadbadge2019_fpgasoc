@@ -99,25 +99,27 @@ always @(posedge clk) begin
 		//decisions of the data to write depending on the contents of write_vid_addr.
 		vid_addr <= write_vid_addr;
 
-		if (write_vid_addr[19:9]==320) begin
+		if (write_vid_addr[19:9]>=320) begin
 			//We're finished with this frame. Wait until the video generator starts drawing the next frame.
+			m_do_read <= 0;
+			vid_wen <= 0;
 			if (next_field) begin
 				write_vid_addr <= 0;
 			end else begin
 				//Not yet, keep idling
-				m_do_read <= 0;
-				vid_wen <= 0;
 			end
 		end else if (write_vid_addr[10:9] != curr_vid_addr[10:9]) begin
 			//If we're here, there is room in the line memory to write a new line into.
-			if (m_do_read == 0 && m_is_idle) begin
-				//cs was lowered (see below) but iface is idle again: we can restart the read.
+			if (m_do_read == 0 && m_is_idle && write_vid_addr[2:0]==0) begin
+				//cs was lowered (see below, or because line was done) but iface is idle again: we can restart the read.
 				m_do_read <= 1;
 				m_addr <= fb_addr + (write_vid_addr/2);
-			end else if (write_vid_addr[6:0] == 'h70) begin
+			end else if (write_vid_addr[6:0] == 'h78) begin
 				//We need to abort the read at times, to give the RAM time to refresh. We do that here.
 				m_do_read <= 0; //lower cs until iface is idle
+				vid_wen <= 0;
 			end
+
 			if (m_next_byte || write_vid_addr[2:0]!=0) begin
 				//We have a word in m_rdata and we're working on parsing its pixels into the line memory buffer.
 				//Note! This assumes a read of the next word takes at least 8 cycles. If it's quicker, we need
@@ -130,21 +132,24 @@ always @(posedge clk) begin
 				if (write_vid_addr[2:0]==2) vid_data_out <= palette[m_rdata[11:8]];
 				if (write_vid_addr[2:0]==1) vid_data_out <= palette[m_rdata[7:4]];
 				if (write_vid_addr[2:0]==0) vid_data_out <= palette[m_rdata[3:0]];
-				if (write_vid_addr[8:0]==480) begin
-					write_vid_addr <= write_vid_addr + 'h20; //skip invisible pixels
+				if (write_vid_addr[8:0]>479) begin
+					//next line
+					write_vid_addr[19:9] <= write_vid_addr[19:9] + 'h1;
+					write_vid_addr[8:0] <= 0;
+					//force cs low as well as the address changed by more than 1
+					m_do_read <= 0;
+					vid_wen <= 0;
 				end else begin
 					write_vid_addr <= write_vid_addr + 'h1;
 				end
 				vid_wen <= 1;
 			end else begin
 				//waiting for the spiram to return data...
-				vid_wen <= 0;
 			end
 		end else begin
 			//wait for next line
 			m_do_read <= 0;
 			vid_wen <= 0;
-			m_addr <= fb_addr + (write_vid_addr/2);
 		end
 	end
 end
