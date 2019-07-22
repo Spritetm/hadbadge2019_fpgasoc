@@ -1,0 +1,39 @@
+Architecture As Of Now
+
+The SOC consists of a bunch of peripherals, CPUs and the memory subsystem.
+
+The CPU subsystem consists of an arbiter between master and slaves. The slaves are the
+peripherals like LED, UART, LCD/GFX registers and the main cache. The masters are the CPUs as well
+as the JTAG interface.
+
+The cache is a slave on one side, and a SPI RAM interface on the other side. The SPI RAM interface is connected
+to an arbiter. The other master for this arbiter is the GPU subsystem. Data on this arbiter is not cache-coherent,
+as the main data cache is behind it. The only slave of the arbiter is the PSRAM interfacing logic.
+
+The GPU, at this moment, consists of a line renderer, that takes data from memory and renders one line of video.
+At the moment, this only renders a frame buffer, it will be expanded later. The line is rendered into a FIFO 
+of sorts of 4 of these lines. These get clocked out to the HDMI interface and get sent to the LCD interface as well.
+
+
+Software architecture
+
+- Bootloader:
+Embedded in cache initial bram contents. Initializes PSRAM, looks for bootable OS sector on 
+internal/external flash.
+
+- OS:
+Loaded from flash by bootloader. Contains filesystem routines etc. (Statically linked w/ newlib 
+for internal use.) Continues boot:
+ * Initialize display, framebuffer
+ * Check external flash for FPGA bitstream file; if exists, compare to bitstream in bitstream partition and,
+   if needed, update. Then pull PROGRAMN to boot it.
+ * Check external flash for startup program; load and run if exists.
+ * Check internal flash for startup program; load and run if exists.
+ * If above fails (or button is pressed): rescue mode: make FAT partitions available over USB.
+
+- Startup program:
+Display fancy random startup animation, load menu program
+
+- Menu program
+Show menu. Duh. Loads other apps on demand.
+
