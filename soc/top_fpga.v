@@ -27,6 +27,9 @@ module top_fpga(
 		output psramb_sclk,
 		inout [3:0] psramb_sio,
 		output [3:0] gpdi_dp, gpdi_dn,
+		inout usb_dp,
+		inout usb_dm,
+		output usb_pu
 	);
 
 	wire clk48m;
@@ -91,7 +94,11 @@ module top_fpga(
 		.dbgreg_out(jdreg_send),
 		.dbgreg_in(jdreg_done),
 		.dbgreg_strobe(jdreg_update),
-		.dbgreg_sel(jdsel_done) //0 for IR 0x32, 1 for IR 0x38
+		.dbgreg_sel(jdsel_done), //0 for IR 0x32, 1 for IR 0x38
+
+		.usb_dp(usb_dp),
+		.usb_dn(usb_dm),
+		.usb_pu(usb_pu)
 	);
 
 

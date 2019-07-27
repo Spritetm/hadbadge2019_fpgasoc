@@ -18,7 +18,36 @@ How to use:
 Note:
 - Do_read/do_write should stay active as long as there's data to read/write. If it goes inactive,
   the current word will finish writing.
-- This code needs at least one dummy cycle.
+- This code needs at least one dummy cycle on read.
+
+*WIP notes*
+Modifications for flash memory:
+Flash memory should already work well for the read scenario: poke do_read, hw auto-get bytes on next_byte.
+For the write scenario, we need:
+- Set write enable latch (cmd 0x06)
+- Sector erase (cmd 0x20, address in SPI-mode)
+- Read status register 1 until non-busy (cmd 0x05)
+- Page program (can be SPI, 0x02)
+- Read SR1
+- Done!
+
+All of this can be done in SPI. (Page program is so slow that qpi doesn't improve things at
+our clock speed.) Means, we don't have to do qpi stuff and can just take a byte, push it out of MOSI,
+grab a byte from MISO at the time and return that.
+
+Wrt upgrading speed to 2x memory bus clock using a 2nd tap from the same PLL:
+(on needing domain-crossing flipflops)
+06:34 < tnt> Sprite_tm: no, you can get aways with much less in theory. _but_ ... nextpnr currently can't constraint clock 
+             domain path.
+06:34 < tnt> err "cross-clock domain path"
+06:49 < Sprite_tm> tnt: Erm, what does that mean in practice? It doesn't know the two clocks are related?
+06:55 < tnt> Sprite_tm: yes and it won't do any analysis on that path (just report the max-delay but without pass/fail or 
+             attempt to optimize AFAIK).
+06:56 < tnt> In general for those, I don't use a full cross clock, but I do make sure the output is a register and the input is 
+             either a register or a single LUT + FF.
+06:56 < Sprite_tm> Hm, gotcha, good advice, thanks.
+
+
 */
 
 module qpimem_iface #(

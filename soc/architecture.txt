@@ -14,6 +14,7 @@ The GPU, at this moment, consists of a line renderer, that takes data from memor
 At the moment, this only renders a frame buffer, it will be expanded later. The line is rendered into a FIFO 
 of sorts of 4 of these lines. These get clocked out to the HDMI interface and get sent to the LCD interface as well.
 
+*ToDo: finish section*
 
 Software architecture
 
@@ -23,7 +24,8 @@ internal/external flash.
 
 - OS:
 Loaded from flash by bootloader. Contains filesystem routines etc. (Statically linked w/ newlib 
-for internal use.) Continues boot:
+for internal use.) Has syscall stubs so applications (statically linked to newlib as well) don't need
+to include drivers for fsses etc. When running by itself, it continues boot:
  * Initialize display, framebuffer
  * Check external flash for FPGA bitstream file; if exists, compare to bitstream in bitstream partition and,
    if needed, update. Then pull PROGRAMN to boot it.

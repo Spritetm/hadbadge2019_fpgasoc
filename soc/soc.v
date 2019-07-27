@@ -41,7 +41,11 @@ module soc(
 		output [31:0] dbgreg_out,
 		input [31:0] dbgreg_in,
 		input dbgreg_strobe,
-		input dbgreg_sel
+		input dbgreg_sel,
+
+		inout usb_dp,
+		inout usb_dn,
+		output usb_pu
 	);
 
 
@@ -247,6 +251,9 @@ module soc(
 	reg linerenderer_select;
 	wire [31:0] linerenderer_rdata;
 	wire linerenderer_ready;
+	wire [31:0] usb_rdata;
+	reg usb_ready;
+	reg usb_select;
 
 	wire [31:0] soc_version;
 `ifdef verilator
@@ -261,6 +268,7 @@ module soc(
 		uart_dat_select = 0;
 		led_select = 0;
 		lcd_select = 0;
+		usb_select = 0;
 		linerenderer_select=0;
 		bus_error = 0;
 		mem_rdata = 'hx;
@@ -289,6 +297,9 @@ module soc(
 		end else if (mem_addr[31:28]=='h5) begin
 			linerenderer_select = mem_valid;
 			mem_rdata = linerenderer_rdata;
+		end else if (mem_addr[31:28]=='h6) begin
+			usb_select = mem_valid;
+			mem_rdata = usb_rdata;
 		end else begin
 			//Bus error. Raise IRQ if memory is accessed.
 			mem_rdata = 'hDEADBEEF;
@@ -304,7 +315,7 @@ module soc(
 	end
 `endif
 
-	assign mem_ready = ram_ready || uart_div_select || led_select || (uart_dat_select && !uart_reg_dat_wait) || lcd_ready || linerenderer_ready || bus_error;
+	assign mem_ready = ram_ready || uart_div_select || led_select || (uart_dat_select && !uart_reg_dat_wait) || lcd_ready || linerenderer_ready || usb_ready || bus_error;
 
 	wire [19:0] vidmem_addr;
 	wire [23:0] vidmem_data_out;
@@ -376,6 +387,23 @@ module soc(
 		.blue(vid_blue)
 	);
 
+	wire usb_irq, usb_sof;
+
+	usb_soc usb (
+		.clk48m(clk48m),
+		.rst(rst),
+		.addr(mem_addr),
+		.wen(usb_select && mem_wstrb==4'b1111),
+		.ren(usb_select && mem_wstrb==4'b0000),
+		.dout(usb_rdata),
+		.din(mem_wdata),
+		.ready(usb_ready),
+		.irq(usb_irq),
+		.sof(usb_sof),
+		.pad_dp(usb_dp),
+		.pad_dn(usb_dn),
+		.pad_pu(usb_pu)
+	);
 
 	simpleuart simpleuart (
 		.clk         (clk48m      ),
@@ -549,6 +577,7 @@ IRQs used:
 1 - EBREAK, ECALL, illegal inst (internal to PicoRV32)
 2 - Unaligned memory access (internal to PicoRV32)
 3 - Bus error - not decoded (e.g. dereferenced NULL)
+4 - USB irq
 */
 
 	//Interrupt logic
@@ -556,6 +585,9 @@ IRQs used:
 		irq <= 'h0;
 		if (bus_error) begin
 			irq[3] <= 1;
+		end
+		if (usb_irq) begin
+			irq[4] <= 1;
 		end
 	end
 
