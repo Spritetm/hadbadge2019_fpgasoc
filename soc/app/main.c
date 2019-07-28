@@ -6,6 +6,7 @@
 #include <lcd.h>
 #include "ugui.h"
 #include <string.h>
+#include "usb.h"
 
 extern volatile uint32_t UART[];
 #define UART_REG(i) UART[(i)/4]
@@ -40,6 +41,8 @@ static void lcd_pset(UG_S16 x, UG_S16 y, UG_COLOR c) {
 }
 volatile char *dummy;
 
+extern const struct usb_stack_descriptors app_stack_desc;
+
 void main() {
 	LED_REG(0)=0xff;
 	dummy=calloc(128*1024, 1);
@@ -49,6 +52,10 @@ void main() {
 	UG_Init(&ugui, lcd_pset, 480, 320);
 	UG_FontSelect(&FONT_12X16);
 	UG_SetForecolor(C_WHITE);
+
+	usb_init(&app_stack_desc);
+	usb_connect();
+	printf("USB inited.\n");
 
 	//loop
 	int p;
@@ -63,6 +70,7 @@ void main() {
 		UG_SetForecolor(C_RED);
 		UG_PutString(48, 64, buf);
 		memset(dummy, 0, 128*1024);
-
+		usb_poll();
+		if ((p&0xff)==0) usb_debug_print();
 	}
 }

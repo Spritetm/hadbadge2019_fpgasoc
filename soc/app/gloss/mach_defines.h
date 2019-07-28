@@ -53,4 +53,9 @@
 #define GFX_PALDEF15_REG 0x3C
 #define GFX_FBADDR_REG 0x40
 
+#define USB_CORE_OFFSET 0x60000000
+#define USB_COREREGS 0x00000
+#define USB_RXMEM    0x10000
+#define USB_TXMEM    0x20000
+
 

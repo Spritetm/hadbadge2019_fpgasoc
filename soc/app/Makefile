@@ -14,11 +14,12 @@ TARGET_ELF := $(APPNAME).elf
 TARGET_BIN := $(APPNAME).bin
 TARGET_MAP := $(APPNAME).map
 TARGET_SVF := $(APPNAME).svf
-OBJS := main.o lcd.o UGUI/ugui.o
+OBJS = main.o lcd.o UGUI/ugui.o
+OBJS += usb/usb.o usb/usb_ctrl_ep0.o usb/usb_ctrl_std.o usb/usb_desc_app.o usb/utils.o
 LIBS := gloss/libgloss.a
 LDSCRIPT := gloss/ldscript.ld
 
-CFLAGS := -Os -ggdb -I. -IUGUI
+CFLAGS := -Os -ggdb -I. -IUGUI -Iusb -Igloss
 LDFLAGS := -Wl,-Bstatic -Wl,--gc-sections  -Wl,-T,$(LDSCRIPT) -Wl,-Map,$(TARGET_MAP) -lgcc -nostartfiles -Lgloss 
 export PREFIX CC AR LD OBJCOPY CFLAGS LDFLAGS APPNAME
 

@@ -7,6 +7,7 @@ extern volatile uint32_t UART[];
 
 void uart_putchar(char c) {
 //	while (!(UARTREG(UART_FLAG_REG)&UART_FLAG_TXDONE)) ;
+	if (c=='\n') uart_putchar('\r');
 	UARTREG(UART_DATA_REG)=c;
 }
 
