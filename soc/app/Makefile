@@ -15,11 +15,16 @@ TARGET_BIN := $(APPNAME).bin
 TARGET_MAP := $(APPNAME).map
 TARGET_SVF := $(APPNAME).svf
 OBJS = main.o lcd.o UGUI/ugui.o
-OBJS += usb/usb.o usb/usb_ctrl_ep0.o usb/usb_ctrl_std.o usb/usb_desc_app.o usb/utils.o
+#OBJS += usb/usb.o usb/usb_ctrl_ep0.o usb/usb_ctrl_std.o usb/usb_desc_app.o usb/utils.o
+OBJS += tinyusb/src/device/usbd.o tinyusb/src/device/usbd_control.o tinyusb/src/tusb.o
+OBJS += tinyusb/src/common/tusb_fifo.o tinyusb/src/class/custom/custom_device.o
+OBJS += tinyusb/src/class/msc/msc_device.o tinyusb/src/class/midi/midi_device.o
+OBJS += tinyusb/src/class/cdc/cdc_device.o tinyusb/src/class/hid/hid_device.o
+OBJS += msc_disk.o dcd_tntusb.o usb_descriptors.o
 LIBS := gloss/libgloss.a
 LDSCRIPT := gloss/ldscript.ld
 
-CFLAGS := -Os -ggdb -I. -IUGUI -Iusb -Igloss
+CFLAGS := -Os -ggdb -I. -IUGUI -Iusb -Igloss -Itinyusb/src
 LDFLAGS := -Wl,-Bstatic -Wl,--gc-sections  -Wl,-T,$(LDSCRIPT) -Wl,-Map,$(TARGET_MAP) -lgcc -nostartfiles -Lgloss 
 export PREFIX CC AR LD OBJCOPY CFLAGS LDFLAGS APPNAME
 

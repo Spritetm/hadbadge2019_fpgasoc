@@ -282,7 +282,7 @@ usb_debug_print(void)
 /* ------------ */
 
 static void
-_usb_hw_reset_ep(volatile struct usb_ep *ep)
+_usb_hw_reset_ep(volatile struct tnt_usb_ep *ep)
 {
 	ep->status = 0;
 	ep->bd[0].csr = 0;

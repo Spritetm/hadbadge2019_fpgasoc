@@ -7,3 +7,6 @@
 [submodule "TinyFPGA-Bootloader"]
 	path = TinyFPGA-Bootloader
 	url = git@github.com:Spritetm/hadbadge2019_tinyfpgabootloader.git
+[submodule "soc/app/tinyusb"]
+	path = soc/app/tinyusb
+	url = https://github.com/hathach/tinyusb.git
