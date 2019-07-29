@@ -11,10 +11,16 @@
 #define USB_CHECK(x) do { if (!(x)) printf("USB: check fail: " #x " (%s:%d)\n", __FILE__, __LINE__); } while (0)
 
 typedef struct {
+	int mps;
+	int xfer_len;
+	int xfer_pos;
+	uint8_t *buffer;
+} g_tnt_ep;
+
+typedef struct {
 	int mem_free_ptr_in;
 	int mem_free_ptr_out;
-	int ep_mps[16];
-	int ep_in_xfer_len[16];
+	g_tnt_ep ep[16];
 } g_tntusb_t;
 
 static g_tntusb_t g_usb;
@@ -22,7 +28,7 @@ static g_tntusb_t g_usb;
 static void _usb_data_write(unsigned int dst_ofs, const void *src, int len) {
 	/* FIXME unaligned ofs */
 	const uint32_t *src_u32 = src;
-	volatile uint32_t *dst_u32 = (volatile uint32_t *)((USB_CORE_OFFSET+USB_TXMEM) + dst_ofs);
+	volatile uint32_t *dst_u32 = (volatile uint32_t *)((USB_DATA_BASE_TX) + dst_ofs);
 
 	len = (len + 3) >> 2;
 	while (len--)
@@ -31,8 +37,9 @@ static void _usb_data_write(unsigned int dst_ofs, const void *src, int len) {
 
 static void _usb_data_read (void *dst, unsigned int src_ofs, int len) {
 	/* FIXME unaligned ofs */
-	volatile uint32_t *src_u32 = (volatile uint32_t *)((USB_CORE_OFFSET+USB_RXMEM) + src_ofs);
+	volatile uint32_t *src_u32 = (volatile uint32_t *)((USB_DATA_BASE_RX) + src_ofs);
 	uint32_t *dst_u32 = dst;
+	printf("%p -> %p\n", src_u32, dst_u32);
 
 	int i = len >> 2;
 
@@ -129,7 +136,7 @@ bool dcd_edpt_open (uint8_t rhport, tusb_desc_endpoint_t const * desc_edpt) {
 	(void) rhport;
 	uint8_t const epnum = tu_edpt_number(desc_edpt->bEndpointAddress);
 	uint8_t const dir   = tu_edpt_dir(desc_edpt->bEndpointAddress);
-	g_usb.ep_mps[epnum]=desc_edpt->wMaxPacketSize.size;
+	g_usb.ep[epnum].mps=desc_edpt->wMaxPacketSize.size;
 
 	int type=0;
 	if (desc_edpt->bmAttributes.xfer==TUSB_XFER_CONTROL) type=TNTUSB_EP_TYPE_CTRL;
@@ -138,7 +145,7 @@ bool dcd_edpt_open (uint8_t rhport, tusb_desc_endpoint_t const * desc_edpt) {
 	if (desc_edpt->bmAttributes.xfer==TUSB_XFER_INTERRUPT) type=TNTUSB_EP_TYPE_INT;
 
 	if (type == TNTUSB_EP_TYPE_CTRL) {
-		printf("Setting up control endpoint %d\n", epnum);
+		printf("Setting up control endpoint %d, ptr_start = 0x%X/0x%X\n", epnum, g_usb.mem_free_ptr_in, g_usb.mem_free_ptr_out);
 		USB_CHECK(epnum==0);
 		tntusb_ep_regs[0].out.status = TNTUSB_EP_TYPE_CTRL | TNTUSB_EP_BD_CTRL; /* Type=Control, control mode buffered */
 		tntusb_ep_regs[0].in.status  = TNTUSB_EP_TYPE_CTRL | TNTUSB_EP_DT_BIT;  /* Type=Control, single buffered, DT=1 */
@@ -155,14 +162,14 @@ bool dcd_edpt_open (uint8_t rhport, tusb_desc_endpoint_t const * desc_edpt) {
 		g_usb.mem_free_ptr_out+=desc_edpt->wMaxPacketSize.size+8; //add setup packet
 		g_usb.mem_free_ptr_in+=desc_edpt->wMaxPacketSize.size;
 	} else if (dir == TUSB_DIR_OUT) {
-		printf("Setting up out endpoint %d\n", epnum);
+		printf("Setting up out endpoint %d, ptr_start=0x%X\n", epnum, g_usb.mem_free_ptr_out);
 		USB_CHECK(epnum!=0);
 		tntusb_ep_regs[epnum].out.status = type;
 		tntusb_ep_regs[epnum].out.bd[0].ptr = g_usb.mem_free_ptr_out;
-		tntusb_ep_regs[epnum].out.bd[0].csr = TNTUSB_BD_STATE_RDY_DATA | TNTUSB_BD_LEN(desc_edpt->wMaxPacketSize.size);
+		tntusb_ep_regs[epnum].out.bd[0].csr = 0; //we'll start receiving when we need to
 		g_usb.mem_free_ptr_out+=desc_edpt->wMaxPacketSize.size;
 	} else {
-		printf("Setting up in endpoint %d\n", epnum);
+		printf("Setting up in endpoint %d, ptr_start=0x%X\n", epnum, g_usb.mem_free_ptr_in);
 		USB_CHECK(epnum!=0);
 		tntusb_ep_regs[epnum].in.status = type;
 		tntusb_ep_regs[epnum].in.bd[0].ptr = g_usb.mem_free_ptr_in;
@@ -172,6 +179,66 @@ bool dcd_edpt_open (uint8_t rhport, tusb_desc_endpoint_t const * desc_edpt) {
 	return true;
 }
 
+//Called when ep is empty, to send part or whole of packet to ep.
+//Returns true if all done, false otherwise.
+static bool _usb_ep_in_send_more(int epnum) {
+	bool finished;
+	g_tnt_ep *epdata=&g_usb.ep[epnum];
+	int to_send = epdata->xfer_len - epdata->xfer_pos;
+	if (to_send != 0 && epdata->xfer_len > 0) {
+		int packetlen=to_send;
+		if (packetlen > epdata->mps) {
+			packetlen = epdata->mps;
+		}
+		printf("_usb_ep_in_send_more: ep %d pos %d/%d, sending %d more\n", epnum, epdata->xfer_pos, epdata->xfer_len, packetlen);
+		_usb_data_write(tntusb_ep_regs[epnum].in.bd[0].ptr, epdata->buffer+epdata->xfer_pos, packetlen);
+		tntusb_ep_regs[epnum].in.bd[0].csr = TNTUSB_BD_STATE_RDY_DATA | TNTUSB_BD_LEN(packetlen);
+		epdata->xfer_pos += packetlen;
+		finished = false;
+	} else if (epdata->xfer_len == 0) {
+		//Zero-byte packet.
+		printf("_usb_ep_in_send_more: ep %d sending zero-len packet\n", epnum);
+		tntusb_ep_regs[epnum].in.bd[0].csr = TNTUSB_BD_STATE_RDY_DATA | TNTUSB_BD_LEN(0);
+		epdata->xfer_len = -1; //make sure we don't send more when this is done sending
+		finished = true;
+	} else {
+		//done
+		printf("_usb_ep_in_send_more: no need to send anything anymore\n", epnum);
+		finished = true;
+	}
+	return finished;
+}
+
+//Called when data is received in ep, to receive partial or whole packet.
+static bool _usb_ep_out_recv_more(int epnum, int len) {
+	bool finished;
+	g_tnt_ep *epdata=&g_usb.ep[epnum];
+	int to_recv = epdata->xfer_len - epdata->xfer_pos;
+	if (to_recv != 0 && epdata->xfer_len > 0) {
+		printf("_usb_ep_out_recv_more: ep %d pos %d/%d, just received %d more\n", epnum, epdata->xfer_pos, epdata->xfer_len, len);
+		_usb_data_read(epdata->buffer + epdata->xfer_pos, tntusb_ep_regs[epnum].out.bd[0].ptr, len);
+		epdata->xfer_pos += len;
+		finished = false;
+		if (len != epdata->mps) {
+			finished = true; //short packet; we're done.
+		} else {
+			//trigger read of the remaining data
+			tntusb_ep_regs[epnum].out.bd[0].csr = TNTUSB_BD_STATE_RDY_DATA | TNTUSB_BD_LEN(epdata->mps);
+			finished = false;
+		}
+	} else if (epdata->xfer_len == 0) {
+		printf("_usb_ep_out_recv_more: ep %d recv zero-len packet\n", epnum);
+		tntusb_ep_regs[epnum].out.bd[0].csr = TNTUSB_BD_STATE_RDY_DATA | TNTUSB_BD_LEN(epdata->mps);
+		epdata->xfer_len = -1;
+		finished=true;
+	} else {
+		printf("_usb_ep_out_recv_more: ep %d all done\n", epnum);
+		//we should be all done.
+		finished = true;
+	}
+	return finished;
+}
+
 bool dcd_edpt_xfer (uint8_t rhport, uint8_t ep_addr, uint8_t * buffer, uint16_t total_bytes) {
 	(void) rhport;
 
@@ -179,13 +246,15 @@ bool dcd_edpt_xfer (uint8_t rhport, uint8_t ep_addr, uint8_t * buffer, uint16_t 
 	uint8_t const dir   = tu_edpt_dir(ep_addr);
 	printf ("dcd_edpt_xfer: ep %d dir %s, len %d\n", epnum, (dir==TUSB_DIR_OUT)?"out":"in", total_bytes);
 
+	g_usb.ep[epnum].buffer = buffer;
+	g_usb.ep[epnum].xfer_pos = 0;
+	g_usb.ep[epnum].xfer_len = total_bytes;
 	if (dir==TUSB_DIR_OUT) {
-		if (buffer) _usb_data_read(buffer, tntusb_ep_regs[epnum].out.bd[0].ptr, total_bytes);
-		tntusb_ep_regs[epnum].out.bd[0].csr = TNTUSB_BD_STATE_RDY_DATA | TNTUSB_BD_LEN(g_usb.ep_mps[epnum]);
+		//Read data. We'll grab it from the buffer when the out data event triggers.
+		tntusb_ep_regs[epnum].out.bd[0].csr = TNTUSB_BD_STATE_RDY_DATA | TNTUSB_BD_LEN(g_usb.ep[epnum].mps);
 	} else {
-		if (buffer) _usb_data_write(tntusb_ep_regs[epnum].in.bd[0].ptr, buffer, total_bytes);
-		tntusb_ep_regs[epnum].in.bd[0].csr = TNTUSB_BD_STATE_RDY_DATA | TNTUSB_BD_LEN(total_bytes);
-		g_usb.ep_in_xfer_len[epnum]=total_bytes;
+		//Start sending data.
+		_usb_ep_in_send_more(epnum);
 	}
 	return true;
 }
@@ -194,14 +263,31 @@ void dcd_edpt_stall (uint8_t rhport, uint8_t ep_addr) {
 	(void) rhport;
 	printf("STALL ep %d\n", ep_addr);
 	uint8_t const epnum = tu_edpt_number(ep_addr);
-	tntusb_ep_regs[epnum].out.bd[0].csr |= TNTUSB_BD_STATE_RDY_STALL;
+	if (tu_edpt_dir(ep_addr)==TUSB_DIR_OUT) {
+		tntusb_ep_regs[epnum].out.bd[0].csr = TNTUSB_BD_STATE_RDY_STALL;
+	} else {
+		tntusb_ep_regs[epnum].in.bd[0].csr = TNTUSB_BD_STATE_RDY_STALL;
+	}
+/*
+	if (TNTUSB_EP_TYPE_IS_BCI(tntusb_ep_regs[epnum].out.status)) {
+		tntusb_ep_regs[epnum].out.status |= TNTUSB_EP_TYPE_HALTED;
+	}
+	if (TNTUSB_EP_TYPE_IS_BCI(tntusb_ep_regs[epnum].in.status)) {
+		tntusb_ep_regs[epnum].in.status |= TNTUSB_EP_TYPE_HALTED;
+	}
+*/
 }
 
 void dcd_edpt_clear_stall (uint8_t rhport, uint8_t ep_addr) {
 	(void) rhport;
 	printf("UNSTALL ep %d\n", ep_addr);
 	uint8_t const epnum = tu_edpt_number(ep_addr);
-	tntusb_ep_regs[epnum].out.bd[0].csr &= ~TNTUSB_BD_STATE_RDY_STALL;
+	if (TNTUSB_EP_TYPE_IS_BCI(tntusb_ep_regs[epnum].out.status)) {
+		tntusb_ep_regs[epnum].out.status &= ~TNTUSB_EP_TYPE_HALTED;
+	}
+	if (TNTUSB_EP_TYPE_IS_BCI(tntusb_ep_regs[epnum].in.status)) {
+		tntusb_ep_regs[epnum].in.status &= ~TNTUSB_EP_TYPE_HALTED;
+	}
 }
 
 /*------------------------------------------------------------------*/
@@ -254,14 +340,25 @@ void usb_poll(void) {
 	for (int ep=0; ep<16; ep++) {
 		uint32_t in_csr=tntusb_ep_regs[ep].in.bd[0].csr;
 		if ((in_csr & TNTUSB_BD_STATE_MSK) == TNTUSB_BD_STATE_DONE_OK) {
-			printf("IN xfer done on ep %d: %d bytes\n", ep, g_usb.ep_in_xfer_len[ep]);
 			tntusb_ep_regs[ep].in.bd[0].csr=0;
-			dcd_event_xfer_complete(0, ep, g_usb.ep_in_xfer_len[ep], XFER_RESULT_SUCCESS, true);
+			bool finished=_usb_ep_in_send_more(ep);
+			printf("IN xfer done on ep %d: %d bytes - %s\n", ep, g_usb.ep[ep].xfer_pos, finished?"all done":"continuing");
+			if (finished) {
+				//NOTE: We really REALLY should have ep address <-> ep num conversion.
+				dcd_event_xfer_complete(0, ep|0x80, g_usb.ep[ep].xfer_pos, XFER_RESULT_SUCCESS, true);
+			}
 		}
 		uint32_t out_csr=tntusb_ep_regs[ep].out.bd[0].csr;
 		if ((out_csr & TNTUSB_BD_STATE_MSK) == TNTUSB_BD_STATE_DONE_OK) {
-			printf("OUT xfer done on ep %d: %d bytes\n", ep, out_csr & TNTUSB_BD_LEN_MSK);
-			dcd_event_xfer_complete(0, ep, out_csr & TNTUSB_BD_LEN_MSK, XFER_RESULT_SUCCESS, true);
+			//Note that length includes 2 byte CRC. We subtract that here.
+			int len = (out_csr & TNTUSB_BD_LEN_MSK) - 2;
+			tntusb_ep_regs[ep].out.bd[0].csr = 0;
+			bool finished=_usb_ep_out_recv_more(ep, len);
+			printf("OUT xfer done on ep %d: %d bytes - %s\n", ep, len, finished?"all done":"continuing");
+			if (finished) {
+				hexdump(g_usb.ep[ep].buffer, g_usb.ep[ep].xfer_pos);
+				dcd_event_xfer_complete(0, ep,  g_usb.ep[ep].xfer_pos, XFER_RESULT_SUCCESS, true);
+			}
 		}
 	}
 }
