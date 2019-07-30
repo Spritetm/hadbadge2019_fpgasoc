@@ -380,10 +380,11 @@ void usb_poll(void) {
 		tntusb_ep_regs[0].in.bd[0].csr = 0;
 		tntusb_ep_regs[0].out.bd[0].csr = 0;
 		g_usb.ep0_stall=false;
+		//release lockout
+		tntusb_regs->ar = TNTUSB_AR_CEL_RELEASE;
 		//Make sure DT=1 for IN endpoint after a SETUP
 		tntusb_ep_regs[0].in.status = TNTUSB_EP_TYPE_CTRL | TNTUSB_EP_DT_BIT;
 		dcd_event_setup_received(0, tmpbuf, true);
-		tntusb_regs->ar = TNTUSB_AR_CEL_RELEASE;
 	}
 
 	//handle in endpoints
