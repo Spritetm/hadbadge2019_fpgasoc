@@ -80,10 +80,17 @@ module qpimem_iface #(
 	output [31:0] rdata,
 	output is_idle,
 
+	input spi_xfer_claim, //pull high to claim for SPI transaction (will lower CS while set and stop qpi interface from interfering)
+	input do_spi_xfer,    //Pull high for one clock cycle, transaction will start. Wait for is_idle to be nonzero and it will be done. Note: spi_xfer_wdata latches on this.
+	output spi_xfer_idle, //high if spi xfer is claimed and idling
+	input [7:0] spi_xfer_wdata,
+	output reg [7:0] spi_xfer_rdata,
+
 	output spi_clk,
 	output reg spi_ncs,
 	output reg [3:0] spi_sout,
 	input [3:0] spi_sin,
+	output reg spi_bus_qpi,
 	output reg spi_oe
 );
 
@@ -106,9 +113,24 @@ reg [4:0] bitno; //note: this sometimes indicates nibble-no, not bitno. Also use
 reg [3:0] spi_sin_sampled;
 reg [31:0] data_shifted;
 
-assign spi_clk = !clk;
+reg clk_active;
+assign spi_clk = !clk & clk_active;
 
-assign is_idle = (state == 0) && !do_read && !do_write;
+parameter STATE_IDLE = 0;
+parameter STATE_CMDOUT = 1;
+parameter STATE_ADDRESS = 2;
+parameter STATE_DUMMYBYTES = 3;
+parameter STATE_DATA = 4;
+parameter STATE_SPIXFER_CLAIMED = 5;
+parameter STATE_SPIXFER_DOXFER = 6;
+parameter STATE_TRANSEND = 7;
+
+reg do_spi_xfer_triggered;
+reg [7:0] spi_xfer_wdata_latched;
+reg [7:0] spi_xfer_rdata_shifted;
+
+assign is_idle = (state == STATE_IDLE) && !do_read && !do_write && !spi_xfer_claim;
+assign spi_xfer_idle = (state == STATE_SPIXFER_CLAIMED) && !do_spi_xfer;
 
 always @(negedge clk) begin
 	spi_sin_sampled <= spi_sin;
@@ -128,29 +150,46 @@ always @(posedge clk) begin
 		spi_sout <= 0;
 		curr_is_read <= 0;
 		keep_transferring <= 0;
+		do_spi_xfer_triggered <= 0;
+		spi_xfer_wdata_latched <= 0;
+		spi_xfer_rdata <= 0;
+		spi_bus_qpi <= 0;
 	end else begin
 		if (next_byte) begin
 			keep_transferring <= (do_read || do_write);
 		end
 
+		//do_spi_xfer is a flag and we need to store it in case we're already doing something else
+		if (do_spi_xfer) begin
+			do_spi_xfer_triggered <= 1;
+			spi_xfer_wdata_latched <= spi_xfer_wdata;
+		end
+
 		next_byte <= 0;
-		if (state == 0) begin
+		if (state == STATE_IDLE) begin
 			spi_ncs <= 1;
+			clk_active <= 0;
 			if (do_read || do_write) begin
 				//New write or read cycle starts.
-				state <= 1;
+				state <= STATE_CMDOUT;
 				bitno <= 7;
 				curr_is_read <= do_read;
+				spi_bus_qpi <= !(CMD_IS_SPI);
+				clk_active <= 1;
+			end else if (spi_xfer_claim) begin
+				state <= STATE_SPIXFER_CLAIMED;
+				bitno <= 7;
 			end
-		end else if (state == 1) begin
+		end else if (state == STATE_CMDOUT) begin
 			//Send out command
 			spi_ncs <= 0;
 			spi_oe <= 1;
 			if (CMD_IS_SPI) begin
 				spi_sout <= {command[bitno],3'b0};
 				if (bitno == 0) begin
-					state <= 2;
+					state <= STATE_ADDRESS;
 					bitno <= 5;
+					spi_bus_qpi <= 1;
 				end else begin
 					bitno <= bitno - 1;
 				end
@@ -158,17 +197,17 @@ always @(posedge clk) begin
 				spi_sout <= command[bitno -: 4];
 				if (bitno == 3) begin
 					bitno <= 5;
-					state <= 2;
+					state <= STATE_ADDRESS;
 				end else begin
 					bitno <= bitno - 4;
 				end
 			end
-		end else if (state == 2) begin
+		end else if (state == STATE_ADDRESS) begin
 			//Address, in qpi
 			spi_sout <= addr[bitno*4+3 -: 4];
 			if (bitno == 0) begin
 				if ((do_read ? READDUMMY : WRITEDUMMY)==0) begin
-					state <= 4;
+						state <= STATE_DATA;
 						bitno <= 7;
 					if (curr_is_read) begin
 						//nop
@@ -179,19 +218,19 @@ always @(posedge clk) begin
 					end
 				end else begin
 					bitno <= do_read ? READDUMMY-1 : WRITEDUMMY-1;
-					state <= 3;
+					state <= STATE_DUMMYBYTES;
 				end
 			end else begin
 				bitno <= bitno - 1;
 			end
-		end else if (state == 3) begin
+		end else if (state == STATE_DUMMYBYTES) begin
 			//Dummy bytes. Amount of nibbles is in bitno.
 			//Note that once the host has pulled down 
 			spi_sout <= DUMMYVAL;
 			bitno <= bitno - 1;
 			if (bitno==0) begin
 				//end of dummy cycle
-				state <= 4;
+				state <= STATE_DATA;
 				if (curr_is_read) begin
 					bitno <= 7;
 					spi_oe <= 0; //abuse one cycle for turnaround
@@ -202,7 +241,7 @@ always @(posedge clk) begin
 					bitno <= 7;
 				end
 			end
-		end else if (state == 4) begin
+		end else if (state == STATE_DATA) begin
 			//Data state.
 			if (curr_is_read) begin //read
 				if (bitno==0) begin
@@ -210,7 +249,7 @@ always @(posedge clk) begin
 					next_byte <= 1;
 					bitno <= 7;
 					if (!do_read) begin //abort?
-						state <= 5;
+						state <= STATE_TRANSEND;
 						spi_ncs <= 1;
 					end
 				end else begin
@@ -223,7 +262,7 @@ always @(posedge clk) begin
 					//note host may react on next_byte going high by putting one last word on the bus, then
 					//lowering do_write. This is why we use keep_transfering instead of do_write
 					if (!keep_transferring) begin //abort?
-						state <= 5;
+						state <= STATE_TRANSEND;
 					end else begin
 						data_shifted <= wdata_be;
 						next_byte <= 1;
@@ -233,10 +272,34 @@ always @(posedge clk) begin
 					bitno<=bitno-1;
 				end
 			end
-		end else begin //state=5
+		end else if (state == STATE_SPIXFER_CLAIMED) begin
+			//Send out user spi byte
+			bitno <= 7;
+			spi_ncs <= 0;
+			clk_active <= 0;
+			if (do_spi_xfer) begin
+				state = STATE_SPIXFER_DOXFER;
+				spi_xfer_wdata_latched = spi_xfer_wdata;
+			end else if (!spi_xfer_claim) begin
+				state = STATE_TRANSEND;
+			end
+		end else if (state == STATE_SPIXFER_DOXFER) begin
+			clk_active <= 1;
+			spi_sout <= {spi_xfer_wdata_latched[7],3'b0};
+			spi_xfer_wdata_latched <= {spi_xfer_wdata_latched[6:0], 1'h0};
+			spi_xfer_rdata_shifted <= {spi_xfer_rdata_shifted[6:0], spi_sin[3]};
+			if (bitno == 0) begin
+				spi_xfer_rdata <= spi_xfer_rdata_shifted;
+				state <= STATE_SPIXFER_CLAIMED;
+			end else begin
+				bitno <= bitno - 1;
+			end
+		end else begin //state=STATE_TRANSEND
 			spi_ncs <= 1;
 			spi_oe <= 0;
+			spi_bus_qpi <= 0;
 			state <= 0;
+			clk_active <= 0;
 		end
 	end
 end

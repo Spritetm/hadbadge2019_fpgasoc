@@ -26,6 +26,12 @@ module top_fpga(
 		output psramb_nce,
 		output psramb_sclk,
 		inout [3:0] psramb_sio,
+		output flash_cs,
+		inout flash_miso,
+		inout flash_mosi,
+		inout flash_wp,
+		inout flash_hold,
+		
 		output [3:0] gpdi_dp, gpdi_dn,
 		inout usb_dp,
 		inout usb_dm,
@@ -55,6 +61,11 @@ module top_fpga(
 	reg jdreg_update;
 	wire [31:0] jdreg_send;
 
+	wire [3:0] flash_sout;
+	wire [3:0] flash_sin;
+	wire flash_oe;
+	wire flash_bus_qpi;
+
 	soc soc (
 		.clk48m(clk48m),
 		.btn(btn),
@@ -82,6 +93,13 @@ module top_fpga(
 		.psramb_sin(psramb_sin),
 		.psramb_sout(psramb_sout),
 		.psramb_oe(psramb_oe),
+
+		.flash_nce(flash_cs),
+		.flash_sclk(flash_sclk),
+		.flash_sin(flash_sin),
+		.flash_sout(flash_sout),
+		.flash_oe(flash_oe),
+		.flash_bus_qpi(flash_bus_qpi),
 
 		.vid_pixelclk(vid_pixelclk),
 		.vid_fetch_next(vid_fetch_next),
@@ -129,7 +147,15 @@ module top_fpga(
 		TRELLIS_IO #(.DIR("BIDIR")) psramb_sio_tristate[i] (.I(psramb_sout[i]),.T(!psramb_oe),.B(psramb_sio[i]),.O(psramb_sin[i]));
 	end
 
-	
+	TRELLIS_IO #(.DIR("BIDIR")) flash_tristate_mosi (.I(flash_sout[0]),.T(flash_bus_qpi && !flash_oe),.B(flash_mosi),.O(flash_sin[0]));
+	TRELLIS_IO #(.DIR("BIDIR")) flash_tristate_miso (.I(flash_sout[1]),.T(!flash_bus_qpi || !flash_oe),.B(flash_miso),.O(flash_sin[1]));
+	TRELLIS_IO #(.DIR("BIDIR")) flash_tristate_wp (.I(flash_sout[2]),.T(flash_bus_qpi && !flash_oe),.B(flash_wp),.O(flash_sin[2]));
+	TRELLIS_IO #(.DIR("BIDIR")) flash_tristate_hold (.I(flash_sout[3]),.T(flash_bus_qpi && !flash_oe),.B(flash_hold),.O(flash_sin[3]));
+
+	USRMCLK usrmclk_inst (
+		.USRMCLKI(flash_sclk),
+		.USRMCLKTS(flash_cs)
+	) /* synthesis syn_noprune=1 */;
 
 	//Note: JTAG specs say we should sample on the rising edge of TCK. However, the LA readings show that 
 	//this would be cutting it very close wrt sample/hold times... what's wise here?

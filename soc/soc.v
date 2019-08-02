@@ -30,6 +30,13 @@ module soc(
 		output [3:0] psramb_sout,
 		output psramb_oe,
 		
+		output flash_nce,
+		output flash_sclk,
+		input [3:0] flash_sin,
+		output [3:0] flash_sout,
+		output flash_oe,
+		output flash_bus_qpi,
+		
 		input vid_pixelclk,
 		input vid_fetch_next,
 		input vid_next_line,
@@ -238,7 +245,7 @@ module soc(
 	reg mem_select;
 	reg uart_div_select;
 	reg uart_dat_select;
-	reg led_select;
+	reg misc_select;
 	wire[31:0] ram_rdata;
 	wire[31:0] uart_reg_div_do;
 	wire[31:0] uart_reg_dat_do;
@@ -262,11 +269,25 @@ module soc(
 	assign soc_version = 'h0000;
 `endif
 
+
+	reg flash_claim, flash_xfer;
+	wire [7:0] flash_rdata;
+	wire flash_idle;
+
+	parameter MISC_REG_LED = 0; //read will give SOC version
+	parameter MISC_REG_PSRAMOVR_A = 1; //read will give current CPU ID... ToDo: make that more logical
+	parameter MISC_REG_PSRAMOVR_B = 2;
+	parameter MISC_REG_RESETN = 3;
+	parameter MISC_REG_FLASH_CTL = 4;
+	parameter MISC_REG_FLASH_WDATA = 5;
+	parameter MISC_REG_FLASH_RDATA = 6;
+
+
 	always @(*) begin
 		mem_select = 0;
 		uart_div_select = 0;
 		uart_dat_select = 0;
-		led_select = 0;
+		misc_select = 0;
 		lcd_select = 0;
 		usb_select = 0;
 		linerenderer_select=0;
@@ -281,13 +302,17 @@ module soc(
 				mem_rdata = uart_reg_div_do;
 			end
 		end else if (mem_addr[31:28]=='h2) begin
-			led_select = mem_valid;
-			if (mem_addr[3:2]==0) begin
+			misc_select = mem_valid;
+			if (mem_addr[4:2]==MISC_REG_LED) begin
 				mem_rdata = soc_version;
-			end else if (mem_addr[3:2]==1) begin
+			end else if (mem_addr[4:2]==MISC_REG_PSRAMOVR_A) begin
 				mem_rdata=arb_currcpu;
+			end else if (mem_addr[4:2]==MISC_REG_FLASH_CTL) begin
+				mem_rdata={30'h0, flash_idle, flash_claim};
+			end else if (mem_addr[4:2]==MISC_REG_FLASH_RDATA) begin
+				mem_rdata={24'h0, flash_rdata};
 			end
-			//todo: led/psram/... readback
+			//todo: improve misc/psram/... readback
 		end else if (mem_addr[31:28]=='h3) begin
 			lcd_select = mem_valid;
 			mem_rdata = lcd_rdata;
@@ -315,7 +340,7 @@ module soc(
 	end
 `endif
 
-	assign mem_ready = ram_ready || uart_div_select || led_select || (uart_dat_select && !uart_reg_dat_wait) || lcd_ready || linerenderer_ready || usb_ready || bus_error;
+	assign mem_ready = ram_ready || uart_div_select || misc_select || (uart_dat_select && !uart_reg_dat_wait) || lcd_ready || linerenderer_ready || usb_ready || bus_error;
 
 	wire [19:0] vidmem_addr;
 	wire [23:0] vidmem_data_out;
@@ -538,6 +563,11 @@ module soc(
 		.rdata(qpi_rdata),
 		.is_idle(qpi_is_idle),
 
+		//no spi transfers supported, we do setup using bitbanging
+		.spi_xfer_wdata('hX),
+		.do_spi_xfer(0),
+		.spi_xfer_claim(0),
+
 		.spi_clk(qpsrama_sclk),
 		.spi_ncs(qpsrama_nce),
 		.spi_sout(qpsrama_sout),
@@ -552,21 +582,70 @@ module soc(
 	assign psrama_nce = psrama_override ? psrama_ovr[4] : qpsrama_nce;
 	assign psrama_sout = psrama_override ? psrama_ovr[3:0] : qpsrama_sout;
 
+
+	//This is abused as a simple SPI flash interface. We can add qpi reading later.
+	qpimem_iface flash_iface(
+		.clk(clk48m),
+		.rst(rst),
+		
+		//qpi is not supported yet
+		.do_read(0),
+		.do_write(0),
+		.addr('hX),
+		.wdata('hX),
+
+		//no spi transfers supported, we do setup using bitbanging
+		.spi_xfer_wdata(mem_wdata[7:0]),
+		.spi_xfer_rdata(flash_rdata),
+		.do_spi_xfer(flash_do_xfer),
+		.spi_xfer_claim(flash_xfer_claim),
+		.spi_xfer_idle(flash_idle),
+
+		.spi_clk(flash_sclk),
+		.spi_ncs(flash_nce),
+		.spi_sout(flash_sout),
+		.spi_sin(flash_sin),
+		.spi_oe(flash_oe),
+		.spi_bus_qpi(flash_bus_qpi)
+	);
+
+
+
+	//misc write ops to periphs that have internal register
+	always @(*) begin
+		flash_xfer <= 0;
+		if (misc_select && mem_wstrb[0]) begin
+			if (mem_addr[4:2]==MISC_REG_FLASH_WDATA) begin
+				flash_xfer <= 1; //also latches spi_wdata of flash
+			end
+		end
+	end
+
+
+	//misc reg write ops, registered
 	always @(posedge clk48m) begin
 		if (rst) begin
 			led <= 0;
 			psrama_ovr <= 0;
 			psramb_ovr <= 0;
 			cpu_resetn <= 1;
-		end else if (led_select && mem_wstrb[0]) begin
-			if (mem_addr[4:2]==0) begin
-				led <= mem_wdata[5:0];
-			end else if (mem_addr[4:2]==1) begin
-				psrama_ovr <= mem_wdata;
-			end else if (mem_addr[4:2]==2) begin
-				psramb_ovr <= mem_wdata;
-			end else if (mem_addr[4:2]==3) begin
-				cpu_resetn[1] <= mem_wdata[1];
+			flash_claim <= 0;
+		end else begin
+			flash_xfer <= 0;
+			if (misc_select && mem_wstrb[0]) begin
+				if (mem_addr[4:2]==MISC_REG_LED) begin
+					led <= mem_wdata[5:0];
+				end else if (mem_addr[4:2]==MISC_REG_PSRAMOVR_A) begin
+					psrama_ovr <= mem_wdata;
+				end else if (mem_addr[4:2]==MISC_REG_PSRAMOVR_B) begin
+					psramb_ovr <= mem_wdata;
+				end else if (mem_addr[4:2]==MISC_REG_RESETN) begin
+					cpu_resetn[1] <= mem_wdata[1];
+				end else if (mem_addr[4:2]==MISC_REG_FLASH_CTL) begin
+					flash_claim <= mem_wdata[0];
+				end else if (mem_addr[4:2]==MISC_REG_FLASH_WDATA) begin
+					//handled in combinatorial block above
+				end
 			end
 		end
 	end
