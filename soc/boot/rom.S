@@ -9,7 +9,7 @@
 #define RAM_FB			0x407C0000
 #define PERI_UART_DATA	0x10000000
 #define PERI_UART_DIV	0x10000004
-#define PERI_LED		0x20000000
+#define PERI_MISC		0x20000000
 #define PERI_LCD		0x30000000
 #define PERI_LINERDR	0x50000000
 #define PERI_LINERDR_VIDEO 0x50100000
@@ -25,7 +25,7 @@ irq_vec_entry:
 
 do_reset:
 	//LEDS: 1 for init
-	li a1, PERI_LED
+	li a1, PERI_MISC
 	li a2, 1
 	sw a2, 0(a1)
 	
@@ -36,7 +36,7 @@ do_reset:
 //Bitbang PSRAM port initialization command
 bbpsraminit:
 	la a1, psram_init
-	li a2, PERI_LED+4 //bitbang port
+	li a2, PERI_MISC+4 //bitbang port
 bbloop:
 	lbu a3, 0(a1)
 	sw a3, 0(a2)
@@ -52,12 +52,12 @@ bbloop:
 
 	//Check if we are running in a simulation. If so, immediately jump to app that the simulator already
 	//preloaded in psram.
-	li a2, PERI_LED
+	li a2, PERI_MISC
 	lw a2, 0(a2)
 //	srli a2, a2, 31 //mask out 31th bit - does not work?
 	beq a2, zero, memtest_start
 
-	li a2, PERI_LED
+	li a2, PERI_MISC
 	li a1, 0x2
 	sw a1, 0(a2)
 
@@ -76,7 +76,7 @@ bbloop:
 
 //Memtest
 memtest_start:
-	li a2, PERI_LED
+	li a2, PERI_MISC
 	li a1, 0x3
 	sw a1, 0(a2)
 
@@ -92,7 +92,7 @@ memtestwloop:
 	bne a1, a4, memtestwloop
 
 	//LEDS: 4 for write loop done
-	li a1, PERI_LED
+	li a1, PERI_MISC
 	li a2, 4
 	sw a2, 0(a1)
 
@@ -114,12 +114,12 @@ memtestrloop:
 memtesterr:
 	//LEDs: 6 for error
 	li a2, 6
-	li a1, PERI_LED
+	li a1, PERI_MISC
 	sw a2, 0(a1)
 	j memtesterr
 
 memtestok:
-	li a1, PERI_LED
+	li a1, PERI_MISC
 	sw a2, 0(a1)
 
 	//un-reset 2nd cpu
@@ -166,8 +166,14 @@ s11            0x3	3
 #endif
 
 	li a2, 7
-	li a1, PERI_LED
+	li a1, PERI_MISC
 	sw a2, 0(a1)
+
+//verilator: end simulation
+//	li a2, 0x2a
+//	li a1, PERI_MISC
+//	sw a2, 0(a1)
+
 
 
 jtagwait:
@@ -177,7 +183,7 @@ jtagwait:
 	bne a3, a2, jtagwait
 
 	li a2, 8
-	li a1, PERI_LED
+	li a1, PERI_MISC
 	sw a2, 0(a1)
 
 
@@ -193,7 +199,7 @@ jtagwait:
 // ---- Serial loader ----
 
 	//Set up LEDs
-	li a1, PERI_LED
+	li a1, PERI_MISC
 	li a2, 0xaa
 	sw a2, 0(a1)
 
@@ -215,7 +221,7 @@ loop:
 	bnez a1, loop
 
 	not a2, a2
-	li a1, PERI_LED
+	li a1, PERI_MISC
 	sw a2, 0(a1)
 
 	j hang

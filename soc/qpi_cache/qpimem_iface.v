@@ -57,7 +57,7 @@ module qpimem_iface #(
 	parameter integer READDUMMY = 7,
 	parameter integer WRITEDUMMY = 0,
 	parameter [3:0] DUMMYVAL = 0,
-	parameter [0:0] CMD_IS_SPI = 0
+	parameter [0:0] CMD_IS_SPI = 0 //Note: THIS IS LIKELY BROKEN if set to 1!
 /*
 	//w25q32:
 	//NOTE: untested/not working. Write is probably impossible to get to work (because it's a flash part).
@@ -123,9 +123,9 @@ parameter STATE_DUMMYBYTES = 3;
 parameter STATE_DATA = 4;
 parameter STATE_SPIXFER_CLAIMED = 5;
 parameter STATE_SPIXFER_DOXFER = 6;
-parameter STATE_TRANSEND = 7;
+parameter STATE_SPIXFER_LASTBIT = 7;
+parameter STATE_TRANSEND = 8;
 
-reg do_spi_xfer_triggered;
 reg [7:0] spi_xfer_wdata_latched;
 reg [7:0] spi_xfer_rdata_shifted;
 
@@ -150,19 +150,12 @@ always @(posedge clk) begin
 		spi_sout <= 0;
 		curr_is_read <= 0;
 		keep_transferring <= 0;
-		do_spi_xfer_triggered <= 0;
 		spi_xfer_wdata_latched <= 0;
 		spi_xfer_rdata <= 0;
 		spi_bus_qpi <= 0;
 	end else begin
 		if (next_byte) begin
 			keep_transferring <= (do_read || do_write);
-		end
-
-		//do_spi_xfer is a flag and we need to store it in case we're already doing something else
-		if (do_spi_xfer) begin
-			do_spi_xfer_triggered <= 1;
-			spi_xfer_wdata_latched <= spi_xfer_wdata;
 		end
 
 		next_byte <= 0;
@@ -278,22 +271,26 @@ always @(posedge clk) begin
 			spi_ncs <= 0;
 			clk_active <= 0;
 			if (do_spi_xfer) begin
-				state = STATE_SPIXFER_DOXFER;
-				spi_xfer_wdata_latched = spi_xfer_wdata;
+				state <= STATE_SPIXFER_DOXFER;
+				spi_xfer_wdata_latched <= spi_xfer_wdata;
 			end else if (!spi_xfer_claim) begin
-				state = STATE_TRANSEND;
+				state <= STATE_TRANSEND;
 			end
 		end else if (state == STATE_SPIXFER_DOXFER) begin
 			clk_active <= 1;
-			spi_sout <= {spi_xfer_wdata_latched[7],3'b0};
+			spi_sout <= {3'h6, spi_xfer_wdata_latched[7]};
 			spi_xfer_wdata_latched <= {spi_xfer_wdata_latched[6:0], 1'h0};
-			spi_xfer_rdata_shifted <= {spi_xfer_rdata_shifted[6:0], spi_sin[3]};
+			spi_xfer_rdata_shifted <= {spi_xfer_rdata_shifted[6:0], spi_sin_sampled[1]};
 			if (bitno == 0) begin
-				spi_xfer_rdata <= spi_xfer_rdata_shifted;
-				state <= STATE_SPIXFER_CLAIMED;
+				state <= STATE_SPIXFER_LASTBIT;
 			end else begin
 				bitno <= bitno - 1;
 			end
+		end else if (state == STATE_SPIXFER_LASTBIT) begin
+			clk_active <= 0;
+			//sample final input bit, send to output
+			spi_xfer_rdata <= {spi_xfer_rdata_shifted[6:0], spi_sin_sampled[1]};
+			state <= STATE_SPIXFER_CLAIMED;
 		end else begin //state=STATE_TRANSEND
 			spi_ncs <= 1;
 			spi_oe <= 0;

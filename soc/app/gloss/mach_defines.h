@@ -8,8 +8,9 @@
 #define UART_DATA_REG	0x0
 #define UART_DIV_REG	0x4
 
-#define LED_OFFSET 0x20000000
-#define LED_DATA_REG 0x0
+#define MISC_OFFSET 0x20000000
+#define MISC_LED_REG 0x0
+/*
 #define BUTTON_READ_REG 0x4
 #define BUTTON_UP (1<<0)
 #define BUTTON_DOWN (1<<1)
@@ -19,6 +20,15 @@
 #define BUTTON_B (1<<5)
 #define BUTTON_SELECT (1<<6)
 #define BUTTON_START (1<<7)
+*/
+#define MISC_PSRAMOVRA_REG 0x4
+#define MISC_PSRAMOVRB_REG 0x8
+#define MISC_RESETN_REG 0xC
+#define MISC_FLASH_CTL_REG 0x10
+#define MISC_FLASH_CTL_CLAIM (1<<0)
+#define MISC_FLASH_CTL_IDLE (1<<1)
+#define MISC_FLASH_WDATA_REG 0x14
+#define MISC_FLASH_RDATA_REG 0x18
 
 #define LCD_OFFSET 0x30000000
 #define LCD_COMMAND_REG 0x0

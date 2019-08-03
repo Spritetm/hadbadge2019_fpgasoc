@@ -597,8 +597,8 @@ module soc(
 		//no spi transfers supported, we do setup using bitbanging
 		.spi_xfer_wdata(mem_wdata[7:0]),
 		.spi_xfer_rdata(flash_rdata),
-		.do_spi_xfer(flash_do_xfer),
-		.spi_xfer_claim(flash_xfer_claim),
+		.do_spi_xfer(flash_xfer),
+		.spi_xfer_claim(flash_claim),
 		.spi_xfer_idle(flash_idle),
 
 		.spi_clk(flash_sclk),
@@ -631,7 +631,6 @@ module soc(
 			cpu_resetn <= 1;
 			flash_claim <= 0;
 		end else begin
-			flash_xfer <= 0;
 			if (misc_select && mem_wstrb[0]) begin
 				if (mem_addr[4:2]==MISC_REG_LED) begin
 					led <= mem_wdata[5:0];

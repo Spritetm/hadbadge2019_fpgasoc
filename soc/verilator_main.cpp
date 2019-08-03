@@ -89,6 +89,7 @@ int main(int argc, char **argv) {
 		if (oldled != tb->led) {
 			oldled=tb->led;
 			printf("LEDs: 0x%X\n", oldled);
+			if (tb->led==0x2a) do_abort=1;
 			//if (oldled == 0x3A) do_trace=1;
 		}
 /*
