@@ -16,6 +16,7 @@ _stack_size = 0x1000;
 SECTIONS {
 	.vectors : {
 		. = ORIGIN(ram);
+		_bin_start = .;
 		KEEP(crt0.o(.text));
 	} > ram
 	.text : {
@@ -40,6 +41,7 @@ SECTIONS {
 	} > ram
 	.bss (NOLOAD) : {
 		. = ALIGN(4);
+		_bin_end = .;
 		_bss_start = .;
 		*(.bss);
 		*(.bss.*);

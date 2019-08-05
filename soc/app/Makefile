@@ -20,11 +20,12 @@ OBJS += tinyusb/src/device/usbd.o tinyusb/src/device/usbd_control.o tinyusb/src/
 OBJS += tinyusb/src/common/tusb_fifo.o tinyusb/src/class/custom/custom_device.o
 OBJS += tinyusb/src/class/msc/msc_device.o tinyusb/src/class/midi/midi_device.o
 OBJS += tinyusb/src/class/cdc/cdc_device.o tinyusb/src/class/hid/hid_device.o
-OBJS += msc_disk.o dcd_tntusb.o usb_descriptors.o hexdump.o
+OBJS += msc_disk.o dcd_tntusb.o usb_descriptors.o hexdump.o flash.o
+OBJS += fatfs/source/ff.o fatfs/source/ffsystem.o fatfs/source/ffunicode.o
 LIBS := gloss/libgloss.a
 LDSCRIPT := gloss/ldscript.ld
 
-CFLAGS := -Os -ggdb -I. -IUGUI -Iusb -Igloss -Itinyusb/src
+CFLAGS := -Os -ggdb -I. -IUGUI -Iusb -Igloss -Itinyusb/src -Ifatfs/source
 LDFLAGS := -Wl,-Bstatic -Wl,--gc-sections  -Wl,-T,$(LDSCRIPT) -Wl,-Map,$(TARGET_MAP) -lgcc -nostartfiles -Lgloss 
 export PREFIX CC AR LD OBJCOPY CFLAGS LDFLAGS APPNAME
 
@@ -48,6 +49,9 @@ prog: $(TARGET_SVF)
 
 $(TARGET_SVF): $(TARGET_BIN)
 	../jtagload/jtagload < $(TARGET_BIN) > $(TARGET_SVF)
+
+flash: $(TARGET_BIN)
+	tinyprog -p $(TARGET_BIN) -a 0x300000
 
 gdb: $(TARGET_ELF)
 	/home/jeroen/hackaday2019/riscv-toolchain/bin/riscv32-unknown-elf-gdb -b 115200 -ex "target remote /dev/ttyUSB0" app.elf

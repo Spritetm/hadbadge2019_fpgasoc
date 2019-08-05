@@ -187,7 +187,7 @@ jtagwait:
 	sw a2, 0(a1)
 
 
-	li a1, 0x40002000
+	li a1, 0x40002008 //ipl image has 2 words of header
 	jalr zero, a1, 0
 
 	//break to gdbstub

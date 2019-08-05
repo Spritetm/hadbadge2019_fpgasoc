@@ -95,6 +95,32 @@ At this point, you can also flash the bootloader and SoC (but not the app) to fl
 
 - Run `make flash` in the SoC directory.
 
+Flash partitions
+================
+Note that there's no on-storage partition table at this moment. All offsets are hardcoded.
 
+Internal flash:
 
+| Location          | Size   | Function            | Note           |
+|-------------------|--------|---------------------|----------------|
+| 0-0x17FFFF        | 1.5MiB | TinyFPGA-Bootloader | FPGA bitstream |
+| 0x180000-0x2FFFFF | 1.5MiB | SoC                 | FPGA bitstream |
+| 0x300000-0x380000 | 0.5MiB | IPL                 | RiscV binary   |
+| 0x300000-0xCFFFFF | 10MiB  | FAT16 part          | Filesystem     |
+| 0xD00000-0xFFFFFF | 3MiB   | Spare               | Not used atm   |
+
+What do they do?
+
+- The TinyFPGA-Bootloader starts at power on and if USB is plugged in, gives an 5 second window
+  to connect the device to a computer to write things to the flash directly. After that 5 second window,
+  or if no Vbus on the USB connector is detected, it'll pull the FPGAs PROGRAMN pin to load the SoC 
+  bitstream.
+
+- The SoC bitstream has a small bit of code pre-loaded in its PSRAM cache. This piece of code will try
+  to load the IPL from flash, then run it. If no IPL is detected, it'll sit and wait until the data at
+  memory address 0 changes to 0xdeadbeef, and then run the IPL anyway. (This allows for a JTAG upload
+  of IPL+app)
+
+- The IPL will initialize the LCD and framebuffer and load the initial app from the FAT16 partition 
+  on flash. If it cannot load it, it will switch the device to USB MSC upload mode.
 

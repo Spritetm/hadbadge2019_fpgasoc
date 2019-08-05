@@ -7,6 +7,8 @@
 #include "ugui.h"
 #include <string.h>
 #include "tusb.h"
+#include "flash.h"
+#include "hexdump.h"
 
 extern volatile uint32_t UART[];
 #define UART_REG(i) UART[(i)/4]
@@ -43,23 +45,6 @@ volatile char *dummy;
 
 void usb_poll();
 
-static inline uint8_t flash_send_recv(uint8_t data) {
-	MISC_REG(MISC_FLASH_WDATA_REG)=data;
-	while (!(MISC_REG(MISC_FLASH_CTL_REG)&MISC_FLASH_CTL_IDLE));
-	return MISC_REG(MISC_FLASH_RDATA_REG);
-}
-
-int flash_get_id() {
-	int id=0;
-	MISC_REG(MISC_FLASH_CTL_REG)=MISC_FLASH_CTL_CLAIM;
-	flash_send_recv(0x9F);
-	id=flash_send_recv(0)<<16;
-	id|=flash_send_recv(0)<<8;
-	id|=flash_send_recv(0);
-	MISC_REG(MISC_FLASH_CTL_REG)=0;
-	return id;
-}
-
 
 void main() {
 	MISC_REG(MISC_LED_REG)=0xff;
@@ -73,6 +58,20 @@ void main() {
 
 	tusb_init();
 	printf("USB inited.\n");
+	
+	flash_wake(FLASH_SEL_INT);
+	int id=flash_get_id(FLASH_SEL_INT);
+	printf("flashid: %x\n", id);
+	char text[32]="Hello world, this is a flash sector!";
+	bool r;
+	r=flash_erase_range(FLASH_SEL_INT, 0x300000, 32*1024);
+	if (!r) printf("Erase failed\n");
+	r=flash_program(FLASH_SEL_INT, 0x300000, text, 256);
+	if (!r) printf("Program failed\n");
+	text[0]="X";
+	flash_read(FLASH_SEL_INT, 0x300000, text, 32);
+	printf("Read from flash: %s\n", text);
+	hexdump(text, 32);
 
 	//loop
 	int p;
@@ -86,7 +85,7 @@ void main() {
 		sprintf(buf, "%d", p);
 		UG_SetForecolor(C_RED);
 		UG_PutString(48, 64, buf);
-		int id=flash_get_id();
+		id=flash_get_id(FLASH_SEL_INT);
 		sprintf(buf, "flashid: %x", id);
 		UG_PutString(0, 80, buf);
 		memset((void*)dummy, 0, 128*1024);
