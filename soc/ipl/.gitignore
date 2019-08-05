@@ -4,3 +4,4 @@ app.map
 app.disasm
 send
 *.o
+*.svf
