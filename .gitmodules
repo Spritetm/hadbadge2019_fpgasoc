@@ -2,11 +2,11 @@
 	path = soc/picorv32
 	url = https://github.com/cliffordwolf/picorv32.git
 [submodule "soc/app/UGUI"]
-	path = soc/app/UGUI
+	path = soc/ipl/UGUI
 	url = https://github.com/PocketSprite/UGUI.git
 [submodule "TinyFPGA-Bootloader"]
 	path = TinyFPGA-Bootloader
 	url = git@github.com:Spritetm/hadbadge2019_tinyfpgabootloader.git
 [submodule "soc/app/tinyusb"]
-	path = soc/app/tinyusb
+	path = soc/ipl/tinyusb
 	url = https://github.com/hathach/tinyusb.git
