@@ -17,7 +17,7 @@ BRAMFILE=rom.hex
 CONSTR=had19_proto2.lpf
 TRELLIS=/usr/share/trellis
 #frequency in MHz to use as a goal for the timing calculations
-#note: 48MHz actually, but better to be on the safe size.
+#note: 48MHz actually, but better to be on the safe size. 55
 FREQ=55
 
 

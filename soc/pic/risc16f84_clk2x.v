@@ -321,6 +321,8 @@ wire addr_fsr;
 wire addr_pclath;
 wire addr_intcon;
 wire addr_sram;
+wire addr_porta;
+wire addr_portb;
 
      // Other output registers (for removing hazards)
 reg  ram_we_reg;          // data-sram write strobe

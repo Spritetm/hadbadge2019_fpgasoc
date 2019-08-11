@@ -57,11 +57,12 @@ module soc(
 
 
 	reg [5:0] reset_cnt = 0;
-	wire resetn = &reset_cnt;
+	reg resetn=0;
 	wire rst = !resetn;
 	always @(posedge clk48m) begin
 		if (btn[7]) begin
 			if (!resetn) reset_cnt <= reset_cnt + 1;
+			resetn <= reset_cnt[5];
 		end else begin
 			reset_cnt <= 0;
 		end
@@ -454,7 +455,7 @@ module soc(
 		.reg_dat_wait(uart_reg_dat_wait)
 	);
 
-	wire pic_led;
+	reg [15:0] pic_led;
 
 	pic_wrapper #(
 		.ROM_HEX("pic/rom_initial.hex")
@@ -649,7 +650,7 @@ module soc(
 	//misc reg write ops, registered
 	always @(posedge clk48m) begin
 		if (rst) begin
-			led <= 0;
+			pic_led <= 0;
 			psrama_ovr <= 0;
 			psramb_ovr <= 0;
 			cpu_resetn <= 1;
@@ -657,7 +658,7 @@ module soc(
 		end else begin
 			if (misc_select && mem_wstrb[0]) begin
 				if (mem_addr[4:2]==MISC_REG_LED) begin
-					pic_led <= mem_wdata[5:0];
+					pic_led <= mem_wdata[16:0];
 				end else if (mem_addr[4:2]==MISC_REG_PSRAMOVR_A) begin
 					psrama_ovr <= mem_wdata;
 				end else if (mem_addr[4:2]==MISC_REG_PSRAMOVR_B) begin

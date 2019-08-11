@@ -9,7 +9,7 @@ wire wen, ren;
 pic_wrapper picw(
 	.clk(clk),
 	.reset(rst),
-	.gpio_in(16'b0),
+	.gpio_in(16'hAA55),
 	.gpio_out(gpio_out),
 	.address(16'b0),
 	.data_in(32'b0),
