@@ -1,6 +1,8 @@
 
 #include "custom_ops.S"
 
+	.global load_ipl
+
 	.section .text
 
 #define RAM_START		0x40000000
@@ -174,7 +176,7 @@ s11            0x3	3
 //	li a1, PERI_MISC
 //	sw a2, 0(a1)
 
-
+	call load_ipl
 
 jtagwait:
 	li a1, 0x40000000

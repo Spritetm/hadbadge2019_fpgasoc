@@ -145,7 +145,7 @@ bool flash_erase_range(int flash_sel, int addr, int len) {
 		uint8_t cmd;
 		int erasesize;
 		flash_start_xfer(flash_sel);
-		printf("addr %x\n", (addr&(32*1024-1)));
+//		printf("addr %x\n", (addr&(32*1024-1)));
 		if (len>=(64*1024) && ((addr&(64*1024-1))==0)) {
 			cmd=CMD_ERASE64K;
 			erasesize=64*1024;

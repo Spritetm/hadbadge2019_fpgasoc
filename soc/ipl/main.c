@@ -7,8 +7,9 @@
 #include "ugui.h"
 #include <string.h>
 #include "tusb.h"
-#include "flash.h"
 #include "hexdump.h"
+#include "fs.h"
+#include "flash.h"
 
 extern volatile uint32_t UART[];
 #define UART_REG(i) UART[(i)/4]
@@ -59,19 +60,9 @@ void main() {
 	tusb_init();
 	printf("USB inited.\n");
 	
-	flash_wake(FLASH_SEL_INT);
 	int id=flash_get_id(FLASH_SEL_INT);
 	printf("flashid: %x\n", id);
-	char text[32]="Hello world, this is a flash sector!";
-	bool r;
-	r=flash_erase_range(FLASH_SEL_INT, 0x300000, 32*1024);
-	if (!r) printf("Erase failed\n");
-	r=flash_program(FLASH_SEL_INT, 0x300000, text, 256);
-	if (!r) printf("Program failed\n");
-	text[0]="X";
-	flash_read(FLASH_SEL_INT, 0x300000, text, 32);
-	printf("Read from flash: %s\n", text);
-	hexdump(text, 32);
+	fs_init();
 
 	//loop
 	int p;
@@ -80,15 +71,13 @@ void main() {
 	UG_PutString(0, 320-20, "Narf!");
 	UG_SetForecolor(C_GREEN);
 	UG_PutString(0, 16, "This is a test of the framebuffer to HDMI and LCD thingamajig. What you see now is the framebuffer memory.");
+	usb_msc_on();
 	while(1) {
 		p++;
 		sprintf(buf, "%d", p);
 		UG_SetForecolor(C_RED);
 		UG_PutString(48, 64, buf);
-		id=flash_get_id(FLASH_SEL_INT);
-		sprintf(buf, "flashid: %x", id);
-		UG_PutString(0, 80, buf);
-		memset((void*)dummy, 0, 128*1024);
+//		memset((void*)dummy, 0, 128*1024);
 		usb_poll();
 		tud_task();
 	}

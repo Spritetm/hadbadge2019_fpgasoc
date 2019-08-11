@@ -1,8 +1,8 @@
 TOOLCHAIN_DIR := /home/jeroen/hackaday2019/poc/toolchain/toolchain/bin
 TOOLCHAIN_PREFIX := $(TOOLCHAIN_DIR)/riscv32-unknown-elf-
 CC=$(TOOLCHAIN_PREFIX)gcc
-CFLAGS=-Os -ggdb
-OBJS:=rom.o irq.o gdbstub.o
+CFLAGS=-Os -ggdb -I../ipl
+OBJS:=rom.o irq.o gdbstub.o loadipl.o ipl_flash.o
 
 default: rom.bin
 

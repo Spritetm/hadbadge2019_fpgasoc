@@ -106,7 +106,7 @@ Internal flash:
 | 0-0x17FFFF        | 1.5MiB | TinyFPGA-Bootloader | FPGA bitstream |
 | 0x180000-0x2FFFFF | 1.5MiB | SoC                 | FPGA bitstream |
 | 0x300000-0x380000 | 0.5MiB | IPL                 | RiscV binary   |
-| 0x300000-0xCFFFFF | 10MiB  | FAT16 part          | Filesystem     |
+| 0x380000-0xCFFFFF | 9.5MiB | FAT16 part          | Filesystem     |
 | 0xD00000-0xFFFFFF | 3MiB   | Spare               | Not used atm   |
 
 What do they do?

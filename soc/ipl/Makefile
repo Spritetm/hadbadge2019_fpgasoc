@@ -20,8 +20,9 @@ OBJS += tinyusb/src/device/usbd.o tinyusb/src/device/usbd_control.o tinyusb/src/
 OBJS += tinyusb/src/common/tusb_fifo.o tinyusb/src/class/custom/custom_device.o
 OBJS += tinyusb/src/class/msc/msc_device.o tinyusb/src/class/midi/midi_device.o
 OBJS += tinyusb/src/class/cdc/cdc_device.o tinyusb/src/class/hid/hid_device.o
-OBJS += msc_disk.o dcd_tntusb.o usb_descriptors.o hexdump.o flash.o
-OBJS += fatfs/source/ff.o fatfs/source/ffsystem.o fatfs/source/ffunicode.o
+OBJS += dcd_tntusb.o usb_descriptors.o hexdump.o flash.o
+OBJS += fatfs/source/ff.o fatfs/source/ffunicode.o
+OBJS += tjftl/tjftl.o fs.o
 LIBS := gloss/libgloss.a
 LDSCRIPT := gloss/ldscript.ld
 
