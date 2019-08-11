@@ -5,7 +5,7 @@ Top module for SoC.
 module soc(
 		input clk48m, 
 		input [7:0] btn, 
-		output [5:0] led,
+		output reg [8:0] led,
 		output [27:0] genio,
 		output uart_tx,
 		input uart_rx,
@@ -75,7 +75,6 @@ module soc(
 	reg [31:0] mem_rdata;
 	wire mem_valid;
 	reg [31:0] irq;
-	reg [5:0] led;
 	reg [7:0] psrama_ovr;
 	reg [7:0] psramb_ovr;
 
@@ -259,8 +258,11 @@ module soc(
 	wire [31:0] linerenderer_rdata;
 	wire linerenderer_ready;
 	wire [31:0] usb_rdata;
-	reg usb_ready;
+	wire usb_ready;
 	reg usb_select;
+	wire [31:0] pic_rdata;
+	wire pic_ready;
+	reg pic_select;
 
 	wire [31:0] soc_version;
 `ifdef verilator
@@ -290,6 +292,7 @@ module soc(
 		misc_select = 0;
 		lcd_select = 0;
 		usb_select = 0;
+		pic_select = 0;
 		linerenderer_select=0;
 		bus_error = 0;
 		mem_rdata = 'hx;
@@ -325,6 +328,9 @@ module soc(
 		end else if (mem_addr[31:28]=='h6) begin
 			usb_select = mem_valid;
 			mem_rdata = usb_rdata;
+		end else if (mem_addr[31:28]=='h7) begin
+			pic_select = mem_valid;
+			mem_rdata = pic_rdata;
 		end else begin
 			//Bus error. Raise IRQ if memory is accessed.
 			mem_rdata = 'hDEADBEEF;
@@ -340,7 +346,7 @@ module soc(
 	end
 `endif
 
-	assign mem_ready = ram_ready || uart_div_select || misc_select || (uart_dat_select && !uart_reg_dat_wait) || lcd_ready || linerenderer_ready || usb_ready || bus_error;
+	assign mem_ready = ram_ready || uart_div_select || misc_select || (uart_dat_select && !uart_reg_dat_wait) || lcd_ready || linerenderer_ready || usb_ready || pic_ready || bus_error;
 
 	wire [19:0] vidmem_addr;
 	wire [23:0] vidmem_data_out;
@@ -448,7 +454,25 @@ module soc(
 		.reg_dat_wait(uart_reg_dat_wait)
 	);
 
-	wire qpi_do_read, qpi_do_write;
+	wire pic_led;
+
+	pic_wrapper #(
+		.ROM_HEX("pic/rom_initial.hex")
+	) pic (
+		.clk(clk48m),
+		.reset(rst),
+		.gpio_in(pic_led),
+		.gpio_out(led),
+		.address(mem_addr),
+		.data_in(mem_wdata),
+		.data_out(pic_rdata),
+		.wen(pic_select && mem_wstrb==4'b1111),
+		.ren(pic_select && mem_wstrb==4'b0000),
+		.ready(pic_ready)
+	);
+
+	wire qpi_do_read;
+	wire qpi_do_write;
 	reg qpi_next_byte;
 	wire [23:0] qpi_addr;
 	reg [31:0] qpi_rdata;
@@ -633,7 +657,7 @@ module soc(
 		end else begin
 			if (misc_select && mem_wstrb[0]) begin
 				if (mem_addr[4:2]==MISC_REG_LED) begin
-					led <= mem_wdata[5:0];
+					pic_led <= mem_wdata[5:0];
 				end else if (mem_addr[4:2]==MISC_REG_PSRAMOVR_A) begin
 					psrama_ovr <= mem_wdata;
 				end else if (mem_addr[4:2]==MISC_REG_PSRAMOVR_B) begin

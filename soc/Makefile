@@ -5,14 +5,14 @@ SRC+=arbiter.v pcpi_fastmul_dsp.v video/vid_linerenderer.v
 SRC+=video/video_mem.v qpi_cache/qpimem_arbiter.v
 SRC+=usb/usb_trans.v usb/usb_ep_buf.v usb/usb_rx_pkt.v usb/usb_phy.v usb/usb.v
 SRC+=usb/usb_tx_pkt.v usb/usb_ep_status.v usb/usb_tx_ll.v usb/usb_rx_ll.v usb/usb_crc.v
-SRC+=usb/fifo_sync_shift.v usb_soc.v
+SRC+=usb/fifo_sync_shift.v usb_soc.v pic/pic_wrapper.v pic/risc16f84_clk2x.v
 SRC_SYNTH=pll.v top_fpga.v mul_18x18_ecp5.v hdmi/clk_8_250_125_25.v hdmi/fake_differential.v
 SRC_SYNTH+=hdmi/hdmi-encoder.v hdmi/tmds_encoder.v hdmi/vga2dvid.v hdmi/vga.v 
 SRC_SYNTH+= video/ram_dp_24x2048_ecp5.v
 SRC_SIM=verilator_main.cpp psram_emu.cpp uart_emu.cpp uart_emu_gdb.cpp mul_18x18_sim.v
 SRC_SIM+=video/video_renderer.cpp video/lcd_renderer.cpp video/ram_dp_24x2048_sim.v
 SRC_SIM+=trellis_io_sim.v
-EXTRA_DEPEND=rom_random_seeds0x123456.hex
+EXTRA_DEPEND=rom_random_seeds0x123456.hex pic/rom_initial.hex
 BRAMFILE=rom.hex
 CONSTR=had19_proto2.lpf
 TRELLIS=/usr/share/trellis
@@ -30,7 +30,7 @@ FLASH_FREQ=38.8 #MHz
 all: $(PROJ).svf
 
 $(PROJ).json $(PROJ).blif: $(SRC) $(SRC_SYNTH) $(EXTRA_DEPEND)
-	yosys -p "synth_ecp5 -top top_fpga -json $(PROJ).json -blif $(PROJ).blif" $(SRC) $(SRC_SYNTH)
+	yosys -p "read -sv $(SRC) $(SRC_SYNTH); synth_ecp5 -top top_fpga -json $(PROJ).json -blif $(PROJ).blif"
 
 %_out_synth.config: %.json
 	nextpnr-ecp5 --json $< --lpf $(CONSTR) --textcfg $@ --45k --package CABGA381 --speed 8  --freq $(FREQ)
@@ -108,6 +108,11 @@ corr_synth_for_verilator: corr_synth_for_verilator.c
 pcpi_fastmul_dsp_testbench:
 	iverilog -opcpi_fastmul_dsp_testbench.vvp pcpi_fastmul_dsp_testbench.v pcpi_fastmul_dsp.v picorv32/picorv32.v mul_18x18_sim.v
 	vvp pcpi_fastmul_dsp_testbench.vvp
+
+
+pic/rom_initial.hex: pic/rom.asm
+	make -C pic rom_initial.hex
+
 
 
 .PHONY: prog clean verilator bram_replace boot/

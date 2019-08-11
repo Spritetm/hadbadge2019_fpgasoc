@@ -6,7 +6,7 @@ PLL, tristate buffers etc needed to interface with the hardware.
 module top_fpga(
 		input clk, 
 		input [7:0] btn, 
-		output [5:0] led,
+		output [8:0] led,
 		output [27:0] genio,
 		output uart_tx,
 		input uart_rx,
