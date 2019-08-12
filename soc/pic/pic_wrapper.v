@@ -8,6 +8,7 @@ module pic_wrapper #(
 	//I/O for the PIC
 	input [15:0] gpio_in,
 	output [15:0] gpio_out,
+	input [7:0] rng,
 
 	//I/O for the master
 	input [15:0] address,
@@ -39,6 +40,7 @@ risc16f84_clk2x pic(
 	.portb_i(gpio_in[15:8]),
 	.porta_o(gpio_out[7:0]),
 	.portb_o(gpio_out[15:8]),
+	.rng_i(rng),
 	.ram_we_o(ram_we),
 	.ram_adr_o(ram_adr),
 	.ram_dat_o(ram_dat_w),

@@ -3,7 +3,8 @@ Top module for SoC.
 */
 
 module soc(
-		input clk48m, 
+		input clk48m,
+		input clkint, //internal clock of ecp5, <24MHz, used for rng
 		input [7:0] btn, 
 		output reg [8:0] led,
 		output [27:0] genio,
@@ -284,6 +285,15 @@ module soc(
 	parameter MISC_REG_FLASH_CTL = 4;
 	parameter MISC_REG_FLASH_WDATA = 5;
 	parameter MISC_REG_FLASH_RDATA = 6;
+	parameter MISC_REG_RNG = 7;
+
+	wire [31:0] rngno;
+	rng rng(
+		.clk1(clk48m),
+		.clk2(clkint),
+		.rst(rst),
+		.rngno(rngno)
+	);
 
 
 	always @(*) begin
@@ -315,6 +325,8 @@ module soc(
 				mem_rdata={30'h0, flash_idle, flash_claim};
 			end else if (mem_addr[4:2]==MISC_REG_FLASH_RDATA) begin
 				mem_rdata={24'h0, flash_rdata};
+			end else if (mem_addr[4:2]==MISC_REG_RNG) begin
+				mem_rdata=rngno;
 			end
 			//todo: improve misc/psram/... readback
 		end else if (mem_addr[31:28]=='h3) begin
@@ -356,7 +368,7 @@ module soc(
 	wire [19:0] curr_vid_addr;
 
 	wire lcdvm_next_pixel;
-	wire lcdvm_next_field;
+	wire lcdvm_newfield;
 	wire lcdvm_wait;
 	wire [7:0] lcdvm_red;
 	wire [7:0] lcdvm_green;
@@ -464,6 +476,7 @@ module soc(
 		.reset(rst),
 		.gpio_in(pic_led),
 		.gpio_out(led),
+		.rng(rngno[7:0]),
 		.address(mem_addr),
 		.data_in(mem_wdata),
 		.data_out(pic_rdata),
@@ -633,7 +646,6 @@ module soc(
 		.spi_oe(flash_oe),
 		.spi_bus_qpi(flash_bus_qpi)
 	);
-
 
 
 	//misc write ops to periphs that have internal register

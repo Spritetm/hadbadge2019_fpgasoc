@@ -64,6 +64,12 @@ void main() {
 	printf("flashid: %x\n", id);
 	fs_init();
 
+	printf("Your random numbers are:\n");
+	for (int i=0; i<16; i++) {
+		uint32_t r=MISC_REG(MISC_RNG_REG);
+		printf("%d: %08X (%d)\n", i, r, r);
+	}
+
 	//loop
 	int p;
 	char buf[20];

@@ -40,6 +40,13 @@ module top_fpga(
 
 	wire clk48m;
 
+	wire clkint;
+	OSCG #(
+		.DIV(8) //155MHz by default... this divides it down to 19MHz.
+	) oscint (
+		.OSC(clkint)
+	);
+
 	wire [3:0] psrama_sout;
 	wire [3:0] psrama_sin;
 	wire psrama_oe;
@@ -66,8 +73,11 @@ module top_fpga(
 	wire flash_oe;
 	wire flash_bus_qpi;
 
+	wire clkint;
+
 	soc soc (
 		.clk48m(clk48m),
+		.clkint(clkint),
 		.btn(btn),
 		.led(led),
 //		.genio(genio),

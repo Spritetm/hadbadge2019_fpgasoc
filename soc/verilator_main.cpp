@@ -57,8 +57,11 @@ int main(int argc, char **argv) {
 	int next_line=0;
 	int next_field=0;
 	int pixel_clk=0;
+	int clkint=0;
 	while(1) {
 		ts++;
+		clkint+=123;
+		tb->clkint=(clkint&0x100)?1:0;
 		if (do_trace) tracepos++;
 		if (do_abort) break;
 		tb->uart_rx=uart_get(ts*21);

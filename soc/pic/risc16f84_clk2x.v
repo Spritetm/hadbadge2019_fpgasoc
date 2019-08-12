@@ -193,6 +193,7 @@ module risc16f84_clk2x (
   porta_o,
   portb_i,
   portb_o,
+  rng_i,
   int0_i,               // PORT-B(0) INT
   reset_i,              // Power-on reset (H active)
   clk_en_i,             // Clock enable for all clocked logic
@@ -238,6 +239,7 @@ input [7:0] porta_i;
 input [7:0] portb_i;
 output reg [7:0] porta_o;
 output reg [7:0] portb_o;
+input [7:0] rng_i;
 
 // Internal signal declarations
 
@@ -323,6 +325,7 @@ wire addr_intcon;
 wire addr_sram;
 wire addr_porta;
 wire addr_portb;
+wire addr_eedata;
 
      // Other output registers (for removing hazards)
 reg  ram_we_reg;          // data-sram write strobe
@@ -432,6 +435,7 @@ assign addr_pclath  = (ram_adr_node[6:0] ==  7'b0001010);    // 0AH, 8AH
 assign addr_intcon  = (ram_adr_node[6:0] ==  7'b0001011);    // 0BH, 8BH
 assign addr_porta   = (ram_adr_node[7:0] == 8'b00000101); // 05H
 assign addr_portb   = (ram_adr_node[7:0] == 8'b00000110); // 06H
+assign addr_eedata  = (ram_adr_node[7:0] == 8'b00001000); // 08H
 
 // construct bit-mask for logical operations and bit tests
 assign mask_node = 1 << inst_reg[9:7];
@@ -533,6 +537,7 @@ assign ram_i_node = (addr_sram)?ram_dat_i:
 					(addr_fsr)?fsr_reg:
 					(addr_porta)?porta_i:
 					(addr_portb)?portb_i:
+					(addr_eedata)?rng_i:
 					(addr_pclath)?{3'b0,pclath_reg}:
 					(addr_intcon)?intcon_reg:
 					8'h0;
