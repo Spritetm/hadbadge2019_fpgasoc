@@ -1,3 +1,10 @@
+Help!
+====
+
+Just received a proto badge? Want to know how you can help this project? Please check
+[the wiki](https://github.com/Spritetm/hadbadge2019_fpgasoc/wiki/Hackaday-Supercon-2019-badge)
+for what is done and what needs doing.
+
 Hackaday Supercon 2019 Badge: FPGA load
 =======================================
 
