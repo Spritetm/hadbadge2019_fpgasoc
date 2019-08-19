@@ -108,8 +108,17 @@ Cache lines work per 64 bytes, a full cache read/write will take 300 48MHz cycle
 which is 31 5MHz cycles. Hmm, this means we can do a refresh in the time it takes to read in a new
 32bit word.
 
+precompiled toolchain:
+https://gnu-mcu-eclipse.github.io/blog/2019/05/21/riscv-none-gcc-v8-2-0-2-2-20190521-released/ 
 
 
+Schedule:
+
+Start building proto3: 1 sept
+Checking proto3 start: 15 sept
+Building final 500 units: 1 oct
+Shipping: 1 nov
+HAD Supercon: 15 nov
 
 
 

@@ -15,6 +15,14 @@ Psram_emu::Psram_emu(int memsize) {
 	m_qpi_mode=0;
 }
 
+const uint8_t *Psram_emu::get_mem() {
+	return m_mem;
+}
+
+void Psram_emu::force_qpi() {
+	m_qpi_mode=1;
+}
+
 int Psram_emu::load_file(const char *file, int offset, bool is_ro) {
 	FILE *f=fopen(file, "rb");
 	if (f==NULL) {

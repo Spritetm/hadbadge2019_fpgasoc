@@ -6,6 +6,8 @@ class Psram_emu {
 	Psram_emu(int memsize);
 	int load_file(const char *file, int offset, bool is_ro);
 	int eval(int clk, int ncs, int sin, int oe, int *sout);
+	const uint8_t *get_mem();
+	void force_qpi();
 
 	private:
 	int m_size;
