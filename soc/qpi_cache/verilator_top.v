@@ -7,8 +7,9 @@ module qpitest(
 	input [21:0] addr,
 	input [31:0] wdata,
 	output [31:0] rdata,
-	input wen,
+	input [3:0] wen,
 	input ren,
+	input flush,
 	output ready,
 
 	output spi_clk,
@@ -46,6 +47,7 @@ qpimem_cache #(
 	.addr(addr),
 	.wen(wen),
 	.ren(ren),
+	.flush(flush),
 	.wdata(wdata),
 	.rdata(rdata),
 	.ready(ready)

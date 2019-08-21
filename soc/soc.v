@@ -526,6 +526,8 @@ module soc(
 		.s_next_byte(qpi_next_byte)
 	);
 
+	wire [4:0] mem_wen;
+	assign mem_wen = (mem_valid && !mem_ready && mem_select) ? mem_wstrb : 4'b0;
 
 	//16 words * 256 lines = 4K words = 16K bytes. Each way can contain 8KByte.
 	//NOTE: Psram needs to have /CE low for at max 5 uS.
@@ -547,9 +549,10 @@ module soc(
 		.qpi_rdata(`SLICE_32(qpimem_arb_rdata, 0)),
 		.qpi_is_idle(qpimem_arb_is_idle[0]),
 	
-		.wen((mem_valid && !mem_ready && mem_select) ? mem_wstrb : 4'b0),
+		.wen(mem_addr[24]==0 ? mem_wen : 4'b0),
 		.ren(mem_valid && !mem_ready && mem_select && mem_wstrb==0),
 		.addr(mem_addr[23:2]),
+		.flush(mem_addr[24]==1 ? (mem_wen==4'hF) : 0), //some ad-hoc muxing: writing anywhere above 16m does a flush instead.
 		.wdata(mem_wdata),
 		.rdata(ram_rdata),
 		.ready(ram_ready)

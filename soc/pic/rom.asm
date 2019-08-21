@@ -19,7 +19,7 @@ gpiob equ 6
 start:
 	movfw PORTA
 	movwf PORTA
-	movfw EEDATA ;rng input port
+	movfw PORTB
 	movwf PORTB
 	goto start
 

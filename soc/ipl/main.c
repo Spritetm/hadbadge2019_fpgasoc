@@ -23,6 +23,12 @@ extern volatile uint32_t GFX[];
 uint8_t *lcdfb;
 UG_GUI ugui;
 
+void cache_flush(void *addr_start, void *addr_end) {
+	volatile uint32_t *p = (volatile uint32_t*)(((uint32_t)addr_start & ~3) - MACH_RAM_START + MACH_FLUSH_REGION);
+	*p=(uint32_t)addr_end-MACH_RAM_START;
+}
+
+
 static void lcd_pset(UG_S16 x, UG_S16 y, UG_COLOR c) {
 	if (lcdfb==NULL) return;
 	if (x<0 || x>480) return;
@@ -74,17 +80,18 @@ void main() {
 	int p;
 	char buf[20];
 	UG_PutString(0, 0, "Hello world!");
-	UG_PutString(0, 320-20, "Narf!");
+	UG_PutString(0, 320-20, "Narf.");
 	UG_SetForecolor(C_GREEN);
 	UG_PutString(0, 16, "This is a test of the framebuffer to HDMI and LCD thingamajig. What you see now is the framebuffer memory.");
-	usb_msc_on();
+//	usb_msc_on();
 	while(1) {
 		p++;
 		sprintf(buf, "%d", p);
 		UG_SetForecolor(C_RED);
 		UG_PutString(48, 64, buf);
+		cache_flush(lcdfb, lcdfb+320*480/2);
 //		memset((void*)dummy, 0, 128*1024);
-		usb_poll();
-		tud_task();
+//		usb_poll();
+//		tud_task();
 	}
 }

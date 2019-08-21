@@ -19,6 +19,7 @@ module qpimem_cache #(
 	input [ADDR_WIDTH-1:0] addr,
 	input [3:0] wen,
 	input ren,
+	input flush,
 	input [31:0] wdata,
 	output [31:0] rdata,
 	output reg ready
@@ -47,6 +48,10 @@ The strategy to decide which cache line will be reloaded is LRU, or Least Recent
 Every read from or write to a cache line, the cache will store a flag in the flag memory
 of the set indicating that that specific way of cache is used most recently, and thus
 the other line should be choosen for flush/reload if needed.
+
+This cache also has a 'flush'-line. If asserted with a valid address and wdata, all lines 
+containing addresses from addr to wdata will be flushed and marked clean. The 'ready' line
+will be low until the end of this operation, similar to a read or write.
 */
 
 
@@ -74,6 +79,7 @@ reg [3:0] cachedata_wen;
 reg [31:0] cachedata_wdata;
 wire [31:0] cachedata_rdata;
 reg [CACHE_SET_BITS+CACHE_OFFSET_BITS:0] cachedata_addr;
+reg [ADDR_WIDTH-1:0] caddr; //normally equals addr but when flushing will be controlled by the cache itself.
 
 //Cache memory, tag memory, flags memory.
 simple_mem_words #(
@@ -106,8 +112,8 @@ for (i=0; i<2; i=i+1) begin
 	) tagdata (
 		.clk(clk),
 		.wen(tag_wen[i]),
-		.addr(`SET_FROM_ADDR(addr)),
-		.wdata(`TAG_FROM_ADDR(addr)),
+		.addr(`SET_FROM_ADDR(caddr)),
+		.wdata(`TAG_FROM_ADDR(caddr)),
 		.rdata(tag_rdata[i])
 	);
 end
@@ -123,13 +129,18 @@ simple_mem #(
 ) flagdata (
 	.clk(clk),
 	.wen(flag_wen),
-	.addr(`SET_FROM_ADDR(addr)),
+	.addr(`SET_FROM_ADDR(caddr)),
 	.wdata(flag_wdata),
 	.rdata(flag_rdata)
 );
 
 wire [CACHE_SET_BITS-1:0] current_set;
-assign current_set = `SET_FROM_ADDR(addr);
+assign current_set = `SET_FROM_ADDR(caddr);
+
+
+reg flushing;
+reg [CACHE_SET_BITS-1:0] flush_line;
+reg flush_way;
 
 //Find the cache line the current address is located in.
 reg cachehit_way;
@@ -144,14 +155,14 @@ always @(*) begin
 	qpi_wdata = cachedata_rdata;
 	flag_wdata = flag_rdata;
 	flag_wen = 0;
-	if (tag_rdata[0]==`TAG_FROM_ADDR(addr)) begin
+	if (tag_rdata[0]==`TAG_FROM_ADDR(caddr)) begin
 		found_tag=1;
 		cachehit_way=0; //DO U KNOW THE WAY
 		flag_wdata[FLAG_CW1_CLEAN] = flag_rdata[FLAG_CW1_CLEAN] && (wen == 0);
 		flag_wdata[FLAG_CW2_CLEAN] = flag_rdata[FLAG_CW2_CLEAN];
 		flag_wdata[FLAG_LRU]=1;
 		flag_wen = 1;
-	end else if (tag_rdata[1]==`TAG_FROM_ADDR(addr)) begin
+	end else if (tag_rdata[1]==`TAG_FROM_ADDR(caddr)) begin
 		found_tag=1;
 		cachehit_way=1;
 		flag_wdata[FLAG_CW1_CLEAN] = flag_rdata[FLAG_CW1_CLEAN];
@@ -159,18 +170,27 @@ always @(*) begin
 		flag_wdata[FLAG_LRU]=0;
 		flag_wen = 1;
 	end
-	if (found_tag && !doing_cache_refill) begin
+	if (found_tag && !doing_cache_refill && !flushing) begin
 		//Tag is found. Route the read or write to the cache data store
-		cachedata_addr = `CACHEDATA_ADDR(cachehit_way, `SET_FROM_ADDR(addr), `OFFSET_FROM_ADDR(addr));
+		cachedata_addr = `CACHEDATA_ADDR(cachehit_way, `SET_FROM_ADDR(caddr), `OFFSET_FROM_ADDR(caddr));
 		cachedata_wen = wen;
 		cachedata_wdata = wdata;
 	end else begin
 		//No tag. Switch over control of cache data to refill logic.
-		cachedata_addr = `CACHEDATA_ADDR(flag_rdata[FLAG_LRU], `SET_FROM_ADDR(addr), cache_refill_offset);
+		if (flushing) begin
+			cachedata_addr = `CACHEDATA_ADDR(flush_way, `SET_FROM_ADDR(caddr), cache_refill_offset);
+		end else begin
+			cachedata_addr = `CACHEDATA_ADDR(flag_rdata[FLAG_LRU], `SET_FROM_ADDR(caddr), cache_refill_offset);
+		end
 		//A cache line reload will always un-dirty the LRU page. Prepare the flags that indicate it so the
 		//reload state machine only has to write them.
-		flag_wdata[FLAG_CW1_CLEAN] = (flag_rdata[FLAG_LRU]==0) ? 1 : flag_rdata[FLAG_CW1_CLEAN];
-		flag_wdata[FLAG_CW2_CLEAN] = (flag_rdata[FLAG_LRU]==1) ? 1 : flag_rdata[FLAG_CW2_CLEAN];
+		if (flushing) begin
+			flag_wdata[FLAG_CW1_CLEAN] = (flush_way==0) ? 1 : flag_rdata[FLAG_CW1_CLEAN];
+			flag_wdata[FLAG_CW2_CLEAN] = (flush_way==1) ? 1 : flag_rdata[FLAG_CW2_CLEAN];
+		end else begin
+			flag_wdata[FLAG_CW1_CLEAN] = (flag_rdata[FLAG_LRU]==0) ? 1 : flag_rdata[FLAG_CW1_CLEAN];
+			flag_wdata[FLAG_CW2_CLEAN] = (flag_rdata[FLAG_LRU]==1) ? 1 : flag_rdata[FLAG_CW2_CLEAN];
+		end
 		flag_wdata[FLAG_LRU] = flag_rdata[FLAG_LRU]; //doesn't matter actually
 		flag_wen = cache_refill_flag_wen;
 		cachedata_wdata = qpi_rdata;
@@ -179,6 +199,7 @@ always @(*) begin
 end
 
 
+wire flush_line_needs_flush;
 wire need_cache_refill;
 wire cache_line_lru;
 wire cache_line_lru_clean;
@@ -189,9 +210,31 @@ assign cache_line_lru_clean = cache_line_lru ?
 		flag_rdata[FLAG_CW2_CLEAN] : 
 		flag_rdata[FLAG_CW1_CLEAN];
 
+//If flushing, flush_line and flush_way will cause caddr to iterate over the base address of each set in each
+//way in the cache. We need to check here if 1. that address is in the range to be flushed (remember, when 
+//flush=1, everything between addr and wdata should go) and 2. if it's dirty and actually needs to be flushed.
+//If not flushing, this will be 0. Also note we count in words here; strip the last 2 bits off of wdata so we
+//can feed the byte address in there.
+assign flush_line_needs_flush = flushing &&
+			((caddr >= addr) && (caddr < wdata[23:2]) 
+			&& flag_rdata[flush_way?FLAG_CW2_CLEAN:FLAG_CW1_CLEAN]==0);
+
 reg [CACHE_OFFSET_BITS-1:0] write_words_left;
 
 assign doing_cache_refill = qpi_do_read || qpi_do_write;
+
+//This muxes the current address (caddr) between the extenally-set address (for normal cache behaviour) and
+//internally-generated addresses (for cache flush actions).
+always @(*) begin
+	if (!flushing) begin
+		caddr <= addr; //just use external address
+	end else begin
+		//This is kinda roundabout... by setting the correct set here, we get the per-way tag from the tag memory
+		//and we use that to set the tag here. It's more-or-less two operations in one go. The advantage here is that
+		//we get the correct way selected by the address matching logic 'for free'.
+		caddr <= {tag_rdata[flush_way], flush_line, {CACHE_OFFSET_BITS{1'b0}} };
+	end
+end
 
 always @(posedge clk) begin
 	if (rst) begin
@@ -204,27 +247,39 @@ always @(posedge clk) begin
 		cache_refill_offset <= 0;
 		write_words_left <= 0;
 		cache_refill_wen <= 0;
+		flush_line <= 0;
+		flush_way <= 0;
+		flushing <= 0;
 	end else begin
 		ready <= 0;
 		cache_refill_flag_wen <= 0;
 		tag_wen[0] <= 0;
 		tag_wen[1] <= 0;
 		cache_refill_wen <= 0;
-		if (found_tag && (ren || wen!=0) && !doing_cache_refill) begin
+		if (flush && !flushing) begin
+			flushing <= 1;
+			flush_line <= 0;
+			flush_way <= 0;
+		end else if (found_tag && (ren || wen!=0) && !doing_cache_refill) begin
 			//Cache hit
 			ready <= 1;
-		end else if (!need_cache_refill) begin
+		end else if (!need_cache_refill && !flushing) begin
 			//Nothing going on. Idle.
 		end else if (!qpi_do_read && !qpi_do_write && !qpi_is_idle) begin
 			//Done reading/writing, but we have to wait for the qpi iface to get idle again.
-		end else if (need_cache_refill) begin
+		end else if (need_cache_refill || flush_line_needs_flush) begin
 			//Tag not found! Grabbing from SPI memory.
+			//Alternatively: flushing cache and this line needs writing back!
 			if (!qpi_do_read && !qpi_do_write) begin
 				//Start. See if we need to do writeback
-				if (!cache_line_lru_clean) begin
+				if (!cache_line_lru_clean || flush_line_needs_flush) begin
 					qpi_do_write <= 1;
 					//Address is the address that the LRU has
-					qpi_addr[ADDR_WIDTH+1:2+CACHE_OFFSET_BITS] <= {cache_line_lru?tag_rdata[1]:tag_rdata[0], current_set};
+					if (flushing) begin
+						qpi_addr[ADDR_WIDTH+1:2+CACHE_OFFSET_BITS] <= {flush_way?tag_rdata[1]:tag_rdata[0], current_set};
+					end else begin
+						qpi_addr[ADDR_WIDTH+1:2+CACHE_OFFSET_BITS] <= {cache_line_lru?tag_rdata[1]:tag_rdata[0], current_set};
+					end
 					qpi_addr[2+CACHE_OFFSET_BITS-1:0] <= 0;
 					write_words_left <= 'hffff; //all ones
 					cache_refill_offset <= 0;
@@ -232,7 +287,7 @@ always @(posedge clk) begin
 				end else begin
 					qpi_do_read <= 1;
 					//Read from the address the user gave
-					qpi_addr[ADDR_WIDTH+1:2+CACHE_OFFSET_BITS] <= {`TAG_FROM_ADDR(addr), current_set};
+					qpi_addr[ADDR_WIDTH+1:2+CACHE_OFFSET_BITS] <= {`TAG_FROM_ADDR(caddr), current_set};
 					qpi_addr[2+CACHE_OFFSET_BITS-1:0] <= 0;
 					cache_refill_offset <= -1;
 					//note: on refill, cache always writes whatever comes from cachedata mem.
@@ -262,6 +317,21 @@ always @(posedge clk) begin
 						tag_wen[1] <= 1;
 					end
 					qpi_do_read <= 0;
+				end
+			end
+		end else if (flushing && !flush_line_needs_flush) begin
+			//Note: when flushing, flush_line/flush_way are used in a combinatorial
+			//block above to pull the correct tag out of tag memory and send it to
+			//caddr so the flushing mechanism can use it.
+			if ((&flush_line) && flush_way) begin
+				flushing <= 0;
+				ready <= 1;
+			end else begin
+				if (flush_way) begin
+					flush_line <= flush_line + 1;
+					flush_way <= 0;
+				end else begin
+					flush_way <= 1;
 				end
 			end
 		end

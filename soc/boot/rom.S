@@ -8,6 +8,7 @@
 #define RAM_START		0x40000000
 #define RAM_SIZE		0x00800000 //8MiB
 //#define RAM_SIZE		0x20000  //128KiB
+#define RAM_FLUSH_REGION	0x41000000
 #define RAM_FB			0x407C0000
 #define PERI_UART_DATA	0x10000000
 #define PERI_UART_DIV	0x10000004
@@ -45,6 +46,10 @@ bbloop:
 	addi a1, a1, 1
 	bne zero, a3, bbloop
 
+	//flush cache to psram
+	li a1, RAM_FLUSH_REGION
+	li a2, RAM_SIZE
+	sw a2, 0(a1)
 
 	//Set up UART divider
 	li a1, PERI_UART_DIV

@@ -1,8 +1,9 @@
 #include <stdint.h>
 #pragma once
 
-#define MACH_RAM_START	0x40000000
-#define MACH_RAM_SIZE	(8*1024)
+#define MACH_RAM_START		0x40000000
+#define MACH_RAM_SIZE		(8*1024)
+#define MACH_FLUSH_REGION 	0x41000000
 
 #define UART_OFFSET		0x10000000
 #define UART_DATA_REG	0x0
