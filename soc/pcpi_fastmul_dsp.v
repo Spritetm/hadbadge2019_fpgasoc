@@ -56,14 +56,15 @@ module pcpi_fastmul_dsp (
 	assign rs2_lo[17]=0;
 
 	wire [35:0] res_hh, res_hl, res_lh, res_ll;
-	wire [63:0] res_hh_ex, res_hl_ex, res_lh_ex, res_ll_ex;
-	assign res_hh_ex={res_hh[31:0], 32'h0};
-	assign res_hl_ex={{16{res_hl[32]}}, res_hl[31:0], 16'h0};
-	assign res_lh_ex={{16{res_lh[32]}}, res_lh[31:0], 16'h0};
-	assign res_ll_ex={{32{res_ll[32]}}, res_ll[31:0]};
-
-	wire [63:0] res_tot;
-	assign res_tot=res_hh_ex+res_hl_ex+res_lh_ex+res_ll_ex;
+	reg [63:0] res_hh_ex, res_hl_ex, res_lh_ex, res_ll_ex;
+	reg [63:0] res_tot;
+	always @(posedge clk) begin
+		res_tot=res_hh_ex+res_hl_ex+res_lh_ex+res_ll_ex;
+		res_hh_ex<={res_hh[31:0], 32'h0};
+		res_hl_ex<={{16{res_hl[32]}}, res_hl[31:0], 16'h0};
+		res_lh_ex<={{16{res_lh[32]}}, res_lh[31:0], 16'h0};
+		res_ll_ex<={{32{res_ll[32]}}, res_ll[31:0]};
+	end
 
 	mul_18x18 mulhh (
 		.clock(clk),
