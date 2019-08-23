@@ -2,7 +2,8 @@
 module simple_mem #(
 	parameter integer WORDS = 256,
 	parameter integer WIDTH = 8,
-	parameter [WORDS-1:0] INITIAL_FILL = 0
+	parameter [WORDS-1:0] INITIAL_FILL = 0,
+	parameter INIT_FILE = ""
 ) (
 	input clk,
 	input wen,
@@ -14,7 +15,11 @@ module simple_mem #(
 	
 	integer i;
 	initial begin
-		for (i=0; i<WORDS; i++) mem[i]=INITIAL_FILL;
+		if (INIT_FILE == "") begin
+			for (i=0; i<WORDS; i++) mem[i]=INITIAL_FILL;
+		end else begin
+			$readmemh(INIT_FILE, mem);
+		end
 	end
 
 	assign rdata = mem[addr];

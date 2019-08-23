@@ -19,7 +19,6 @@ f	equ	0
 ;----------------------------------------------------------- config
 	__CONFIG  _FOSC_HS & _WDTE_OFF & _PWRTE_ON & _CP_OFF	; HS osc / no WDT / pwrt on / code not protected
 
-
 ;----------------------------------------------------------- ram def
 	CBLOCK	0x20	; GP RAM bank 0x20-0x6F (all words little endian)
 
@@ -29,13 +28,6 @@ preset_a		; new A leds 012, preset by user routine (bit 0 left)
 preset_b		; new B leds 012345, preset by user routine (bit 0 left)
 pattern			; patern selected (if 0 then no pattern, write to preset_x manually)
 
-target_b		; OUTB target values (bit 0 first)
-target_a		; OUTA target values (bit 0 first)
-slow_b			; OUTB medial values, dynamically loaded (bit 0 first)
-slow_a			; OUTA medial values, dynamically loaded (bit 0 first)
-count_b			; OUTB count values, dynamically decremented (bit 0 first)
-count_a			; OUTA count values, dynamically decremented (bit 0 first)
-
 inner_count		; inner loop counter
 outer_count		; outer loop counter
 broad_count		; slow down counter inside one step
@@ -43,6 +35,34 @@ pat_count		; pattern step countdown
 count_dim		; tempo counter inside one step
 tempw			; temporary gp
 flag			; bit 0: A active, bit 1: B active
+
+target_b		; OUTB target values (bit 0 first)
+dummy_a2
+dummy_a3
+dummy_a4
+dummy_a5
+dummy_a6
+target_a	; OUTA target values (bit 0 first)
+dummy_b2
+dummy_b3
+slow_b		; OUTB medial values, dynamically loaded (bit 0 first)
+dummy_c2
+dummy_c3
+dummy_c4
+dummy_c5
+dummy_c6
+slow_a		; OUTA medial values, dynamically loaded (bit 0 first)
+dummy_d2
+dummy_d3
+count_b		; OUTB count values, dynamically decremented (bit 0 first)
+dummy_e2
+dummy_e3
+dummy_e4
+dummy_e5
+dummy_e6
+count_a		; OUTA count values, dynamically decremented (bit 0 first)
+dummy_f2
+dummy_f3
 
 	ENDC
 ; Initial definitions:
@@ -231,7 +251,7 @@ zeros
 	movlw	8		; ramp (1: slowest) (8: ramp=cycle) (must be >0)
 	movwf	speedup
 
-	movlw	4
+	movlw	2
 	movwf	pattern
 
 ;----------------------------------------------------------- farm
@@ -293,12 +313,6 @@ no_chase
 	decf	inner_count,f
 	ifz
 	goto	pattern_inc	; =1 simple binary counting
-
-
-
-	
-
-
 
 ;-------------------------------
 patmac	macro	patx

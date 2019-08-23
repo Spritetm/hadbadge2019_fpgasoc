@@ -477,22 +477,7 @@ end
 assign stack_top = stack_reg[stack_pnt_reg];
 // Formulate the next pc_reg value (the program counter.)
 // During stall cycles, the pc is simply incremented...
-always @(
-            pc_reg
-         or pclath_reg
-         or aluout
-         or stack_pnt_reg
-         or stack_top
-         or inst_ret
-         or inst_retlw
-         or inst_retfie
-         or inst_goto
-         or inst_call
-         or inst_reg
-         or writeram_node
-         or addr_pcl
-         or exec_stall_reg
-         )
+always @(*)
 begin
   if (~exec_stall_reg &&(inst_ret || inst_retlw || inst_retfie))
     next_pc_node <= stack_top;
@@ -557,35 +542,7 @@ assign addlow_node =    {1'b0,aluinp1_reg[3:0]}
 assign aluout_zero_node = (aluout == 0)?1:0;
 
 // 1-5. Determine destination
-always @(
-            inst_reg
-         or inst_movwf
-         or inst_bcf
-         or inst_bsf
-         or inst_clrf
-         or inst_movlw
-         or inst_addlw
-         or inst_sublw
-         or inst_andlw
-         or inst_iorlw
-         or inst_xorlw
-         or inst_retlw
-         or inst_clrw
-         or inst_movf
-         or inst_swapf
-         or inst_addwf
-         or inst_subwf
-         or inst_andwf
-         or inst_iorwf
-         or inst_xorwf
-         or inst_decf
-         or inst_incf
-         or inst_rlf
-         or inst_rrf
-         or inst_decfsz
-         or inst_incfsz
-         or inst_comf
-         )
+always @(*)
 begin
   if (inst_movwf || inst_bcf || inst_bsf || inst_clrf)
   begin
@@ -618,39 +575,7 @@ end // End of determine destination logic
 
 // 2-4-1. Calculation and store result into alu-output register
 
-always @(
-            add_node
-         or aluinp1_reg
-         or aluinp2_reg
-         or status_reg
-         or inst_reg
-         or inst_movwf
-         or inst_bcf
-         or inst_bsf
-         or inst_btfsc
-         or inst_btfss
-         or inst_clrf
-         or inst_addlw
-         or inst_sublw
-         or inst_andlw
-         or inst_iorlw
-         or inst_xorlw
-         or inst_retlw
-         or inst_clrw
-         or inst_swapf
-         or inst_addwf
-         or inst_subwf
-         or inst_andwf
-         or inst_iorwf
-         or inst_xorwf
-         or inst_decf
-         or inst_incf
-         or inst_rlf
-         or inst_rrf
-         or inst_decfsz
-         or inst_incfsz
-         or inst_comf
-         )
+always @(*)
 begin
   // 2-4-1-1. Set aluout register
           // Rotate left
@@ -838,13 +763,7 @@ end  // End of process
 // Calculation of next processor state.
 // (Not including reset conditions, which are covered by the clocked logic,
 //  which also includes a "global clock enable."
-always @(
-            state_reg
-         or inst_sleep
-         or inte_sync_reg
-         or exec_stall_reg
-         or int_condition
-         )
+always @(*)
 begin
   case (state_reg)
   Q2_PP     : if (int_condition) next_state_node <= QINT_PP;
