@@ -4,3 +4,5 @@ rom.bin
 rom.cod
 rom.hex
 rom.lst
+rom.map
+rom.o
