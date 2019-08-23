@@ -30,7 +30,7 @@ initial begin
 	rst <= 1;
 	#2 rst <= 0;
 
-	#100 $finish;
+	#5000000 $finish;
 end
 
 

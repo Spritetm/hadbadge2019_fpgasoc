@@ -83,15 +83,16 @@ void main() {
 	UG_PutString(0, 320-20, "Narf.");
 	UG_SetForecolor(C_GREEN);
 	UG_PutString(0, 16, "This is a test of the framebuffer to HDMI and LCD thingamajig. What you see now is the framebuffer memory.");
-//	usb_msc_on();
+	usb_msc_on();
 	while(1) {
 		p++;
 		sprintf(buf, "%d", p);
 		UG_SetForecolor(C_RED);
 		UG_PutString(48, 64, buf);
 		cache_flush(lcdfb, lcdfb+320*480/2);
-//		memset((void*)dummy, 0, 128*1024);
-//		usb_poll();
-//		tud_task();
+		for (int i=0; i<100; i++) {
+			usb_poll();
+			tud_task();
+		}
 	}
 }

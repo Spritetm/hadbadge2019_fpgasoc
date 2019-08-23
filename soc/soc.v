@@ -6,7 +6,7 @@ module soc(
 		input clk48m,
 		input clkint, //internal clock of ecp5, <24MHz, used for rng
 		input [7:0] btn, 
-		output reg [8:0] led,
+		output [8:0] led,
 		output [27:0] genio,
 		output uart_tx,
 		input uart_rx,
@@ -468,6 +468,8 @@ module soc(
 	);
 
 	reg [15:0] pic_led;
+	wire [15:0] pic_led_out;
+	assign led = {pic_led_out[10:8], pic_led_out[5:0]};
 
 	pic_wrapper #(
 		.ROM_HEX("pic/rom_initial.hex")
@@ -475,7 +477,7 @@ module soc(
 		.clk(clk48m),
 		.reset(rst),
 		.gpio_in(pic_led),
-		.gpio_out(led),
+		.gpio_out(pic_led_out),
 		.rng(rngno[7:0]),
 		.address(mem_addr),
 		.data_in(mem_wdata),

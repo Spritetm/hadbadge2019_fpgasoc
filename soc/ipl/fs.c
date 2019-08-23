@@ -74,7 +74,7 @@ DSTATUS disk_initialize(BYTE pdrv) {
 
 DRESULT disk_read(BYTE pdrv, BYTE *buff, DWORD sector, UINT count) {
 	if (pdrv>PDRV_MAX) return RES_NOTRDY;
-	printf("disk_read sector %d count %d\n", sector, count);
+//	printf("disk_read sector %d count %d\n", sector, count);
 	bool ok=true;
 	while(count) {
 		ok&=tjftl_read(ftl[pdrv], sector, buff);
@@ -87,7 +87,7 @@ DRESULT disk_read(BYTE pdrv, BYTE *buff, DWORD sector, UINT count) {
 
 DRESULT disk_write(BYTE pdrv, const BYTE *buff, DWORD sector, UINT count) {
 	if (pdrv>PDRV_MAX) return RES_NOTRDY;
-	printf("disk_write sector %d count %d\n", sector, count);
+//	printf("disk_write sector %d count %d\n", sector, count);
 
 	bool ok=true;
 	while(count) {

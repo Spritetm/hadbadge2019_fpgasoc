@@ -72,6 +72,7 @@ module top_fpga(
 	wire [3:0] flash_sin;
 	wire flash_oe;
 	wire flash_bus_qpi;
+	wire flash_sclk;
 
 	wire clkint;
 
