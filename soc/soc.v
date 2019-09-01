@@ -61,12 +61,8 @@ module soc(
 	reg resetn=0;
 	wire rst = !resetn;
 	always @(posedge clk48m) begin
-		if (btn[7]) begin
-			if (!resetn) reset_cnt <= reset_cnt + 1;
-			resetn <= reset_cnt[5];
-		end else begin
-			reset_cnt <= 0;
-		end
+		if (!resetn) reset_cnt <= reset_cnt + 1;
+		resetn <= reset_cnt[5];
 	end
 
 	wire mem_ready;
@@ -323,7 +319,7 @@ module soc(
 			if (mem_addr[5:2]==MISC_REG_LED) begin
 				mem_rdata = { 16'h0, pic_led };
 			end else if (mem_addr[5:2]==MISC_REG_BTN) begin
-				mem_rdata = { 24'h0, btn};
+				mem_rdata = { 24'h0, ~btn};
 			end else if (mem_addr[5:2]==MISC_REG_SOC_VER) begin
 				mem_rdata = soc_version;
 			end else if (mem_addr[5:2]==MISC_REG_CPU_NO) begin

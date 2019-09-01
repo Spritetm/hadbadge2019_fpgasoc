@@ -59,6 +59,21 @@ void usb_poll();
 
 typedef void (*main_cb)(int argc, char **argv);
 
+void start_app(char *app) {
+	uintptr_t max_app_addr=0;
+	uintptr_t la=load_new_app(app, &max_app_addr);
+	if (la==0) {
+		printf("Loading app %s failed!\n", app);
+		return;
+	}
+	printf("Loaded app %s, entry point is 0x%x, max addr used is 0x%X. Running...\n", app, la, max_app_addr);
+	sbrk_app_set_heap_start(max_app_addr);
+	main_cb maincall=(main_cb)la;
+	printf("Go!\n");
+	maincall(0, NULL);
+	printf("App returned.\n");
+}
+
 void main() {
 	syscall_reinit();
 	printf("IPL running.\n");
@@ -83,13 +98,6 @@ void main() {
 		printf("%d: %08X (%d)\n", i, r, r);
 	}
 
-	uintptr_t max_app_addr=0;
-	uintptr_t la=load_new_app("autoexec.elf", &max_app_addr);
-	printf("Loaded app, entry point is 0x%x, max addr used is 0x%X. Running...\n", la, max_app_addr);
-	sbrk_app_set_heap_start(max_app_addr);
-	main_cb maincall=(main_cb)la;
-	printf("Go!\n");
-	maincall(0, NULL);
 
 	//loop
 	int p;
@@ -104,6 +112,14 @@ void main() {
 		sprintf(buf, "%d", p);
 		UG_SetForecolor(C_RED);
 		UG_PutString(48, 64, buf);
+		int btn=MISC_REG(MISC_BTN_REG);
+		sprintf(buf, "%d", btn);
+		if (btn&BUTTON_A) {
+			usb_msc_off();
+			start_app("autoexec.elf");
+			usb_msc_on();
+		}
+		UG_PutString(48, 96, buf);
 		cache_flush(lcdfb, lcdfb+320*480/2);
 		for (int i=0; i<500; i++) {
 			usb_poll();

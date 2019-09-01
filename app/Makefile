@@ -18,7 +18,7 @@ OBJS = main.o
 LIBS := gloss/libgloss.a
 LDSCRIPT := gloss/ldscript.ld
 
-CFLAGS := -Os -ggdb -I. -Igloss -I../ipl/gloss
+CFLAGS := -Og -ggdb -I. -Igloss -I../ipl/gloss
 LDFLAGS := -Wl,-Bstatic -Wl,--gc-sections -Wl,-Map,$(TARGET_MAP) -lgcc -nostartfiles -Lgloss -Wl,-T,$(LDSCRIPT) 
 export PREFIX CC AR LD OBJCOPY CFLAGS LDFLAGS APPNAME
 

@@ -9,6 +9,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <utime.h>
+
 
 #include "uart.h"
 #include "../fatfs/source/ff.h"
@@ -220,6 +222,7 @@ int _execve(const char *name, char *const argv[], char *const env[]) {
 //ToDo: unload app, if we put a menu in ipl return to that?
 void _exit(int exit_status) {
 	asm("ebreak");
+	while(1);
 }
 
 //Nein.
