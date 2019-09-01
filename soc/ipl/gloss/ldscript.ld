@@ -11,12 +11,13 @@ MEMORY {
 	ram : org = 0x40002000, len = (8*1024*1024)-0x2040 /* save 1 cache line, for simulation */
 }
 
-_stack_size = 0x1000;
+_stack_size = 0x10000; /* 64K */
 
 SECTIONS {
 	.vectors : {
 		. = ORIGIN(ram);
 		_bin_start = .;
+		KEEP(syscalls.o(.text));
 		KEEP(crt0.o(.text));
 	} > ram
 	.text : {

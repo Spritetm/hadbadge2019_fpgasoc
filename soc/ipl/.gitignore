@@ -1,7 +1,7 @@
-app.bin
-app.elf
-app.map
-app.disasm
+ipl.bin
+ipl.elf
+ipl.map
+ipl.disasm
 send
 *.o
 *.svf

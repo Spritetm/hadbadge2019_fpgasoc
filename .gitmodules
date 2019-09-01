@@ -10,3 +10,6 @@
 [submodule "soc/app/tinyusb"]
 	path = soc/ipl/tinyusb
 	url = https://github.com/hathach/tinyusb.git
+[submodule "soc/ipl/elfload"]
+	path = soc/ipl/elfload
+	url = https://github.com/Spritetm/elfload.git

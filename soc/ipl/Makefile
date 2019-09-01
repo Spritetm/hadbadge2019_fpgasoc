@@ -9,7 +9,7 @@ OBJCOPY := $(PREFIX)objcopy
 OBJDUMP := $(PREFIX)objdump
 SIZE := $(PREFIX)size
 
-APPNAME := app
+APPNAME := ipl
 TARGET_ELF := $(APPNAME).elf
 TARGET_BIN := $(APPNAME).bin
 TARGET_MAP := $(APPNAME).map
@@ -21,7 +21,8 @@ OBJS += tinyusb/src/common/tusb_fifo.o tinyusb/src/class/custom/custom_device.o
 OBJS += tinyusb/src/class/msc/msc_device.o tinyusb/src/class/midi/midi_device.o
 OBJS += tinyusb/src/class/cdc/cdc_device.o tinyusb/src/class/hid/hid_device.o
 OBJS += dcd_tntusb.o usb_descriptors.o hexdump.o flash.o
-OBJS += fatfs/source/ff.o fatfs/source/ffunicode.o
+OBJS += fatfs/source/ff.o fatfs/source/ffunicode.o loadapp.o elfload/elfload.o
+OBJS += elfload/elfreloc_riscv.o
 OBJS += tjftl/tjftl.o fs.o
 LIBS := gloss/libgloss.a
 LDSCRIPT := gloss/ldscript.ld
@@ -40,7 +41,7 @@ $(TARGET_ELF): $(LIBS) $(OBJS) $(LDSCRIPT)
 
 .PHONY: clean
 clean:
-	rm -f $(TARGET_ELF) $(TARGET_BIN) $(OBJS) $(TARGET_MAP) $(TARGET_SVF) app.disasm
+	rm -f $(TARGET_ELF) $(TARGET_BIN) $(OBJS) $(TARGET_MAP) $(TARGET_SVF) $(APPNAME).disasm
 	$(MAKE) -C gloss clean
 
 .PHONY: prog
@@ -55,7 +56,7 @@ flash: $(TARGET_BIN)
 	tinyprog -p $(TARGET_BIN) -a 0x300000
 
 gdb: $(TARGET_ELF)
-	/home/jeroen/hackaday2019/riscv-toolchain/bin/riscv32-unknown-elf-gdb -b 115200 -ex "target remote /dev/ttyUSB0" app.elf
+	/home/jeroen/hackaday2019/riscv-toolchain/bin/riscv32-unknown-elf-gdb -b 115200 -ex "target remote /dev/ttyUSB0" $(APPNAME).elf
 
 .PHONY: gloss/libgloss.a
 gloss/libgloss.a:

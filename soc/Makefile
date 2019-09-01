@@ -17,10 +17,6 @@ EXTRA_DEPEND=rom_random_seeds0x123456.hex pic/rom_initial.hex
 BRAMFILE=rom.hex
 CONSTR=had19_proto2.lpf
 TRELLIS=/usr/share/trellis
-#frequency in MHz to use as a goal for the timing calculations
-#note: 48MHz actually, but better to be on the safe size.
-FREQ=55
-
 
 #Image read mode: qspi, dual-spi, fast-read
 FLASH_MODE=qspi
@@ -33,8 +29,8 @@ all: $(PROJ).svf
 $(PROJ).json $(PROJ).blif: $(SRC) $(SRC_SYNTH) $(EXTRA_DEPEND)
 	yosys -p "read -sv $(SRC) $(SRC_SYNTH); synth_ecp5 -top top_fpga -json $(PROJ).json -blif $(PROJ).blif"
 
-%_out_synth.config: %.json
-	nextpnr-ecp5 --json $< --lpf $(CONSTR) --textcfg $@ --45k --package CABGA381 --speed 8  --freq $(FREQ)
+%_out_synth.config: %.json clock-constrainsts.py
+	nextpnr-ecp5 --json $< --lpf $(CONSTR) --textcfg $@ --45k --package CABGA381 --speed 8  --pre-pack clock-constrainsts.py
 
 %_out.config: %_out_synth.config bram_replace/bram_replace rom.hex
 	bram_replace/bram_replace -l 4096 -r $< $@ rom.hex

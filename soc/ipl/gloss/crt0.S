@@ -14,12 +14,9 @@
 .global _bin_start
 .global _bin_end
 
-reset_vec:
-	.word 0x1337b33f
-	.word _bin_end - _bin_start
+.global start_ipl
 
-_start:
-
+start_ipl:
 	//setup stack
 	la x2, _stack_start
 	
