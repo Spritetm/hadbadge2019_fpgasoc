@@ -1,3 +1,4 @@
+-include include.mk
 PROJ=soc
 SRC=soc.v picorv32/picorv32.v simpleuart.v lcdiface.v qpi_cache/qpimem_cache.v 
 SRC+=qpi_cache/qpimem_iface.v qpi_cache/simple_mem.v qpi_cache/simple_mem_words.v
@@ -97,7 +98,7 @@ rom.hex: boot/
 	cat boot/rom.bin | hexdump -v -e '/4 "%08X\n"' > rom.hex
 
 gdb:
-	/home/jeroen/hackaday2019/riscv-toolchain/bin/riscv32-unknown-elf-gdb -b 115200 -ex "set debug remote 1" -ex "target remote /dev/ttyUSB0" app/app.elf
+	$(RISCV_TOOLCHAIN_PATH)riscv32-unknown-elf-gdb -b 115200 -ex "set debug remote 1" -ex "target remote /dev/ttyUSB0" app/app.elf
 
 corr_synth_for_verilator: corr_synth_for_verilator.c
 	gcc -o corr_synth_for_verilator corr_synth_for_verilator.c

@@ -1,7 +1,6 @@
-TC_PATH := /home/jeroen/hackaday2019/poc/toolchain/toolchain/bin
-NEWLIB_PATH := /home/jeroen/hackaday2019/poc/toolchain/toolchain/bin
+-include ../include.mk
 
-PREFIX := $(TC_PATH)/riscv32-unknown-elf-
+PREFIX := $(RISCV_TOOLCHAIN_PATH)riscv32-unknown-elf-
 CC := $(PREFIX)gcc
 AR := $(PREFIX)ar
 LD := $(PREFIX)ld
