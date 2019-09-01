@@ -278,14 +278,17 @@ module soc(
 	wire [7:0] flash_rdata;
 	wire flash_idle;
 
-	parameter MISC_REG_LED = 0; //read will give SOC version
-	parameter MISC_REG_PSRAMOVR_A = 1; //read will give current CPU ID... ToDo: make that more logical
-	parameter MISC_REG_PSRAMOVR_B = 2;
-	parameter MISC_REG_RESETN = 3;
-	parameter MISC_REG_FLASH_CTL = 4;
-	parameter MISC_REG_FLASH_WDATA = 5;
-	parameter MISC_REG_FLASH_RDATA = 6;
-	parameter MISC_REG_RNG = 7;
+	parameter MISC_REG_LED = 0;
+	parameter MISC_REG_BTN = 1;
+	parameter MISC_REG_SOC_VER = 2;
+	parameter MISC_REG_CPU_NO = 3;
+	parameter MISC_REG_PSRAMOVR_A = 4; //read will give current CPU ID... ToDo: make that more logical
+	parameter MISC_REG_PSRAMOVR_B = 5;
+	parameter MISC_REG_RESETN = 6;
+	parameter MISC_REG_FLASH_CTL = 7;
+	parameter MISC_REG_FLASH_WDATA = 8;
+	parameter MISC_REG_FLASH_RDATA = 9;
+	parameter MISC_REG_RNG = 10;
 
 	wire [31:0] rngno;
 	rng rng(
@@ -317,16 +320,26 @@ module soc(
 			end
 		end else if (mem_addr[31:28]=='h2) begin
 			misc_select = mem_valid;
-			if (mem_addr[4:2]==MISC_REG_LED) begin
+			if (mem_addr[5:2]==MISC_REG_LED) begin
+				mem_rdata = { 16'h0, pic_led };
+			end else if (mem_addr[5:2]==MISC_REG_BTN) begin
+				mem_rdata = { 24'h0, btn};
+			end else if (mem_addr[5:2]==MISC_REG_SOC_VER) begin
 				mem_rdata = soc_version;
-			end else if (mem_addr[4:2]==MISC_REG_PSRAMOVR_A) begin
-				mem_rdata=arb_currcpu;
-			end else if (mem_addr[4:2]==MISC_REG_FLASH_CTL) begin
-				mem_rdata={30'h0, flash_idle, flash_claim};
-			end else if (mem_addr[4:2]==MISC_REG_FLASH_RDATA) begin
-				mem_rdata={24'h0, flash_rdata};
-			end else if (mem_addr[4:2]==MISC_REG_RNG) begin
-				mem_rdata=rngno;
+			end else if (mem_addr[5:2]==MISC_REG_CPU_NO) begin
+				mem_rdata = arb_currcpu;
+			end else if (mem_addr[5:2]==MISC_REG_PSRAMOVR_A) begin
+				mem_rdata = psrama_ovr;
+			end else if (mem_addr[5:2]==MISC_REG_PSRAMOVR_B) begin
+				mem_rdata = psramb_ovr;
+			end else if (mem_addr[5:2]==MISC_REG_FLASH_CTL) begin
+				mem_rdata = {30'h0, flash_idle, flash_claim};
+			end else if (mem_addr[5:2]==MISC_REG_FLASH_RDATA) begin
+				mem_rdata = {24'h0, flash_rdata};
+			end else if (mem_addr[5:2]==MISC_REG_RNG) begin
+				mem_rdata = rngno;
+			end else begin
+				mem_rdata = 0;
 			end
 			//todo: improve misc/psram/... readback
 		end else if (mem_addr[31:28]=='h3) begin
@@ -469,7 +482,8 @@ module soc(
 
 	reg [15:0] pic_led;
 	wire [15:0] pic_led_out;
-	assign led = {pic_led_out[10:8], pic_led_out[5:0]};
+//	assign led = {pic_led_out[10:8], pic_led_out[5:0]};
+	assign led = pic_led;
 
 	pic_wrapper #(
 		.ROM_HEX("pic/rom_initial.hex")
@@ -657,7 +671,7 @@ module soc(
 	always @(*) begin
 		flash_xfer <= 0;
 		if (misc_select && mem_wstrb[0]) begin
-			if (mem_addr[4:2]==MISC_REG_FLASH_WDATA) begin
+			if (mem_addr[5:2]==MISC_REG_FLASH_WDATA) begin
 				flash_xfer <= 1; //also latches spi_wdata of flash
 			end
 		end
@@ -674,17 +688,17 @@ module soc(
 			flash_claim <= 0;
 		end else begin
 			if (misc_select && mem_wstrb[0]) begin
-				if (mem_addr[4:2]==MISC_REG_LED) begin
+				if (mem_addr[5:2]==MISC_REG_LED) begin
 					pic_led <= mem_wdata[16:0];
-				end else if (mem_addr[4:2]==MISC_REG_PSRAMOVR_A) begin
+				end else if (mem_addr[5:2]==MISC_REG_PSRAMOVR_A) begin
 					psrama_ovr <= mem_wdata;
-				end else if (mem_addr[4:2]==MISC_REG_PSRAMOVR_B) begin
+				end else if (mem_addr[5:2]==MISC_REG_PSRAMOVR_B) begin
 					psramb_ovr <= mem_wdata;
-				end else if (mem_addr[4:2]==MISC_REG_RESETN) begin
+				end else if (mem_addr[5:2]==MISC_REG_RESETN) begin
 					cpu_resetn[1] <= mem_wdata[1];
-				end else if (mem_addr[4:2]==MISC_REG_FLASH_CTL) begin
+				end else if (mem_addr[5:2]==MISC_REG_FLASH_CTL) begin
 					flash_claim <= mem_wdata[0];
-				end else if (mem_addr[4:2]==MISC_REG_FLASH_WDATA) begin
+				end else if (mem_addr[5:2]==MISC_REG_FLASH_WDATA) begin
 					//handled in combinatorial block above
 				end
 			end

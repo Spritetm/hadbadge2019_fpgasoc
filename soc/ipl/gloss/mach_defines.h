@@ -1,11 +1,10 @@
-#include <stdint.h>
 #pragma once
 
 #define MACH_RAM_START		0x40000000
-#define MACH_RAM_SIZE		(8*1024)
+#define MACH_RAM_SIZE		(8*1024*1024)
 #define MACH_FLUSH_REGION 	0x41000000
 
-#define MEM_IPL_START		0x40020000
+#define MEM_IPL_START		0x40002000
 #define MEM_APP_START		0x40100000
 
 #define UART_OFFSET		0x10000000
@@ -14,8 +13,7 @@
 
 #define MISC_OFFSET 0x20000000
 #define MISC_LED_REG 0x0
-/*
-#define BUTTON_READ_REG 0x4
+#define MISC_BTN_REG 0x4
 #define BUTTON_UP (1<<0)
 #define BUTTON_DOWN (1<<1)
 #define BUTTON_LEFT (1<<2)
@@ -24,16 +22,17 @@
 #define BUTTON_B (1<<5)
 #define BUTTON_SELECT (1<<6)
 #define BUTTON_START (1<<7)
-*/
-#define MISC_PSRAMOVRA_REG 0x4
-#define MISC_PSRAMOVRB_REG 0x8
-#define MISC_RESETN_REG 0xC
-#define MISC_FLASH_CTL_REG 0x10
+#define MISC_SOC_VER 0x8
+#define MISC_CPU_NO 0xC
+#define MISC_PSRAMOVRA_REG 0x10
+#define MISC_PSRAMOVRB_REG 0x14
+#define MISC_RESETN_REG 0x18
+#define MISC_FLASH_CTL_REG 0x1C
 #define MISC_FLASH_CTL_CLAIM (1<<0)
 #define MISC_FLASH_CTL_IDLE (1<<1)
-#define MISC_FLASH_WDATA_REG 0x14
-#define MISC_FLASH_RDATA_REG 0x18
-#define MISC_RNG_REG 0x1C
+#define MISC_FLASH_WDATA_REG 0x20
+#define MISC_FLASH_RDATA_REG 0x24
+#define MISC_RNG_REG 0x28
 
 #define LCD_OFFSET 0x30000000
 #define LCD_COMMAND_REG 0x0

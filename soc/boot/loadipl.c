@@ -14,11 +14,10 @@ typedef struct {
 } ipl_t;
 
 #define IPL_FLASH_LOC 0x300000
-#define IPL_RAM_LOC 0x40002000
 #define IPL_MAGIC 0x1337b33f
 
 void load_ipl() {
-	ipl_t *ipl=(ipl_t*)IPL_RAM_LOC;
+	ipl_t *ipl=(ipl_t*)MEM_IPL_START;
 	flash_wake(FLASH_SEL_INT);
 	
 	flash_read(FLASH_SEL_INT, IPL_FLASH_LOC, (uint8_t*)ipl, sizeof(ipl_t));

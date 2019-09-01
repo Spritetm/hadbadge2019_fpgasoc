@@ -61,6 +61,7 @@ typedef void (*main_cb)(int argc, char **argv);
 
 void main() {
 	syscall_reinit();
+	printf("IPL running.\n");
 	MISC_REG(MISC_LED_REG)=0xff;
 	lcd_init();
 	lcdfb=calloc(320*512/2, 1);
