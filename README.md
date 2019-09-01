@@ -38,6 +38,10 @@ the flash of the badge over USB. (Used to upload new config without JTAG.)
 - blink contains a trivial blinker project, useful to make sure your setup 
 works. 
 
+- app contains a bare-bones test application that the IPL is able to load and execute. This should
+be separated into a SDK and an example app; all standard C-based user apps should be compiled
+like this.
+
 - soc contains the actual SoC that is the main FPGA load.
 
 The soc folder at this point is a bit of a mess: it contains most of the 'base' Verilog code,
@@ -126,8 +130,10 @@ Synthesize and upload the SoC
 
 - Connect the badge over USB, make sure it is powered off.
 
-- Turn it on, and 2 seconds after, run `make flash` in the fpga/soc directory.
+- Turn it on, and 1 second after, run `make flash` in the fpga/soc directory.
   (Note timing is kinda critical here.)
+
+- You may need to answer 'yes' to the 'overwrite bootloader' prompt
 
 Compile and upload the IPL
 --------------------------
@@ -139,6 +145,7 @@ Compile and upload the IPL
 - Turn it on, and 2 seconds after, run `make flash` in the fpga/soc/ipl directory.
   (Note timing is kinda critical here.)
 
+- You may need to answer 'yes' to the 'overwrite bootloader' prompt
 
 Upload an app
 -------------
@@ -148,6 +155,8 @@ Upload an app
 - Go to the app subdirectory
 
 - Run `make`
+
+- Connect the badge over USB. Make sure the IPL is fully started.
 
 - Mount the badge as an USB drive, if your OS doesn't do this automatically
 

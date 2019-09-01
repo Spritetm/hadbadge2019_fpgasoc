@@ -315,7 +315,6 @@ void sbrk_app_set_heap_start(uintptr_t heapstart) {
 }
 
 char * sbrk_app (int nbytes) {
-	printf("sbrk_app: base=0x%p ct=%d\n", app_heap_ptr, nbytes);
 	char *base;
 	base = app_heap_ptr;
 	app_heap_ptr += nbytes;
