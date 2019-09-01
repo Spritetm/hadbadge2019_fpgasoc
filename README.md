@@ -12,10 +12,13 @@ Intro
 -----
 
 This project contains the FPGA configurations for the badge. At the moment,
-the workflow is mainly over USB: you need a JTAG rig to program the badge,
-both to upload a new SoC configuration as well as to send the application to
-SRAM. There is some work in progress for a flash/USB-based workflow, but this
-is still a work-in-progress (see tinyfpga-bootloader).
+the workflow is mainly over USB: while you can us a JTAG rig to program the badge,
+the badge comes with an USB bootloader (tinyfpga-bootloader) which can be
+used to program the flash, allowing you to both upload a new SoC configuration
+and to update the Initial Program Loader (IPL) binary. Furthermore, the
+current IPL can be set to Mass Storage Mode. This mode makes the FAT-partition
+of the internal flash show up as a disk drive, allowing you to upload apps and
+data files.
 
 
 SoC
@@ -23,7 +26,7 @@ SoC
 At the moment, the SOC is a dual-core RiscV processor that uses the external
 PSRAM as it's main memory through an internal cache. There's a simple uart
 for debugging, as well as a framebuffer-based graphics subsystem for the
-LCD and HDMI interfaces. 
+LCD and HDMI interfaces.
 
 
 File structure
@@ -33,7 +36,9 @@ File structure
 the flash of the badge over USB. (Used to upload new config without JTAG.) 
 
 - blink contains a trivial blinker project, useful to make sure your setup 
-works. soc contains the actual SoC that is the main load.
+works. 
+
+- soc contains the actual SoC that is the main FPGA load.
 
 The soc folder at this point is a bit of a mess: it contains most of the 'base' Verilog code,
 as well as code for simulation of parts using Icarus, or the entirety using Verilator. Apart
@@ -44,22 +49,31 @@ generate a new bitfile when the bootloader code has changed without having to re
 the entire project.
 
 - jtagload is a nearly-trivial program to convert a binary executable file into a svf file 
-that can then be sent to the FPGA using OpenOCD.
+that can then be sent to the FPGA using OpenOCD. At the moment, the boot ROM only invokes a
+mode compatible with this when it doesn't find a proper IPL in flash.
 
 - boot contains the bootloader, to be embedded in bram in the FPGA image. At the moment,
-it tests the SPI memory (takes a few seconds), then waits for an app to be uploaded over
+it tests the SPI memory (takes a few seconds), then initializes the flash and loads the
+IPL from there. If it doesn't see a valid IPL, it waits for an app to be uploaded over
 JTAG.
 
-- app contains the main application. It's a standalone executable, to be uploaded over
-JTAG (at the moment, the bootloader cannot load it from flash yet).
+- ipl contains the Initial Program Loader, aka IPL. The IPL mostly contains driver code,
+to be called through a syscall jump table at the beginning of the binary. It also has logic
+to load an initial program, and to use USB to set up the internal flash as a mass storage device
+so an attached PC can access it directly. It also contains a flash translation layer as well
+as a fatfs driver, so you can also access the files dropped by the PC programmatically.
 
-- hdmi contains all Verilog for the hdmi output
+- hdmi contains all Verilog for the hdmi output.
 
 - picorv32 is a submodule containing the PicoRV32 RiscV core.
 
 - qpi_cache is the cache for and interface to the external SPI PSRAM.
 
 - video contains the renderer and sequencing logic for the framebuffer.
+
+- pic contains a PIC16F84 core which is intended to drive the attached LEDs.
+
+- usb contains an USB device core.
 
 How to use
 ==========
@@ -75,32 +89,70 @@ Did I already say this is work in progress? You more-or-less need:
 - A RiscV toolchain, for instance built using crosstool-NG. Make sure that the toolchain is
 built for the Newlib C library, as the application stuff uses that.
 
-- OpenOCD, plus JTAG hardware. Version of OpenOCD isn't really relevant as we only use it to upload
-svf files at this point. JTAG hardware: faster = better, something FT2232H-based works well.
+- Optional: OpenOCD, plus JTAG hardware. Version of OpenOCD isn't really relevant as we only 
+use it to upload svf files at this point. JTAG hardware: faster = better, something 
+FT2232H-based works well.
 
-- The badge
+- The badge itself. Duh.
 
-In theory, the current workflow is something like:
+- 2xAA battery, or a 3V'ish power supply. If you want to apply an external power supply, you
+  can apply it on J1, between VBAT and GND. Note the badge cannot be powered from USB alone.
 
-- Connect the badge to JTAG
+The current workflow to get a badge running 'from scratch' is documented below. Note that your
+badge probably already has TinyFPGA-Boot, the SoC, IPL and/or apps flashed to that. You can skip the
+sections you don't need 
 
-- Run `make prog` in the soc directory
+Flash tinyfpga-boot to the badge
+--------------------------------
+Note that this also overwrites any SoC you have in flash with an ancient version. You may want to
+flash the up-to-date SoC immediately after. Also note that your badge probably also comes with a
+viable TinyFPGA-Boot version in flash, so in all likelyhood there's no need to dig out the JTAG
+adapter. If you still want to do this, here's how:
 
-- Wait until the RAM test is done (D5, D6, D7 are lit)
-
-- Run `make prog` in the app directory
-
-- Gaze at the beauty of the SoC running the app
-
-At this point, you can also flash the bootloader and SoC (but not the app) to flash.
+- Make sure the openocd.conf in this directory reflects your JTAG hardware.
 
 - Make sure the badge is connected both over JTAG as well as USB
 
-- Run 'make flash' in the TinyFPGA-Bootloader/boards/hadbadge2019 directory
+- Run 'make flash' in the TinyFPGA-Bootloader/boards/HackadayBadge2019 directory
 
 - Answer 'yes' on the prompt
 
-- Run `make flash` in the SoC directory.
+- Wait until flashing is complete.
+
+Synthesize and upload the SoC
+-----------------------------
+
+- Run `make` in the fpga/soc directory
+
+- Connect the badge over USB, make sure it is powered off.
+
+- Turn it on, and 2 seconds after, run `make flash` in the fpga/soc directory.
+  (Note timing is kinda critical here.)
+
+Compile and upload the IPL
+--------------------------
+
+- Run `make` in the soc/ipl directory
+
+- Connect the badge over USB, make sure it is powered off.
+
+- Turn it on, and 2 seconds after, run `make flash` in the fpga/soc/ipl directory.
+  (Note timing is kinda critical here.)
+
+
+Upload an app
+-------------
+
+- Turn on the badge. Make sure the SoC and IPL are flashed and recent.
+
+- Go to the app subdirectory
+
+- Run `make`
+
+- Mount the badge as an USB drive, if your OS doesn't do this automatically
+
+- Copy the generated *.elf file to the USB drive
+
 
 Flash partitions
 ================
@@ -129,5 +181,6 @@ What do they do?
   of IPL+app)
 
 - The IPL will initialize the LCD and framebuffer and load the initial app from the FAT16 partition 
-  on flash. If it cannot load it, it will switch the device to USB MSC upload mode.
+  on flash. If it cannot load it, it will switch the device to USB MSC upload mode. (Or will it show
+  the main menu already? Don't quite know...)
 
