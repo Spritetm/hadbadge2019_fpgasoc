@@ -8,13 +8,14 @@ extern volatile uint32_t MISC[];
 #define MISC_REG(i) MISC[(i)/4]
 
 static inline void flash_start_xfer(int flash_sel) {
-	//ToDo: use flash_sel to select internal or external flash cs
+	MISC_REG(MISC_FLASH_SEL_REG)=(flash_sel==0)?MISC_FLASH_SEL_INTFLASH:MISC_FLASH_SEL_CARTFLASH;
 	MISC_REG(MISC_FLASH_CTL_REG)=MISC_FLASH_CTL_CLAIM;
 }
 
 static inline void flash_end_xfer() {
 	while (!(MISC_REG(MISC_FLASH_CTL_REG)&MISC_FLASH_CTL_IDLE));
 	MISC_REG(MISC_FLASH_CTL_REG)=0;
+	MISC_REG(MISC_FLASH_SEL_REG)=MISC_FLASH_SEL_INTFLASH;
 }
 
 static inline uint8_t flash_send_recv(uint8_t data) {

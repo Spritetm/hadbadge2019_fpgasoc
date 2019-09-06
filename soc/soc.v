@@ -37,6 +37,9 @@ module soc(
 		output [3:0] flash_sout,
 		output flash_oe,
 		output flash_bus_qpi,
+		output fsel_c,
+		output reg fsel_d,
+		output programn,
 		
 		input vid_pixelclk,
 		input vid_fetch_next,
@@ -57,6 +60,8 @@ module soc(
 	);
 
 
+	reg fpga_reload=0;
+	assign programn = ~fpga_reload;
 	reg [5:0] reset_cnt = 0;
 	reg resetn=0;
 	wire rst = !resetn;
@@ -285,6 +290,7 @@ module soc(
 	parameter MISC_REG_FLASH_WDATA = 8;
 	parameter MISC_REG_FLASH_RDATA = 9;
 	parameter MISC_REG_RNG = 10;
+	parameter MISC_REG_FLASH_SEL = 11;
 
 	wire [31:0] rngno;
 	rng rng(
@@ -334,6 +340,8 @@ module soc(
 				mem_rdata = {24'h0, flash_rdata};
 			end else if (mem_addr[5:2]==MISC_REG_RNG) begin
 				mem_rdata = rngno;
+			end else if (mem_addr[5:2]==MISC_REG_FLASH_SEL) begin
+				mem_rdata = {31'h0, fsel_d};
 			end else begin
 				mem_rdata = 0;
 			end
@@ -662,6 +670,9 @@ module soc(
 		.spi_bus_qpi(flash_bus_qpi)
 	);
 
+	reg fsel_strobe;
+	reg programn_queue;
+
 
 	//misc write ops to periphs that have internal register
 	always @(*) begin
@@ -682,7 +693,11 @@ module soc(
 			psramb_ovr <= 0;
 			cpu_resetn <= 1;
 			flash_claim <= 0;
+			fsel_strobe <= 0;
+			fsel_d <= 0;
+			programn_queue <= 0;
 		end else begin
+			fsel_strobe <= 0;
 			if (misc_select && mem_wstrb[0]) begin
 				if (mem_addr[5:2]==MISC_REG_LED) begin
 					pic_led <= mem_wdata[16:0];
@@ -696,6 +711,35 @@ module soc(
 					flash_claim <= mem_wdata[0];
 				end else if (mem_addr[5:2]==MISC_REG_FLASH_WDATA) begin
 					//handled in combinatorial block above
+				end else if (mem_addr[5:2]==MISC_REG_FLASH_SEL) begin
+					fsel_d <= mem_wdata[0];
+					fsel_strobe <= 1;
+					if (mem_wdata[24:0]==24'hD0F1A5) begin
+						//D0F1A50x is written. Pull PROGRAMN.
+						programn_queue <= 1;
+					end
+				end
+			end
+		end
+	end
+
+	//The D-type flipflop that muxes between the two flashes should
+	//be quick enough to work at 48MHz, but still, better to make sure it's
+	//set before pulling PROGRAMN.
+	reg [2:0] fsel_delay;
+
+	assign fsel_c = (fsel_delay==5 || fsel_delay==4 || fsel_delay==3);
+	always @(posedge clk48m) begin
+		if (rst) begin
+			fsel_delay <= 0;
+			fpga_reload <= 0;
+		end else begin
+			if (fsel_strobe) begin
+				fsel_delay <= 7;
+			end else if (fsel_delay != 0) begin
+				fsel_delay <= fsel_delay - 1;
+				if (fsel_delay == 1 && programn_queue == 1) begin
+					fpga_reload <= 1;
 				end
 			end
 		end

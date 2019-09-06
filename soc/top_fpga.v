@@ -31,6 +31,9 @@ module top_fpga(
 		inout flash_mosi,
 		inout flash_wp,
 		inout flash_hold,
+		output fsel_d,
+		output fsel_c,
+		output programn,
 		
 		output [3:0] gpdi_dp, gpdi_dn,
 		inout usb_dp,
@@ -111,6 +114,9 @@ module top_fpga(
 		.flash_sout(flash_sout),
 		.flash_oe(flash_oe),
 		.flash_bus_qpi(flash_bus_qpi),
+		.fsel_d(fsel_d),
+		.fsel_c(fsel_c),
+		.programn(programn),
 
 		.vid_pixelclk(vid_pixelclk),
 		.vid_fetch_next(vid_fetch_next),

@@ -88,9 +88,6 @@ void main() {
 	tusb_init();
 	printf("USB inited.\n");
 	
-	int id=flash_get_id(FLASH_SEL_INT);
-	printf("flashid: %x\n", id);
-	fs_init();
 
 	printf("Your random numbers are:\n");
 	for (int i=0; i<16; i++) {
@@ -98,10 +95,12 @@ void main() {
 		printf("%d: %08X (%d)\n", i, r, r);
 	}
 
+		fs_init();
+
 
 	//loop
 	int p;
-	char buf[20];
+	char buf[200];
 	UG_PutString(0, 0, "Hello world!");
 	UG_PutString(0, 320-20, "Narf.");
 	UG_SetForecolor(C_GREEN);
@@ -113,13 +112,19 @@ void main() {
 		UG_SetForecolor(C_RED);
 		UG_PutString(48, 64, buf);
 		int btn=MISC_REG(MISC_BTN_REG);
-		sprintf(buf, "%d", btn);
+		sprintf(buf, "%d   ", btn);
+		UG_PutString(48, 96, buf);
+
+		int id_int=flash_get_id(FLASH_SEL_INT);
+		int id_ext=flash_get_id(FLASH_SEL_CART);
+		sprintf(buf, "flashid: %x / %x      ", id_int, id_ext);
+		UG_PutString(48, 128, buf);
+
 		if (btn&BUTTON_A) {
 			usb_msc_off();
 			start_app("autoexec.elf");
 			usb_msc_on();
 		}
-		UG_PutString(48, 96, buf);
 		cache_flush(lcdfb, lcdfb+320*480/2);
 		for (int i=0; i<500; i++) {
 			usb_poll();
