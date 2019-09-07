@@ -91,7 +91,10 @@ Did I already say this is work in progress? You more-or-less need:
 - prjtrellis, to generate ECP5 bitstreams; also use a recent version.
 
 - A RiscV toolchain, for instance built using crosstool-NG. Make sure that the toolchain is
-built for the Newlib C library, as the application stuff uses that.
+built for the Newlib C library, as the application stuff uses that. It normally has binaries
+with the name ``riscv32-unknown-elf-*``. The build system assumes the binaries for it are in your
+path, but if not, you can either set the environment ``RISCV_TOOLCHAIN_PATH`` to match, or put
+a line setting RISCV_TOOLCHAIN_PATH in a newly-created soc/include.mk file.
 
 - Optional: OpenOCD, plus JTAG hardware. Version of OpenOCD isn't really relevant as we only 
 use it to upload svf files at this point. JTAG hardware: faster = better, something 
