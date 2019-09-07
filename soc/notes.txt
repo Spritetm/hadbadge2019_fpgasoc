@@ -121,7 +121,14 @@ Shipping: 1 nov
 HAD Supercon: 15 nov
 
 
-
+Cart and internal flash: 2 problems.
+- If we boot a SoC from ext flash, it should see it is booted from that and use the
+  external drive as the default.
+  * Need to figure out the state of the flipflop... how? not touching sel line and reading some
+    unique val would work...
+- If we put a SoC on the ext flash, it should load the IPL from the same flash. But what about
+  the partition table?
+  * This can be fixed by looking for the 32-bit marker in 2 places.
 
 
 

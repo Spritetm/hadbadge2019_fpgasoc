@@ -16,3 +16,4 @@ soc_syn_corr.v
 jtagload/jtagload
 soc_out_synth.config
 soc.blif
+include.mk
