@@ -4,7 +4,7 @@ module stimulus();
 
 reg clk, rst;
 wire qpi_do_read, qpi_do_write;
-reg qpi_next_byte;
+reg qpi_next_word;
 wire [23:0] qpi_addr;
 reg [31:0] qpi_rdata;
 wire [31:0] qpi_wdata;
@@ -27,7 +27,7 @@ qpimem_cache #(
 	
 	.qpi_do_read(qpi_do_read),
 	.qpi_do_write(qpi_do_write),
-	.qpi_next_byte(qpi_next_byte),
+	.qpi_next_word(qpi_next_word),
 	.qpi_addr(qpi_addr),
 	.qpi_wdata(qpi_wdata),
 	.qpi_rdata(qpi_rdata),
@@ -48,8 +48,8 @@ always @(posedge clk) begin
 	if (qpi_do_read || qpi_do_write) begin
 		qpi_is_idle <= 0;
 		#4 qpi_rdata <= qpi_addr;
-		qpi_next_byte <= 1;
-		#1 qpi_next_byte <= 0;
+		qpi_next_word <= 1;
+		#1 qpi_next_word <= 0;
 	end else begin
 		qpi_is_idle <= 1;
 	end
@@ -61,7 +61,7 @@ initial begin
 	$dumpvars(0, stimulus);
 
 	qpi_is_idle <= 1;
-	qpi_next_byte <= 0;
+	qpi_next_word <= 0;
 	qpi_rdata <= 0;
 	addr <= 0;
 	wen <= 0;

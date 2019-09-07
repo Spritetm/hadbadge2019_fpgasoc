@@ -4,7 +4,7 @@ module stimulus();
 
 reg clk, rst;
 reg do_read, do_write;
-wire next_byte;
+wire next_word;
 reg [24:0] addr;
 wire [31:0] rdata;
 reg [31:0] wdata;
@@ -26,7 +26,7 @@ qpimem_iface qpimem_iface(
 	
 	.do_read(do_read),
 	.do_write(do_write),
-	.next_byte(next_byte),
+	.next_word(next_word),
 	.addr(addr),
 	.wdata(wdata),
 	.rdata(rdata),
@@ -75,19 +75,19 @@ initial begin
 	#5 addr <= 'h123456;
 	wdata <= 'h89ABCDEF;
 	do_write <= 1;
-	while (!next_byte) #1;
+	while (!next_word) #1;
 	wdata <= 'h11223344;
-	while (!next_byte) #1;
+	while (!next_word) #1;
 	wdata <= 'hF5667788;
-	while (!next_byte) #1;
+	while (!next_word) #1;
 	#1 do_write <= 0;
 	while (!is_idle) #1;
 
 	addr <= 'h123456;
 	do_read <= 1;
-	while (!next_byte) #1;
-	while (!next_byte) #1;
-	while (!next_byte) #1;
+	while (!next_word) #1;
+	while (!next_word) #1;
+	while (!next_word) #1;
 	do_read <= 0;
 	while (!is_idle) #1;
 

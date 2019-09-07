@@ -10,7 +10,7 @@ module qpimem_cache #(
 	
 	output reg qpi_do_read,
 	output reg qpi_do_write,
-	input qpi_next_byte,
+	input qpi_next_word,
 	output reg [ADDR_WIDTH+2-1:0] qpi_addr, //note: this addresses bytes
 	output reg [31:0] qpi_wdata,
 	input [31:0] qpi_rdata,
@@ -292,7 +292,7 @@ always @(posedge clk) begin
 					cache_refill_offset <= -1;
 					//note: on refill, cache always writes whatever comes from cachedata mem.
 				end
-			end else if (qpi_do_write && qpi_next_byte) begin
+			end else if (qpi_do_write && qpi_next_word) begin
 				qpi_addr[2+CACHE_OFFSET_BITS-1:2] <= qpi_addr[2+CACHE_OFFSET_BITS-1:2] + 1;
 				cache_refill_offset <= cache_refill_offset + 1;
 				write_words_left <= write_words_left - 1;
@@ -306,7 +306,7 @@ always @(posedge clk) begin
 					//write it.
 					cache_refill_flag_wen <= 1;
 				end
-			end else if (qpi_do_read && qpi_next_byte) begin
+			end else if (qpi_do_read && qpi_next_word) begin
 				qpi_addr[2+CACHE_OFFSET_BITS-1:2] <= qpi_addr[2+CACHE_OFFSET_BITS-1:2] + 1;
 				cache_refill_offset <= cache_refill_offset + 1;
 				cache_refill_wen <= 'hf;

@@ -507,7 +507,7 @@ module soc(
 
 	wire qpi_do_read;
 	wire qpi_do_write;
-	reg qpi_next_byte;
+	reg qpi_next_word;
 	wire [23:0] qpi_addr;
 	reg [31:0] qpi_rdata;
 	wire [31:0] qpi_wdata;
@@ -520,7 +520,7 @@ module soc(
 	wire [32*QPI_MASTERCNT-1:0] qpimem_arb_rdata;
 	wire [QPI_MASTERCNT-1:0] qpimem_arb_do_read;
 	wire [QPI_MASTERCNT-1:0] qpimem_arb_do_write;
-	wire [QPI_MASTERCNT-1:0] qpimem_arb_next_byte;
+	wire [QPI_MASTERCNT-1:0] qpimem_arb_next_word;
 	wire [QPI_MASTERCNT-1:0] qpimem_arb_is_idle;
 
 	qpimem_arbiter #(
@@ -534,7 +534,7 @@ module soc(
 		.rdata(qpimem_arb_rdata),
 		.do_read(qpimem_arb_do_read),
 		.do_write(qpimem_arb_do_write),
-		.next_byte(qpimem_arb_next_byte),
+		.next_word(qpimem_arb_next_word),
 		.is_idle(qpimem_arb_is_idle),
 
 		.s_addr(qpi_addr),
@@ -543,7 +543,7 @@ module soc(
 		.s_do_write(qpi_do_write),
 		.s_do_read(qpi_do_read),
 		.s_is_idle(qpi_is_idle),
-		.s_next_byte(qpi_next_byte)
+		.s_next_word(qpi_next_word)
 	);
 
 	wire [4:0] mem_wen;
@@ -563,7 +563,7 @@ module soc(
 		
 		.qpi_do_read(qpimem_arb_do_read[0]),
 		.qpi_do_write(qpimem_arb_do_write[0]),
-		.qpi_next_byte(qpimem_arb_next_byte[0]),
+		.qpi_next_word(qpimem_arb_next_word[0]),
 		.qpi_addr(`SLICE_32(qpimem_arb_addr, 0)),
 		.qpi_wdata(`SLICE_32(qpimem_arb_wdata, 0)),
 		.qpi_rdata(`SLICE_32(qpimem_arb_rdata, 0)),
@@ -597,7 +597,7 @@ module soc(
 		.next_field(next_field),
 
 		.m_do_read(qpimem_arb_do_read[1]),
-		.m_next_byte(qpimem_arb_next_byte[1]),
+		.m_next_word(qpimem_arb_next_word[1]),
 		.m_addr(`SLICE_32(qpimem_arb_addr, 1)),
 		.m_rdata(`SLICE_32(qpimem_arb_rdata, 1)),
 		.m_is_idle(qpimem_arb_is_idle[1])
@@ -618,7 +618,7 @@ module soc(
 		
 		.do_read(qpi_do_read),
 		.do_write(qpi_do_write),
-		.next_byte(qpi_next_byte),
+		.next_word(qpi_next_word),
 		.addr(qpi_addr),
 		.wdata(qpi_wdata),
 		.rdata(qpi_rdata),

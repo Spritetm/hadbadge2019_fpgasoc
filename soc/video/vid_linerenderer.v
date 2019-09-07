@@ -23,7 +23,7 @@ module vid_linerenderer (
 
 	//Master iface to spi mem
 	output reg m_do_read,
-	input m_next_byte,
+	input m_next_word,
 	output reg [23:0] m_addr,
 	input [31:0] m_rdata,
 	input m_is_idle
@@ -120,7 +120,7 @@ always @(posedge clk) begin
 				vid_wen <= 0;
 			end
 
-			if (m_next_byte || write_vid_addr[2:0]!=0) begin
+			if (m_next_word || write_vid_addr[2:0]!=0) begin
 				//We have a word in m_rdata and we're working on parsing its pixels into the line memory buffer.
 				//Note! This assumes a read of the next word takes at least 8 cycles. If it's quicker, we need
 				//to buffer the data read from SPI.

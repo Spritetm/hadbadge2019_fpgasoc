@@ -21,7 +21,7 @@ module qpitest(
 );
 
 wire qpi_do_read, qpi_do_write;
-reg qpi_next_byte;
+reg qpi_next_word;
 wire [23:0] qpi_addr;
 reg [31:0] qpi_rdata;
 wire [31:0] qpi_wdata;
@@ -38,7 +38,7 @@ qpimem_cache #(
 	
 	.qpi_do_read(qpi_do_read),
 	.qpi_do_write(qpi_do_write),
-	.qpi_next_byte(qpi_next_byte),
+	.qpi_next_word(qpi_next_word),
 	.qpi_addr(qpi_addr),
 	.qpi_wdata(qpi_wdata),
 	.qpi_rdata(qpi_rdata),
@@ -59,7 +59,7 @@ qpimem_iface qpimem_iface(
 	
 	.do_read(qpi_do_read),
 	.do_write(qpi_do_write),
-	.next_byte(qpi_next_byte),
+	.next_word(qpi_next_word),
 	.addr(qpi_addr),
 	.wdata(qpi_wdata),
 	.rdata(qpi_rdata),

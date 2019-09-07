@@ -22,7 +22,7 @@ Note:
 
 *WIP notes*
 Modifications for flash memory:
-Flash memory should already work well for the read scenario: poke do_read, hw auto-get bytes on next_byte.
+Flash memory should already work well for the read scenario: poke do_read, hw auto-get bytes on next_word.
 For the write scenario, we need:
 - Set write enable latch (cmd 0x06)
 - Sector erase (cmd 0x20, address in SPI-mode)
@@ -74,7 +74,7 @@ module qpimem_iface #(
 	
 	input do_read,
 	input do_write,
-	output reg next_byte,
+	output reg next_word,
 	input [23:0] addr,
 	input [31:0] wdata,
 	output [31:0] rdata,
@@ -154,11 +154,11 @@ always @(posedge clk) begin
 		spi_xfer_rdata <= 0;
 		spi_bus_qpi <= 0;
 	end else begin
-		if (next_byte) begin
+		if (next_word) begin
 			keep_transferring <= (do_read || do_write);
 		end
 
-		next_byte <= 0;
+		next_word <= 0;
 		if (state == STATE_IDLE) begin
 			spi_ncs <= 1;
 			clk_active <= 0;
@@ -207,7 +207,7 @@ always @(posedge clk) begin
 					end else begin
 						//Make sure we already have the data to shift out.
 						data_shifted <= wdata_be;
-						next_byte <= 1;
+						next_word <= 1;
 					end
 				end else begin
 					bitno <= do_read ? READDUMMY-1 : WRITEDUMMY-1;
@@ -230,7 +230,7 @@ always @(posedge clk) begin
 				end else begin
 					//Make sure we already have the data to shift out.
 					data_shifted <= wdata_be;
-					next_byte <= 1;
+					next_word <= 1;
 					bitno <= 7;
 				end
 			end
@@ -239,7 +239,7 @@ always @(posedge clk) begin
 			if (curr_is_read) begin //read
 				if (bitno==0) begin
 					rdata_be <= {data_shifted[31:4], spi_sin_sampled[3:0]};
-					next_byte <= 1;
+					next_word <= 1;
 					bitno <= 7;
 					if (!do_read) begin //abort?
 						state <= STATE_TRANSEND;
@@ -252,13 +252,13 @@ always @(posedge clk) begin
 			end else begin //write
 				spi_sout <= data_shifted[bitno*4+3 -: 4];
 				if (bitno==0) begin
-					//note host may react on next_byte going high by putting one last word on the bus, then
+					//note host may react on next_word going high by putting one last word on the bus, then
 					//lowering do_write. This is why we use keep_transfering instead of do_write
 					if (!keep_transferring) begin //abort?
 						state <= STATE_TRANSEND;
 					end else begin
 						data_shifted <= wdata_be;
-						next_byte <= 1;
+						next_word <= 1;
 						bitno <= 7;
 					end
 				end else begin
