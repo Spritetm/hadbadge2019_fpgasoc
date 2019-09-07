@@ -3,5 +3,6 @@ ipl.elf
 ipl.map
 ipl.disasm
 send
+*.a
 *.o
 *.svf
