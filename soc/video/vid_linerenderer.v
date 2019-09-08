@@ -54,7 +54,32 @@ initial begin
 	palette[15] = 24'hffffff;
 end
 
+
 reg [23:0] fb_addr;
+reg [16:0] pitch;
+
+reg [23:0] dma_start_addr;
+reg dma_run;
+wire dma_ready;
+reg dma_do_read;
+reg [31:0] dma_data;
+qpimem_dma_rdr dma_rdr(
+	.clk(clk),
+	.rst(reset),
+	.addr_start(dma_start_addr),
+	.addr_end(dma_start_addr+(480/2)),
+	.run(dma_run),
+	.do_read(dma_do_read),
+	.ready(dma_ready),
+	.rdata(dma_data),
+
+	.qpi_do_read(m_do_read),
+	.qpi_next_word(m_next_word),
+	.qpi_addr(m_addr),
+	.qpi_rdata(m_rdata),
+	.qpi_is_idle(m_is_idle)
+);
+
 
 always @(posedge clk) begin
 	if (reset) begin
@@ -62,6 +87,7 @@ always @(posedge clk) begin
 		ready_write <= 0;
 		dout <= 0;
 		fb_addr <= 'h7E0000; //top 128K of RAM
+		pitch <= 512;
 	end else begin
 		/* CPU interface */
 		ready_read <= 0;
@@ -84,71 +110,63 @@ always @(posedge clk) begin
 end
 
 reg [19:0] write_vid_addr;
-//Note: We should only grab 64 bytes at a time.
-//A line is 512 pixels, so 256 bytes are needed... need 4 reloads.
 
 always @(posedge clk) begin
 	if (reset) begin
 		write_vid_addr <= 'h400; //2 lines in advance, so we start writing immediately (good for sim)
 		vid_addr <= 0;
 		vid_ren <= 0;
-		m_addr <= fb_addr;
-		m_do_read <= 0;
+		dma_start_addr <= fb_addr;
 	end else begin
 		//vid_addr is write_vid_addr delayed by one cycle, so we can make
 		//decisions of the data to write depending on the contents of write_vid_addr.
 		vid_addr <= write_vid_addr;
+		dma_do_read <= 0;
 
 		if (write_vid_addr[19:9]>=320) begin
 			//We're finished with this frame. Wait until the video generator starts drawing the next frame.
-			m_do_read <= 0;
 			vid_wen <= 0;
+			dma_run <= 0;
 			if (next_field) begin
 				write_vid_addr <= 0;
+				dma_start_addr <= fb_addr;
 			end else begin
 				//Not yet, keep idling
 			end
 		end else if (write_vid_addr[10:9] != curr_vid_addr[10:9]) begin
 			//If we're here, there is room in the line memory to write a new line into.
-			if (m_do_read == 0 && m_is_idle && write_vid_addr[2:0]==0) begin
-				//cs was lowered (see below, or because line was done) but iface is idle again: we can restart the read.
-				m_do_read <= 1;
-				m_addr <= fb_addr + (write_vid_addr/2);
-			end else if (write_vid_addr[6:0] == 'h78) begin
-				//We need to abort the read at times, to give the RAM time to refresh. We do that here.
-				m_do_read <= 0; //lower cs until iface is idle
-				vid_wen <= 0;
-			end
-
-			if (m_next_word || write_vid_addr[2:0]!=0) begin
-				//We have a word in m_rdata and we're working on parsing its pixels into the line memory buffer.
-				//Note! This assumes a read of the next word takes at least 8 cycles. If it's quicker, we need
-				//to buffer the data read from SPI.
-				if (write_vid_addr[2:0]==7) vid_data_out <= palette[m_rdata[31:28]];
-				if (write_vid_addr[2:0]==6) vid_data_out <= palette[m_rdata[27:24]];
-				if (write_vid_addr[2:0]==5) vid_data_out <= palette[m_rdata[23:20]];
-				if (write_vid_addr[2:0]==4) vid_data_out <= palette[m_rdata[19:16]];
-				if (write_vid_addr[2:0]==3) vid_data_out <= palette[m_rdata[15:12]];
-				if (write_vid_addr[2:0]==2) vid_data_out <= palette[m_rdata[11:8]];
-				if (write_vid_addr[2:0]==1) vid_data_out <= palette[m_rdata[7:4]];
-				if (write_vid_addr[2:0]==0) vid_data_out <= palette[m_rdata[3:0]];
+			dma_run <= 1;
+			if (dma_ready || write_vid_addr[2:0]!=0) begin
+				if (write_vid_addr[2:0] == 6) begin
+					//We need a new word. Enable read here because:
+					// dma_do_read actually goes high next cycle
+					// correct data will get returned next next cycle
+					dma_do_read <= 1;
+				end
+				if (write_vid_addr[2:0]==7) vid_data_out <= palette[dma_data[31:28]];
+				if (write_vid_addr[2:0]==6) vid_data_out <= palette[dma_data[27:24]];
+				if (write_vid_addr[2:0]==5) vid_data_out <= palette[dma_data[23:20]];
+				if (write_vid_addr[2:0]==4) vid_data_out <= palette[dma_data[19:16]];
+				if (write_vid_addr[2:0]==3) vid_data_out <= palette[dma_data[15:12]];
+				if (write_vid_addr[2:0]==2) vid_data_out <= palette[dma_data[11:8]];
+				if (write_vid_addr[2:0]==1) vid_data_out <= palette[dma_data[7:4]];
+				if (write_vid_addr[2:0]==0) vid_data_out <= palette[dma_data[3:0]];
 				if (write_vid_addr[8:0]>479) begin
 					//next line
 					write_vid_addr[19:9] <= write_vid_addr[19:9] + 'h1;
 					write_vid_addr[8:0] <= 0;
-					//force cs low as well as the address changed by more than 1
-					m_do_read <= 0;
-					vid_wen <= 0;
+					dma_start_addr <= dma_start_addr + pitch/2;
+					dma_run <= 0;
 				end else begin
 					write_vid_addr <= write_vid_addr + 'h1;
 				end
 				vid_wen <= 1;
 			end else begin
-				//waiting for the spiram to return data...
+				//waiting for dma to have something
 			end
 		end else begin
 			//wait for next line
-			m_do_read <= 0;
+			dma_run <= 0;
 			vid_wen <= 0;
 		end
 	end

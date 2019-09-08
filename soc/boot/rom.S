@@ -70,7 +70,7 @@ bbloop:
 	sw a2, LCD_CONTROL_REG(a1)
 
 //if verilator, we skip the memtest
-//	j memtestok
+	j memtestok
 
 
 //Memtest
