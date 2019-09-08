@@ -91,7 +91,7 @@ int try_replace_brambuf(uint16_t *brambuf, uint32_t *rnd, uint32_t *hex, int len
 }
 
 int bram_replace(int len, uint32_t seed, char *hexdata, char *infile, char *outfile) {
-	uint32_t *hex=malloc(len*4);
+	uint32_t *hex=calloc(len, 4);
 	loadhex(hexdata, hex, len);
 
 	uint32_t *randdata=malloc(len*4);
@@ -186,7 +186,7 @@ int main(int argc, char **argv) {
 	}
 
 	if (do_gen) {
-		generate_hex_file(seed, size/4, outfile);
+		generate_hex_file(seed, size, outfile);
 	}
 	if (do_repl) {
 		if (!bram_replace(size, seed, hexfile, infile, outfile)) {

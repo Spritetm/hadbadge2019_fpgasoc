@@ -1,7 +1,7 @@
 #pragma once
 
 #define MACH_RAM_START		0x40000000
-#define MACH_RAM_SIZE		(8*1024*1024)
+#define MACH_RAM_SIZE		(16*1024*1024)
 #define MACH_FLUSH_REGION 	0x41000000
 
 #define MEM_IPL_START		0x40002000

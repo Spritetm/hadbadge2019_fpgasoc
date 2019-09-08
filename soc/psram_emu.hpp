@@ -5,6 +5,7 @@ class Psram_emu {
 	public:
 	Psram_emu(int memsize);
 	int load_file(const char *file, int offset, bool is_ro);
+	int load_file_nibbles(const char *file, int offset, bool is_ro, bool msb_nibble);
 	int eval(int clk, int ncs, int sin, int oe, int *sout);
 	const uint8_t *get_mem();
 	void force_qpi();

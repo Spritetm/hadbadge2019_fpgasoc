@@ -3,7 +3,7 @@ PROJ=soc
 SRC=soc.v picorv32/picorv32.v simpleuart.v lcdiface.v qpi_cache/qpimem_cache.v 
 SRC+=qpi_cache/qpimem_iface.v qpi_cache/simple_mem.v qpi_cache/simple_mem_words.v
 SRC+=arbiter.v pcpi_fastmul_dsp.v video/vid_linerenderer.v
-SRC+=video/video_mem.v qpi_cache/qpimem_arbiter.v
+SRC+=video/video_mem.v qpi_cache/qpimem_arbiter.v qpi_cache/qpimem_iface_intl.v
 SRC+=usb/usb_trans.v usb/usb_ep_buf.v usb/usb_rx_pkt.v usb/usb_phy.v usb/usb.v
 SRC+=usb/usb_tx_pkt.v usb/usb_ep_status.v usb/usb_tx_ll.v usb/usb_rx_ll.v usb/usb_crc.v
 SRC+=usb/fifo_sync_shift.v usb_soc.v pic/pic_wrapper.v pic/risc16f84_clk2x.v
@@ -34,7 +34,7 @@ $(PROJ).json $(PROJ).blif: $(SRC) $(SRC_SYNTH) $(EXTRA_DEPEND)
 	nextpnr-ecp5 --json $< --lpf $(CONSTR) --textcfg $@ --45k --package CABGA381 --speed 8  --pre-pack clock-constrainsts.py
 
 %_out.config: %_out_synth.config bram_replace/bram_replace rom.hex
-	bram_replace/bram_replace -l 4096 -r $< $@ rom.hex
+	bram_replace/bram_replace -l 8192 -r $< $@ rom.hex
 
 bram_replace/bram_replace:
 	make -C bram_replace

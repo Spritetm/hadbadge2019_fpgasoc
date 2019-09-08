@@ -1,5 +1,5 @@
 -include ../include.mk
-TOOLCHAIN_PREFIX := $(RISCV_TOOLCHAIN_DIR)riscv32-unknown-elf-
+TOOLCHAIN_PREFIX := $(RISCV_TOOLCHAIN_PATH)riscv32-unknown-elf-
 CC=$(TOOLCHAIN_PREFIX)gcc
 CFLAGS=-Os -ggdb -I../ipl
 OBJS:=rom.o irq.o gdbstub.o loadipl.o ipl_flash.o

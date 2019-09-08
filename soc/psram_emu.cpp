@@ -38,6 +38,35 @@ int Psram_emu::load_file(const char *file, int offset, bool is_ro) {
 	return 0;
 }
 
+int Psram_emu::load_file_nibbles(const char *file, int offset, bool is_ro, bool msb_nibble) {
+	FILE *f=fopen(file, "rb");
+	if (f==NULL) {
+		perror(file);
+		exit(1);
+	}
+	fseek(f, 0, SEEK_END);
+	long fsize=ftell(f);
+	fseek(f, 0, SEEK_SET);
+	uint8_t *buf=(uint8_t*)malloc(fsize);
+	fread(buf, 1, fsize, f);
+	fclose(f);
+	for (int i=0; i<fsize; i+=2) {
+		if (msb_nibble) {
+			m_mem[offset+(i/2)]=((buf[i]>>4)<<4)+(buf[i+1]>>4);
+		} else {
+			m_mem[offset+(i/2)]=((buf[i]&0xf)<<4)+(buf[i+1]&0xf);
+		}
+	}
+	if (is_ro) {
+		for (int i=offset; i<offset+(fsize/2); i++) m_roflag[i]=1;
+	}
+	free(buf);
+	printf("Loaded file %s to 0x%X - 0x%X\n", file, offset, offset+(fsize/2));
+	return 0;
+}
+
+
+
 int Psram_emu::eval(int clk, int ncs, int sin, int oe, int *sout) {
 	if (ncs==1) {
 		m_nib=0;
@@ -85,7 +114,7 @@ int Psram_emu::eval(int clk, int ncs, int sin, int oe, int *sout) {
 				} else {
 					m_writebyte|=sin;
 					if (m_mem[m_addr]!=m_writebyte && m_roflag[m_addr]) {
-						printf("ERROR! Overwriting ro-marked data at addr 0x%X with 0x%X!\n", m_addr, m_writebyte);
+						printf("ERROR! Overwriting ro-marked data at addr 0x%X (which is 0x%02X) with 0x%02X!\n", m_addr, m_mem[m_addr], m_writebyte);
 						return 1;
 					}
 					if (m_addr>=m_size) {

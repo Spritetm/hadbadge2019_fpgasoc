@@ -30,10 +30,11 @@ do_reset:
 //Bitbang PSRAM port initialization command
 bbpsraminit:
 	la a1, psram_init
-	li a2, MISC_OFFSET+MISC_PSRAMOVRA_REG //bitbang port
+	li a2, MISC_OFFSET //bitbang port
 bbloop:
 	lbu a3, 0(a1)
-	sw a3, 0(a2)
+	sw a3, MISC_PSRAMOVRA_REG(a2)
+	sw a3, MISC_PSRAMOVRB_REG(a2)
 	addi a1, a1, 1
 	bne zero, a3, bbloop
 
@@ -69,7 +70,7 @@ bbloop:
 	sw a2, LCD_CONTROL_REG(a1)
 
 //if verilator, we skip the memtest
-	j memtestok
+//	j memtestok
 
 
 //Memtest
@@ -83,7 +84,7 @@ memtest_start:
 	li a4, MACH_RAM_START+0x2000 //start
 	li a3, 0xAAAAAAAA
 memtestwloop:
-	addi a1, a1, -0x4
+	addi a1, a1, -64 //1 cache line
 	sw a3, 0(a1)
 	add a3, a3, a3
 	add a3, a3, a1
@@ -98,7 +99,7 @@ memtestwloop:
 	li a4, MACH_RAM_START+0x2000 //start
 	li a3, 0xAAAAAAAA
 memtestrloop:
-	addi a1, a1, -4
+	addi a1, a1, -64 //1 cache line
 	lw a5, 0(a1)
 	bne a5, a3, memtesterr
 	add a3, a3, a3

@@ -39,9 +39,11 @@ int main(int argc, char **argv) {
 	tb->btn=0xff; //no buttons pressed
 	int do_trace=1;
 
-	Psram_emu psram=Psram_emu(8*1024*1024);
+	Psram_emu psrama=Psram_emu(8*1024*1024);
+	Psram_emu psramb=Psram_emu(8*1024*1024);
 	//ToDo: load elfs so we can mark ro sections as read-only
-	psram.load_file("boot/rom.bin", 0, false);
+	psrama.load_file_nibbles("boot/rom.bin", 0, true, false);
+	psramb.load_file_nibbles("boot/rom.bin", 0, true, true);
 //	psram.load_file("app/app.bin", 0x2000, false);
 
 	Uart_emu uart=Uart_emu(64);
@@ -58,29 +60,38 @@ int main(int argc, char **argv) {
 	int next_field=0;
 	int pixel_clk=0;
 	int clkint=0;
+	int abort_timer=0;
 	while(1) {
 		ts++;
 		clkint+=123;
 		tb->clkint=(clkint&0x100)?1:0;
 		if (do_trace) tracepos++;
-		if (do_abort) break;
+		if (do_abort) {
+			//Continue for a bit after abort has been signalled.
+			abort_timer++;
+			if (abort_timer==32) break;
+		}
 		tb->uart_rx=uart_get(ts*21);
-		int sin, rx;
-		do_abort |= psram.eval(tb->psrama_sclk, tb->psrama_nce, tb->psrama_sout, tb->psrama_oe, &sin);
+		int sina, sinb, rx;
+		do_abort |= psrama.eval(tb->psrama_sclk, tb->psrama_nce, tb->psrama_sout, tb->psrama_oe, &sina);
+		do_abort |= psramb.eval(tb->psramb_sclk, tb->psramb_nce, tb->psramb_sout, tb->psramb_oe, &sinb);
 		uart.eval(tb->clk48m, tb->uart_tx, &rx);
 		tb->uart_rx=rx;
 		pixel_clk=!pixel_clk;
 		tb->vid_pixelclk=pixel_clk?1:0;
 		tb->clk48m = 1;
 		tb->eval();
-		tb->psrama_sin=sin;
+		tb->psrama_sin=sina;
+		tb->psramb_sin=sinb;
 		if (do_trace) trace->dump(tracepos*21);
-		do_abort |= psram.eval(tb->psrama_sclk, tb->psrama_nce, tb->psrama_sout, tb->psrama_oe, &sin);
+		do_abort |= psrama.eval(tb->psrama_sclk, tb->psrama_nce, tb->psrama_sout, tb->psrama_oe, &sina);
+		do_abort |= psramb.eval(tb->psramb_sclk, tb->psramb_nce, tb->psramb_sout, tb->psramb_oe, &sinb);
 		uart.eval(tb->clk48m, tb->uart_tx, &rx);
 		tb->uart_rx=rx;
 		tb->clk48m = 0;
 		tb->eval();
-		tb->psrama_sin = sin;
+		tb->psrama_sin = sina;
+		tb->psramb_sin = sinb;
 		if (do_trace) trace->dump(tracepos*21+10);
 		if (vid && pixel_clk) {
 			vid->next_pixel(tb->vid_red, tb->vid_green, tb->vid_blue, &fetch_next, &next_line, &next_field);

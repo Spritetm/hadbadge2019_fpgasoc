@@ -72,6 +72,8 @@ always @(posedge spi_clk) begin
 					hinib <= 1;
 					addr <= addr + 1;
 				end
+			end else begin
+				$display("psram: unknown cmd %h", cmd);
 			end
 		end
 		state <= state + 1;

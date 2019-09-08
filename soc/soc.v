@@ -549,13 +549,13 @@ module soc(
 	wire [4:0] mem_wen;
 	assign mem_wen = (mem_valid && !mem_ready && mem_select) ? mem_wstrb : 4'b0;
 
-	//16 words * 256 lines = 4K words = 16K bytes. Each way can contain 8KByte.
+	//16 words * 512 lines = 8K words = 32K bytes. Each way can contain 16KByte.
 	//NOTE: Psram needs to have /CE low for at max 5 uS.
 	//At 48MHz, this is 240 clock cycles... given 14 cycles setup time (for qpi read),
 	//that is a max cache line of 113 bytes or 28 words.
 	qpimem_cache #(
 		.CACHELINE_WORDS(16),
-		.CACHELINE_CT(256),
+		.CACHELINE_CT(512),
 		.ADDR_WIDTH(22) //addresses words
 	) qpimem_cache (
 		.clk(clk48m),
@@ -607,12 +607,13 @@ module soc(
 	assign qpimem_arb_do_write[1] = 0;
 	assign `SLICE_32(qpimem_arb_wdata, 1) = 0;
 
-	wire qpsrama_sclk;
-	wire qpsrama_nce;
+	wire qpsram_sclk;
+	wire qpsram_nce;
 	wire [3:0] qpsrama_sout;
-	wire qpsrama_oe;
+	wire [3:0] qpsramb_sout;
+	wire qpsram_oe;
 
-	qpimem_iface qpimem_iface(
+	qpimem_iface_intl qpimem_iface_intl(
 		.clk(clk48m),
 		.rst(rst),
 		
@@ -624,25 +625,28 @@ module soc(
 		.rdata(qpi_rdata),
 		.is_idle(qpi_is_idle),
 
-		//no spi transfers supported, we do setup using bitbanging
-		.spi_xfer_wdata('hX),
-		.do_spi_xfer(0),
-		.spi_xfer_claim(0),
-
-		.spi_clk(qpsrama_sclk),
-		.spi_ncs(qpsrama_nce),
-		.spi_sout(qpsrama_sout),
-		.spi_sin(psrama_sin),
-		.spi_oe(qpsrama_oe)
+		.spi_clk(qpsram_sclk),
+		.spi_ncs(qpsram_nce),
+		.spi_sout_b(qpsrama_sout),
+		.spi_sin_b(psrama_sin),
+		.spi_sout_a(qpsramb_sout),
+		.spi_sin_a(psramb_sin),
+		.spi_oe(qpsram_oe)
 	);
 
 	wire psrama_override;
 	assign psrama_override=psrama_ovr[7];
-	assign psrama_oe = psrama_override ? psrama_ovr[6] : qpsrama_oe;
-	assign psrama_sclk = psrama_override ? psrama_ovr[5] : qpsrama_sclk;
-	assign psrama_nce = psrama_override ? psrama_ovr[4] : qpsrama_nce;
+	assign psrama_oe = psrama_override ? psrama_ovr[6] : qpsram_oe;
+	assign psrama_sclk = psrama_override ? psrama_ovr[5] : qpsram_sclk;
+	assign psrama_nce = psrama_override ? psrama_ovr[4] : qpsram_nce;
 	assign psrama_sout = psrama_override ? psrama_ovr[3:0] : qpsrama_sout;
 
+	wire psramb_override;
+	assign psramb_override=psramb_ovr[7];
+	assign psramb_oe = psrama_override ? psramb_ovr[6] : qpsram_oe;
+	assign psramb_sclk = psrama_override ? psramb_ovr[5] : qpsram_sclk;
+	assign psramb_nce = psrama_override ? psramb_ovr[4] : qpsram_nce;
+	assign psramb_sout = psrama_override ? psramb_ovr[3:0] : qpsramb_sout;
 
 	//This is abused as a simple SPI flash interface. We can add qpi reading later.
 	qpimem_iface flash_iface(
@@ -793,9 +797,4 @@ IRQs used:
 	
 	//Unused pins
 	assign pwmout = 0;
-	assign psramb_sclk = 0;
-	assign psramb_nce = 0;
-	assign psramb_sclk = 0;
-	assign psramb_oe = 0;
-	assign psramb_sout = 0;
 endmodule
