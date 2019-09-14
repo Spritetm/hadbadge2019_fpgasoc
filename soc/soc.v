@@ -10,6 +10,9 @@ module soc(
 		output [27:0] genio,
 		output uart_tx,
 		input uart_rx,
+		output irda_tx,
+		input irda_rx,
+		output irda_sd,
 		output pwmout,
 		output [17:0] lcd_db,
 		output lcd_rd,
@@ -247,11 +250,16 @@ module soc(
 	reg mem_select;
 	reg uart_div_select;
 	reg uart_dat_select;
+	reg irda_div_select;
+	reg irda_dat_select;
 	reg misc_select;
 	wire[31:0] ram_rdata;
 	wire[31:0] uart_reg_div_do;
 	wire[31:0] uart_reg_dat_do;
+	wire[31:0] irda_reg_div_do;
+	wire[31:0] irda_reg_dat_do;
 	wire uart_reg_dat_wait;
+	wire irda_reg_dat_wait;
 	reg ram_ready;
 	wire [31:0] lcd_rdata;
 	reg lcd_select;
@@ -305,6 +313,8 @@ module soc(
 		mem_select = 0;
 		uart_div_select = 0;
 		uart_dat_select = 0;
+		irda_div_select = 0;
+		irda_dat_select = 0;
 		misc_select = 0;
 		lcd_select = 0;
 		usb_select = 0;
@@ -313,12 +323,18 @@ module soc(
 		bus_error = 0;
 		mem_rdata = 'hx;
 		if (mem_addr[31:28]=='h1) begin
-			if (mem_addr[2]==0) begin
+			if (mem_addr[3:2]=='h0) begin
 				uart_dat_select = mem_valid;
 				mem_rdata = uart_reg_dat_do;
-			end else begin
+			end else if (mem_addr[3:2]=='h1) begin
 				uart_div_select = mem_valid;
 				mem_rdata = uart_reg_div_do;
+			end else if (mem_addr[3:2]=='h2) begin
+				irda_dat_select = mem_valid;
+				mem_rdata = irda_reg_dat_do;
+			end else if (mem_addr[3:2]=='h3) begin
+				irda_div_select = mem_valid;
+				mem_rdata = irda_reg_div_do;
 			end
 		end else if (mem_addr[31:28]=='h2) begin
 			misc_select = mem_valid;
@@ -376,7 +392,9 @@ module soc(
 	end
 `endif
 
-	assign mem_ready = ram_ready || uart_div_select || misc_select || (uart_dat_select && !uart_reg_dat_wait) || lcd_ready || linerenderer_ready || usb_ready || pic_ready || bus_error;
+	assign mem_ready = ram_ready || uart_div_select || irda_div_select || misc_select || 
+			(uart_dat_select && !uart_reg_dat_wait) || (irda_dat_select && !irda_reg_dat_wait) ||
+			lcd_ready || linerenderer_ready || usb_ready || pic_ready || bus_error;
 
 	wire [19:0] vidmem_addr;
 	wire [23:0] vidmem_data_out;
@@ -482,6 +500,26 @@ module soc(
 		.reg_dat_di  (mem_wdata),
 		.reg_dat_do  (uart_reg_dat_do),
 		.reg_dat_wait(uart_reg_dat_wait)
+	);
+
+	assign irda_sd = reset;
+
+	simpleuart_irda simpleuart_irda (
+		.clk         (clk48m      ),
+		.resetn      (resetn      ),
+
+		.ser_tx      (irda_tx    ),
+		.ser_rx      (irda_rx      ),
+
+		.reg_div_we  (irda_div_select ? mem_wstrb : 4'b 0000),
+		.reg_div_di  (mem_wdata),
+		.reg_div_do  (irda_reg_div_do),
+
+		.reg_dat_we  (irda_dat_select ? mem_wstrb[0] : 1'b 0),
+		.reg_dat_re  (irda_dat_select && mem_wstrb==0),
+		.reg_dat_di  (mem_wdata),
+		.reg_dat_do  (irda_reg_dat_do),
+		.reg_dat_wait(irda_reg_dat_wait)
 	);
 
 	reg [15:0] pic_led;

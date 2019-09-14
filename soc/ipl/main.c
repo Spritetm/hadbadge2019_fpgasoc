@@ -77,7 +77,6 @@ void start_app(char *app) {
 void main() {
 	syscall_reinit();
 	printf("IPL running.\n");
-	MISC_REG(MISC_LED_REG)=0xff;
 	lcd_init();
 	lcdfb=calloc(320*512/2, 1);
 	GFX_REG(GFX_FBADDR_REG)=((uint32_t)lcdfb)&0x7FFFFF;
@@ -106,8 +105,20 @@ void main() {
 	UG_SetForecolor(C_GREEN);
 	UG_PutString(0, 16, "This is a test of the framebuffer to HDMI and LCD thingamajig. What you see now is the framebuffer memory.");
 	usb_msc_on();
+	MISC_REG(MISC_LED_REG)=0xfffff;
+	UART_REG(UART_IRDA_DIV_REG)=416;
 	while(1) {
 		p++;
+
+		UART_REG(UART_IRDA_DATA_REG)=p;
+		int r=UART_REG(UART_IRDA_DATA_REG);
+		if (r!=-1) {
+			sprintf(buf, "%d: IR %d   ", p, r);
+			UG_SetForecolor(C_RED);
+			UG_PutString(48, 148, buf);
+		}
+
+//		MISC_REG(MISC_LED_REG)=p;
 		sprintf(buf, "%d", p);
 		UG_SetForecolor(C_RED);
 		UG_PutString(48, 64, buf);

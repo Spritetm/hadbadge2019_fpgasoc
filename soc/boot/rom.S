@@ -46,8 +46,9 @@ bbloop:
 	//Set up UART divider
 	li a1, UART_OFFSET
 	li a2, 416 //115200 with a clock of 48MHz
-//	li a2, 69 //115200 with a clock of 8MHz
 	sw a2, UART_DIV_REG(a1)
+	sw a2, UART_IRDA_DIV_REG(a1)
+
 
 	//Check if we are running in a simulation. If so, immediately jump to app that the simulator already
 	//preloaded in psram.

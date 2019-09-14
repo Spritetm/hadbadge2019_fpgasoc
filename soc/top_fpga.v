@@ -6,10 +6,20 @@ PLL, tristate buffers etc needed to interface with the hardware.
 module top_fpga(
 		input clk, 
 		input [7:0] btn, 
+`ifdef BADGE_V3
+		output [10:0] ledc,
+		output [2:0] leda,
+`else
 		output [8:0] led,
+`endif
 		output [27:0] genio,
 		output uart_tx,
 		input uart_rx,
+`ifdef BADGE_V3
+		output irda_tx,
+		input irda_rx,
+		output irda_sd,
+`endif
 		output pwmout,
 		output [17:0] lcd_db,
 		output lcd_rd,
@@ -79,6 +89,18 @@ module top_fpga(
 
 	wire clkint;
 
+`ifdef BADGE_V3
+	wire [9:0] led;
+
+	ledctl ledctl_inst (
+		.clk(clk),
+		.rst(0),
+		.ledc(ledc),
+		.leda(leda),
+		.led(led)
+	);
+`endif
+
 	soc soc (
 		.clk48m(clk48m),
 		.clkint(clkint),
@@ -87,6 +109,11 @@ module top_fpga(
 //		.genio(genio),
 		.uart_tx(uart_tx),
 		.uart_rx(uart_rx),
+
+		.irda_tx(irda_tx),
+		.irda_rx(irda_rx),
+		.irda_sd(irda_sd),
+
 		.pwmout(pwmout),
 		.lcd_db(lcd_db),
 		.lcd_rd(lcd_rd),

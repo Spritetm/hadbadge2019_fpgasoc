@@ -79,6 +79,7 @@ int main(int argc, char **argv) {
 		tb->uart_rx=rx;
 		pixel_clk=!pixel_clk;
 		tb->vid_pixelclk=pixel_clk?1:0;
+		tb->irda_rx=tb->irda_tx;
 		tb->clk48m = 1;
 		tb->eval();
 		tb->psrama_sin=sina;
