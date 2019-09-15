@@ -9,7 +9,7 @@ module rng (
 		input clk1,
 		input clk2, //assumed to be slower than clk - >= 2x slower.
 		input rst,
-		output [31:0] rngno
+		output reg [31:0] rngno
 	);
 
 	wire [31:0] rngnuma;

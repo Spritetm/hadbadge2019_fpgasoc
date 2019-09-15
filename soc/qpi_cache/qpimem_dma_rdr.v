@@ -99,7 +99,7 @@ module qpimem_dma_rd_fifomem #(
 	input w_en,
 	input [31:0] w_data,
 	input [$clog2(FIFO_WORDS):0] w_addr,
-	output reg [31:0] r_data,
+	output [31:0] r_data,
 	input [$clog2(FIFO_WORDS):0] r_addr
 );
 

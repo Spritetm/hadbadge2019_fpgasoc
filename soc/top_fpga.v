@@ -48,8 +48,14 @@ module top_fpga(
 		output [3:0] gpdi_dp, gpdi_dn,
 		inout usb_dp,
 		inout usb_dm,
-		output usb_pu
+		output usb_pu,
+
+		output adcrefout,
+		input adcref4
 	);
+
+	wire adc4;
+	assign adc4 = ~adcref4;
 
 	wire clk48m;
 
@@ -160,7 +166,10 @@ module top_fpga(
 
 		.usb_dp(usb_dp),
 		.usb_dn(usb_dm),
-		.usb_pu(usb_pu)
+		.usb_pu(usb_pu),
+
+		.adcrefout(adcrefout),
+		.adc4(adc4)
 	);
 
 

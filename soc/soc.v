@@ -59,7 +59,10 @@ module soc(
 
 		inout usb_dp,
 		inout usb_dn,
-		output usb_pu
+		output usb_pu,
+
+		output adcrefout,
+		input adc4
 	);
 
 
@@ -286,6 +289,9 @@ module soc(
 	reg flash_claim, flash_xfer;
 	wire [7:0] flash_rdata;
 	wire flash_idle;
+	reg adc_enabled;
+	wire adc_valid;
+	wire [9:0] adc_value;
 
 	parameter MISC_REG_LED = 0;
 	parameter MISC_REG_BTN = 1;
@@ -299,6 +305,9 @@ module soc(
 	parameter MISC_REG_FLASH_RDATA = 9;
 	parameter MISC_REG_RNG = 10;
 	parameter MISC_REG_FLASH_SEL = 11;
+	parameter MISC_REG_ADC_CTL = 12;
+	parameter MISC_REG_ADC_VAL = 13;
+
 
 	wire [31:0] rngno;
 	rng rng(
@@ -358,6 +367,10 @@ module soc(
 				mem_rdata = rngno;
 			end else if (mem_addr[5:2]==MISC_REG_FLASH_SEL) begin
 				mem_rdata = {31'h0, fsel_d};
+			end else if (mem_addr[5:2]==MISC_REG_ADC_CTL) begin
+				mem_rdata = {30'h0, adc_valid, adc_enabled};
+			end else if (mem_addr[5:2]==MISC_REG_ADC_VAL) begin
+				mem_rdata = adc_value;
 			end else begin
 				mem_rdata = 0;
 			end
@@ -395,6 +408,15 @@ module soc(
 	assign mem_ready = ram_ready || uart_div_select || irda_div_select || misc_select || 
 			(uart_dat_select && !uart_reg_dat_wait) || (irda_dat_select && !irda_reg_dat_wait) ||
 			lcd_ready || linerenderer_ready || usb_ready || pic_ready || bus_error;
+
+	dsadc dsadc (
+		.clk(clk48m),
+		.rst(rst || !adc_enabled),
+		.difpin(adc4),
+		.refout(adcrefout),
+		.adcval(adc_value),
+		.valid(adc_valid)
+	);
 
 	wire [19:0] vidmem_addr;
 	wire [23:0] vidmem_data_out;
@@ -502,7 +524,7 @@ module soc(
 		.reg_dat_wait(uart_reg_dat_wait)
 	);
 
-	assign irda_sd = reset;
+	assign irda_sd = rst;
 
 	simpleuart_irda simpleuart_irda (
 		.clk         (clk48m      ),
@@ -738,6 +760,7 @@ module soc(
 			fsel_strobe <= 0;
 			fsel_d <= 0;
 			programn_queue <= 0;
+			adc_enabled <= 0;
 		end else begin
 			fsel_strobe <= 0;
 			if (misc_select && mem_wstrb[0]) begin
@@ -760,6 +783,8 @@ module soc(
 						//D0F1A50x is written. Pull PROGRAMN.
 						programn_queue <= 1;
 					end
+				end else if (mem_addr[5:2]==MISC_REG_ADC_CTL) begin
+					adc_enabled <= mem_wdata[0];
 				end
 			end
 		end

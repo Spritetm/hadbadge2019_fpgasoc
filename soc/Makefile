@@ -9,7 +9,8 @@ SRC+=video/video_mem.v qpi_cache/qpimem_arbiter.v qpi_cache/qpimem_iface_intl.v
 SRC+=usb/usb_trans.v usb/usb_ep_buf.v usb/usb_rx_pkt.v usb/usb_phy.v usb/usb.v
 SRC+=usb/usb_tx_pkt.v usb/usb_ep_status.v usb/usb_tx_ll.v usb/usb_rx_ll.v usb/usb_crc.v
 SRC+=usb/fifo_sync_shift.v usb_soc.v pic/pic_wrapper.v pic/risc16f84_clk2x.v
-SRC+= pic/dpram_1kx16.v qpi_cache/qpimem_dma_rdr.v ledctl.v  simpleuart_irda.v
+SRC+=pic/dpram_1kx16.v qpi_cache/qpimem_dma_rdr.v ledctl.v simpleuart_irda.v
+SRC+=dsadc.v
 SRC_SYNTH=pll.v top_fpga.v mul_18x18_ecp5.v hdmi/clk_8_250_125_25.v hdmi/fake_differential.v
 SRC_SYNTH+=hdmi/hdmi-encoder.v hdmi/tmds_encoder.v hdmi/vga2dvid.v hdmi/vga.v 
 SRC_SYNTH+= video/ram_dp_24x2048_ecp5.v rng.v
@@ -30,7 +31,8 @@ FLASH_FREQ=38.8 #MHz
 all: $(PROJ).svf
 
 $(PROJ).json $(PROJ).blif: $(SRC) $(SRC_SYNTH) $(EXTRA_DEPEND)
-	yosys -p "read -sv -DBADGE_VER=$(BADGE_VER) -DBADGE_V$(BADGE_VER)=1 $(SRC) $(SRC_SYNTH); \
+	yosys -e ".*(assigned|implicitly).*" \
+		-p "read -sv -DBADGE_VER=$(BADGE_VER) -DBADGE_V$(BADGE_VER)=1 $(SRC) $(SRC_SYNTH); \
 			  synth_ecp5 -top top_fpga -json $(PROJ).json -blif $(PROJ).blif"
 
 %_out_synth.config: %.json clock-constrainsts.py

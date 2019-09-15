@@ -22,6 +22,8 @@ do_reset:
 	li a1, MISC_OFFSET
 	li a2, 1
 	sw a2, MISC_LED_REG(a1)
+
+	sw a2, MISC_ADC_CTL_REG(a1)
 	
 	//see if we are the 2nd cpu
 	lw a2,MISC_CPU_NO(a1)

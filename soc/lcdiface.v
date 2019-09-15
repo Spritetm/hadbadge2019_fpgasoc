@@ -54,8 +54,8 @@ reg [4:0] out_ctl;
 reg [17:0] lcd_readbuf;
 reg lcd_rw_done;
 reg [17:0] startcmd;
-reg lcd_vm_ena;
-reg lcd_vm_start;
+wire lcd_vm_ena;
+wire lcd_vm_start;
 
 assign lcd_vm_ena = out_ctl[4] || (out_ctl[3] && lcdvm_newfield);
 assign lcd_vm_start = out_ctl[3];
