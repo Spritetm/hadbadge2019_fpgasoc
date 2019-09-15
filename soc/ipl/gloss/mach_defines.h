@@ -42,6 +42,7 @@
 #define MISC_ADC_CTL_REG 0x30
 #define MISC_ADC_CTL_ENA (1<<0)
 #define MISC_ADC_CTL_VALID (1<<1)
+#define MISC_ADC_CTL_DIV(x) (x<<16)
 #define MISC_ADC_VAL_REG 0x34
 
 #define LCD_OFFSET 0x30000000

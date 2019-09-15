@@ -10,6 +10,9 @@ We get the return value by simply sampling the delta-sigma stream and averaging 
 In the badge, the RC filtering is done by an 10n/100ohm RC combo, giving a -3db point of
 give-or-take 160KHz. As we're doing 10-but ADC with a clock of 48MHz, this means we
 sample at 48KHz, which means the RC-filter should have enough time to settle.
+
+It *should* work even better with a r/c model to pass the sigma-delta stream through instead of
+simply integrating it. (rc != perfect integrator)
 */
 
 module dsadc (
@@ -17,13 +20,15 @@ module dsadc (
 	input rst, //also works as enable pin
 	
 	input difpin,
+	input [4:0] divider,
 	output reg refout,
-	output reg [9:0] adcval,
+	output reg [15:0] adcval,
 	output reg valid
 );
 
-reg [9:0] counter;
-reg [9:0] accumulator;
+reg [4:0] divctr;
+reg [15:0] counter;
+reg [15:0] accumulator;
 reg first_after_reset;
 
 always @(posedge clk) begin
@@ -35,20 +40,25 @@ always @(posedge clk) begin
 		counter <= 1;
 		accumulator <= 0;
 	end else begin
-		refout <= difpin; //this is the feedback bit of the adc
-		counter <= counter + 1;
-		if (counter == 0) begin
-			if (first_after_reset) begin
-				first_after_reset <= 0;
+		if (divctr>=divider) begin
+			divctr <= 0;
+			refout <= difpin; //this is the feedback bit of the adc
+			counter <= counter + 1;
+			if (counter == 0) begin
+				if (first_after_reset) begin
+					first_after_reset <= 0;
+				end else begin
+					adcval <= accumulator;
+					valid <= 1;
+				end
+				accumulator <= 0;
 			end else begin
-				adcval <= accumulator;
-				valid <= 1;
+				if (!difpin) begin 
+					accumulator <= accumulator + 1;
+				end
 			end
-			accumulator <= 0;
 		end else begin
-			if (!difpin) begin 
-				accumulator <= accumulator + 1;
-			end
+			divctr <= divctr + 1;
 		end
 	end
 end

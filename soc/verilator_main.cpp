@@ -80,7 +80,7 @@ int main(int argc, char **argv) {
 		pixel_clk=!pixel_clk;
 		tb->vid_pixelclk=pixel_clk?1:0;
 		tb->irda_rx=tb->irda_tx;
-		tb->adc4=tb->adcrefout;
+		tb->adc4=tb->adcrefout?0:1;
 		tb->clk48m = 1;
 		tb->eval();
 		tb->psrama_sin=sina;

@@ -290,8 +290,9 @@ module soc(
 	wire [7:0] flash_rdata;
 	wire flash_idle;
 	reg adc_enabled;
+	reg [4:0] adc_divider;
 	wire adc_valid;
-	wire [9:0] adc_value;
+	wire [15:0] adc_value;
 
 	parameter MISC_REG_LED = 0;
 	parameter MISC_REG_BTN = 1;
@@ -368,7 +369,7 @@ module soc(
 			end else if (mem_addr[5:2]==MISC_REG_FLASH_SEL) begin
 				mem_rdata = {31'h0, fsel_d};
 			end else if (mem_addr[5:2]==MISC_REG_ADC_CTL) begin
-				mem_rdata = {30'h0, adc_valid, adc_enabled};
+				mem_rdata = {11'h0, adc_divider, 14'h0, adc_valid, adc_enabled};
 			end else if (mem_addr[5:2]==MISC_REG_ADC_VAL) begin
 				mem_rdata = adc_value;
 			end else begin
@@ -413,6 +414,7 @@ module soc(
 		.clk(clk48m),
 		.rst(rst || !adc_enabled),
 		.difpin(adc4),
+		.divider(adc_divider),
 		.refout(adcrefout),
 		.adcval(adc_value),
 		.valid(adc_valid)
@@ -632,7 +634,7 @@ module soc(
 		.wen(mem_addr[24]==0 ? mem_wen : 4'b0),
 		.ren(mem_valid && !mem_ready && mem_select && mem_wstrb==0),
 		.addr(mem_addr[23:2]),
-		.flush(mem_addr[24]==1 ? (mem_wen==4'hF) : 0), //some ad-hoc muxing: writing anywhere above 16m does a flush instead.
+		.flush(mem_addr[24]==1 ? (mem_wen==4'hF) : 1'b0), //some ad-hoc muxing: writing anywhere above 16m does a flush instead.
 		.wdata(mem_wdata),
 		.rdata(ram_rdata),
 		.ready(ram_ready)
@@ -761,6 +763,7 @@ module soc(
 			fsel_d <= 0;
 			programn_queue <= 0;
 			adc_enabled <= 0;
+			adc_divider <= 0;
 		end else begin
 			fsel_strobe <= 0;
 			if (misc_select && mem_wstrb[0]) begin
@@ -784,6 +787,7 @@ module soc(
 						programn_queue <= 1;
 					end
 				end else if (mem_addr[5:2]==MISC_REG_ADC_CTL) begin
+					adc_divider <= mem_wdata[23:16];
 					adc_enabled <= mem_wdata[0];
 				end
 			end

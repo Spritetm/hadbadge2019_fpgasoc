@@ -107,7 +107,8 @@ void main() {
 	usb_msc_on();
 	MISC_REG(MISC_LED_REG)=0xfffff;
 	UART_REG(UART_IRDA_DIV_REG)=416;
-	MISC_REG(MISC_ADC_CTL_REG)=MISC_ADC_CTL_ENA;
+	int adcdiv=2;
+	MISC_REG(MISC_ADC_CTL_REG)=MISC_ADC_CTL_DIV(adcdiv)|MISC_ADC_CTL_ENA;
 	while(1) {
 		p++;
 
@@ -135,7 +136,7 @@ void main() {
 		r=MISC_REG(MISC_ADC_VAL_REG);
 		//ADC measures BAT/2 with a ref of 3.3V (or whatever Vio is) corresponding to 1023
 		//int bat=((r/1023)*3.3)*2;
-		int bat=(r*3300*2)/1023;
+		int bat=(r*3300*2)/(65535);
 		sprintf(buf, "%x BAT %d mV (%d)   ", MISC_REG(MISC_ADC_CTL_REG), bat, r);
 		UG_SetForecolor(C_BLUE);
 		UG_PutString(0, 170, buf);

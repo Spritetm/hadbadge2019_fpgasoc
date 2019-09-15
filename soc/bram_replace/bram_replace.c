@@ -81,7 +81,7 @@ int try_replace_brambuf(uint16_t *brambuf, uint32_t *rnd, uint32_t *hex, int len
 		for (int bpos=0; bpos<32; bpos+=bits) {
 			create_brambuf(tstbuf, rnd, bits, bpos);
 			if (memcmp(brambuf, tstbuf, sizeof(tstbuf))==0) {
-				printf("Found bram_init data: bits %d bpos %d\n", bits, bpos);
+//				printf("Found bram_init data: bits %d bpos %d\n", bits, bpos);
 				create_brambuf(brambuf, hex, bits, bpos);
 				return 1;
 			}
