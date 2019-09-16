@@ -16,6 +16,8 @@
 #include "../fatfs/source/ff.h"
 #include "../loadapp.h"
 
+#include "tusb.h"
+
 int remap_fatfs_errors(FRESULT f) {
 	if (f==FR_OK) return 0;
 	switch (f) {
@@ -37,7 +39,8 @@ int remap_fatfs_errors(FRESULT f) {
 }
 
 #define FD_TYPE_DBGUART 0
-#define FD_TYPE_FATFS 1
+#define FD_TYPE_USBUART 1
+#define FD_TYPE_FATFS 2
 
 #define FD_FLAG_OPEN (1<<0)
 #define FD_FLAG_WRITABLE (1<<1)
@@ -99,23 +102,34 @@ int _open(const char *name, int flags, int mode) {
 		errno=ENFILE;
 		return -1;
 	}
-	int fmode=0;
-	if (flags & O_APPEND) fmode|=FA_OPEN_APPEND;
-	if (flags & O_CREAT) fmode|=FA_OPEN_ALWAYS;
-	if (flags & O_EXCL) fmode|=FA_CREATE_NEW;
-	if (flags & O_TRUNC) fmode|=FA_CREATE_ALWAYS;
-	//madness, O_RDONLY=0, O_WRONLY=1, O_RDWR=2. Adding one makes it into a bitmap.
-	if ((flags+1) & (O_RDONLY+1)) fmode|=FA_READ;
-	if ((flags+1) & (O_WRONLY+1)) fmode|=FA_WRITE;
-	fd_entry[i].fatfcb=calloc(sizeof(FIL), 1);
-	FRESULT r=f_open(fd_entry[i].fatfcb, name, fmode);
-	if (r==F_OK) {
+	// Special cases for USB-UART
+	if (!strcmp(name, "/dev/ttyUSB")) {
+		fd_entry[i].type=FD_TYPE_USBUART;
 		fd_entry[i].flags=FD_FLAG_OPEN;
-		fd_entry[i].type=FD_TYPE_FATFS;
+		if ((flags+1) & (O_WRONLY+1)) fd_entry[i].flags|=FD_FLAG_WRITABLE;
+	} else if (!strcmp(name, "/dev/ttyserial")){
+		fd_entry[i].type=FD_TYPE_DBGUART;
+		fd_entry[i].flags=FD_FLAG_OPEN;
+		if ((flags+1) & (O_WRONLY+1)) fd_entry[i].flags|=FD_FLAG_WRITABLE;
 	} else {
-		i=-1;
+		int fmode=0;
+		if (flags & O_APPEND) fmode|=FA_OPEN_APPEND;
+		if (flags & O_CREAT) fmode|=FA_OPEN_ALWAYS;
+		if (flags & O_EXCL) fmode|=FA_CREATE_NEW;
+		if (flags & O_TRUNC) fmode|=FA_CREATE_ALWAYS;
+		//madness, O_RDONLY=0, O_WRONLY=1, O_RDWR=2. Adding one makes it into a bitmap.
+		if ((flags+1) & (O_RDONLY+1)) fmode|=FA_READ;
+		if ((flags+1) & (O_WRONLY+1)) fmode|=FA_WRITE;
+		fd_entry[i].fatfcb=calloc(sizeof(FIL), 1);
+		FRESULT r=f_open(fd_entry[i].fatfcb, name, fmode);
+		if (r==F_OK) {
+			fd_entry[i].flags=FD_FLAG_OPEN;
+			fd_entry[i].type=FD_TYPE_FATFS;
+		} else {
+			i=-1;
+		}
+		remap_fatfs_errors(r);
 	}
-	remap_fatfs_errors(r);
 	return i;
 }
 
@@ -157,6 +171,8 @@ ssize_t _write(int file, const void *ptr, size_t len) {
 	if (fd_entry[file].type==FD_TYPE_DBGUART) {
 		uart_write((const char*)ptr, len);
 		return len;
+	} else if (fd_entry[file].type==FD_TYPE_USBUART) {
+		return tud_cdc_write(ptr, len);
 	} else if (fd_entry[file].type==FD_TYPE_FATFS) {
 		UINT rlen;
 		FRESULT r=f_write(fd_entry[file].fatfcb, ptr, len, &rlen);

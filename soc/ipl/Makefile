@@ -26,7 +26,7 @@ OBJS += tjftl/tjftl.o fs.o
 LIBS := gloss/libgloss.a
 LDSCRIPT := gloss/ldscript.ld
 
-CFLAGS := -Os -ggdb -I. -IUGUI -Iusb -Igloss -Itinyusb/src -Ifatfs/source
+CFLAGS := -Os -ggdb -I. -IUGUI -Iusb -Igloss -Itinyusb/src -Ifatfs/source -I../tinyusb/src -I../
 LDFLAGS := -Wl,-Bstatic -Wl,--gc-sections  -Wl,-T,$(LDSCRIPT) -Wl,-Map,$(TARGET_MAP) -lgcc -nostartfiles -Lgloss 
 export PREFIX CC AR LD OBJCOPY CFLAGS LDFLAGS APPNAME
 

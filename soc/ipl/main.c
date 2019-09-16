@@ -1,5 +1,7 @@
 #include <stdint.h>
 #include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include "gloss/mach_defines.h"
 #include "gloss/uart.h"
 #include <stdio.h>
@@ -73,6 +75,8 @@ void start_app(char *app) {
 	maincall(0, NULL);
 	printf("App returned.\n");
 }
+
+void cdc_task();
 
 void main() {
 	syscall_reinit();
@@ -150,7 +154,49 @@ void main() {
 		cache_flush(lcdfb, lcdfb+320*480/2);
 		for (int i=0; i<500; i++) {
 			usb_poll();
+			cdc_task();
 			tud_task();
 		}
 	}
+}
+
+void cdc_task(void)
+{
+	if ( tud_cdc_connected() )
+	{
+		tud_cdc_write_flush();
+	}
+}
+
+// Invoked when cdc when line state changed e.g connected/disconnected
+void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts)
+{
+  (void) itf;
+
+  // connected
+	if ( dtr )
+	{
+		// print initial message when connected
+		tud_cdc_write_str("TinyUSB CDC MSC HID device example\r\n");
+
+		// switch stdout/stdin/stderr
+		for (int i=0;i<3;i++) {
+			close(i);
+			open("/dev/ttyUSB", O_RDWR);
+		}
+	}
+
+	if (!dtr) {
+		// switch back to serial
+		for (int i=0;i<3;i++) {
+			close(i);
+			open("/dev/ttyserial", O_RDWR);
+		}
+	}
+}
+
+// Invoked when CDC interface received data from host
+void tud_cdc_rx_cb(uint8_t itf)
+{
+	(void) itf;
 }
