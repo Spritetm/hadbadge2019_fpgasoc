@@ -116,9 +116,11 @@ module top_fpga(
 		.uart_tx(uart_tx),
 		.uart_rx(uart_rx),
 
+`ifdef BADGE_V3
 		.irda_tx(irda_tx),
 		.irda_rx(irda_rx),
 		.irda_sd(irda_sd),
+`endif
 
 		.pwmout(pwmout),
 		.lcd_db(lcd_db),
