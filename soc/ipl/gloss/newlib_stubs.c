@@ -105,10 +105,12 @@ int _open(const char *name, int flags, int mode) {
 	// Special cases for USB-UART
 	if (!strcmp(name, "/dev/ttyUSB")) {
 		fd_entry[i].type=FD_TYPE_USBUART;
-		fd_entry[i].flags=FD_FLAG_OPEN|FD_FLAG_WRITABLE;
+		fd_entry[i].flags=FD_FLAG_OPEN;
+		if ((flags+1) & (O_WRONLY+1)) fd_entry[i].flags|=FD_FLAG_WRITABLE;
 	} else if (!strcmp(name, "/dev/ttyserial")){
 		fd_entry[i].type=FD_TYPE_DBGUART;
-		fd_entry[i].flags=FD_FLAG_OPEN|FD_FLAG_WRITABLE;
+		fd_entry[i].flags=FD_FLAG_OPEN;
+		if ((flags+1) & (O_WRONLY+1)) fd_entry[i].flags|=FD_FLAG_WRITABLE;
 	} else {
 		int fmode=0;
 		if (flags & O_APPEND) fmode|=FA_OPEN_APPEND;
