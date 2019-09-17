@@ -9,10 +9,11 @@ module top_fpga(
 `ifdef BADGE_V3
 		output [10:0] ledc,
 		output [2:0] leda,
+		inout [29:0] genio,
 `else
 		output [8:0] led,
+		inout [27:0] genio,
 `endif
-		output [27:0] genio,
 		output uart_tx,
 		input uart_rx,
 `ifdef BADGE_V3
@@ -49,6 +50,11 @@ module top_fpga(
 		inout usb_dp,
 		inout usb_dm,
 		output usb_pu,
+		input usb_vdet,
+
+		inout [5:0] sao1,
+		inout [5:0] sao2,
+		inout [7:0] pmod,
 
 		output adcrefout,
 		input adcref4
@@ -92,6 +98,18 @@ module top_fpga(
 	wire flash_oe;
 	wire flash_bus_qpi;
 	wire flash_sclk;
+	wire [29:0] genio_in;
+	wire [29:0] genio_out;
+	wire [29:0] genio_oe;
+	wire [5:0] sao1_in;
+	wire [5:0] sao1_out;
+	wire [5:0] sao1_oe;
+	wire [5:0] sao2_in;
+	wire [5:0] sao2_out;
+	wire [5:0] sao2_oe;
+	wire [7:0] pmod_in;
+	wire [7:0] pmod_out;
+	wire [7:0] pmod_oe;
 
 	wire clkint;
 
@@ -112,7 +130,6 @@ module top_fpga(
 		.clkint(clkint),
 		.btn(btn),
 		.led(led),
-//		.genio(genio),
 		.uart_tx(uart_tx),
 		.uart_rx(uart_rx),
 
@@ -169,9 +186,23 @@ module top_fpga(
 		.usb_dp(usb_dp),
 		.usb_dn(usb_dm),
 		.usb_pu(usb_pu),
+		.usb_vdet(usb_vdet),
 
 		.adcrefout(adcrefout),
-		.adc4(adc4)
+		.adc4(adc4),
+
+		.genio_in(genio_in),
+		.genio_out(genio_out),
+		.genio_oe(genio_oe),
+		.sao1_in(sao1_in),
+		.sao1_out(sao1_out),
+		.sao1_oe(sao1_oe),
+		.sao2_in(sao2_in),
+		.sao2_out(sao2_out),
+		.sao2_oe(sao2_oe),
+		.pmod_in(pmod_in),
+		.pmod_out(pmod_out),
+		.pmod_oe(pmod_oe)
 	);
 
 
@@ -207,6 +238,26 @@ module top_fpga(
 	TRELLIS_IO #(.DIR("BIDIR")) flash_tristate_wp (.I(flash_sout[2]),.T(flash_bus_qpi && !flash_oe),.B(flash_wp),.O(flash_sin[2]));
 	TRELLIS_IO #(.DIR("BIDIR")) flash_tristate_hold (.I(flash_sout[3]),.T(flash_bus_qpi && !flash_oe),.B(flash_hold),.O(flash_sin[3]));
 
+`ifdef BADGE_V3
+	for (i=0; i<30; i++) begin
+`else
+	assign genio_in[29] = 0;
+	assign genio_in[28] = 0;
+	for (i=0; i<28; i++) begin
+`endif
+		TRELLIS_IO #(.DIR("BIDIR")) genio_tristate[i] (.B(genio[i]), .I(genio_out[i]), .O(genio_in[i]), .T(!genio_oe[i]));
+	end
+
+
+	for (i=0; i<6; i++) begin
+		TRELLIS_IO #(.DIR("BIDIR")) sao1_tristate[i] (.B(sao1[i]), .I(sao1_out[i]), .O(sao1_in[i]), .T(!sao1_oe[i]));
+		TRELLIS_IO #(.DIR("BIDIR")) sao2_tristate[i] (.B(sao2[i]), .I(sao2_out[i]), .O(sao2_in[i]), .T(!sao2_oe[i]));
+	end
+
+	for (i=0; i<8; i++) begin
+		TRELLIS_IO #(.DIR("BIDIR")) pmod_tristate[i] (.B(pmod[i]), .I(pmod_out[i]), .O(pmod_in[i]), .T(!pmod_oe[i]));
+	end
+
 	USRMCLK usrmclk_inst (
 		.USRMCLKI(flash_sclk),
 		.USRMCLKTS(flash_cs)
@@ -229,15 +280,6 @@ module top_fpga(
 		.JCE1(jce1)
 	);
 
-	assign genio[15]=jtdi;
-	assign genio[14]=jtck;
-	assign genio[13]=jshift;
-	assign genio[12]=jupdate;
-	assign genio[11]=jrstn;
-	assign genio[10]=jce2;
-	assign genio[9]=jce1;
-	assign genio[8]=jrti2;
-	assign genio[7]=jrti1;
 
 
 	//Janky JTAG DR implementation.
