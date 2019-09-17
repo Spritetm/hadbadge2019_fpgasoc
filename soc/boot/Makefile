@@ -1,16 +1,16 @@
 -include ../include.mk
 TOOLCHAIN_PREFIX := $(RISCV_TOOLCHAIN_PATH)riscv32-unknown-elf-
 CC=$(TOOLCHAIN_PREFIX)gcc
-CFLAGS=-Os -ggdb -I../ipl
+CFLAGS=-Os -ggdb -I../ipl -march=rv32i -mabi=ilp32
 OBJS:=rom.o irq.o gdbstub.o loadipl.o ipl_flash.o
 
 default: rom.bin
 
 %.o: %.S
-	$(CC) -c -o $@ $^
+	$(CC) $(CFLAGS) -c -o $@ $^
 
 rom.elf: $(OBJS) sections.lds
-	$(CC) -Os -ffreestanding -nostdlib -o $@ \
+	$(CC)  $(CFLAGS) -ffreestanding -nostdlib -o $@ \
 		-Wl,-Bstatic,-T,sections.lds,-Map,rom.map,--strip-debug \
 		$(OBJS) -lgcc
 
