@@ -1,0 +1,33 @@
+
+The ATE is the initial contents of the flash. The flash gets pre-programmed in the factory
+and is then soldered on the badge when it is assembled. It will boot up the first time
+the badge is tested, and should show a testing program to indicate if everything is OK.
+
+We need to test/do the following (V means test is implemented)
+
+V Test internal flash (more-or-less proven by FPGA booting up)
+- Test external flash pins
+V PSRAM (initial psram test as is implemented in boot/rom.S)
+V * Perhaps test while rest of the test screen is shown?
+V USB
+  * Plug into a laptop/computer/RPi/... and detect enumeration?
+- Display
+  * Checkerboard pattern on test screen so faults are easy to spot
+- Cartridge port
+  * Cartridge, as prototyped, with cross-connections
+- Ext flash
+  * Read ext flash, see if id is different and non-NULL
+- SAO/PMOD connectors
+  * Jig that plugs into the SAO and uses pogo pins for the PMOD?
+V IrDA
+  * Jig sends out random IrDA packets, if receive >3 different ones OK
+- Buttons:
+  * Circles turn green when buttons are pressed... or something
+- Possible fast switch to whatever is on the cartridge if magical word
+  is found
+  * Can be implemented in SoC, if memtest is moved to app. Check final x
+    bytes for 'secret string', if found chainboot into cart.
+- HDMI
+  * Simply plug in HDMI connector.
+V * ToDo: fix r/b color inversion
+
