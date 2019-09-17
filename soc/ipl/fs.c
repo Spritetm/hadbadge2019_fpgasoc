@@ -179,10 +179,13 @@ bool tud_msc_test_unit_ready_cb(uint8_t lun) {
 	return msc_enabled;
 }
 
+int msc_capacity_passed = 0;
+
 // Invoked when received SCSI_CMD_READ_CAPACITY_10 and SCSI_CMD_READ_FORMAT_CAPACITY to determine the disk size
 // Application update block count and block size
 void tud_msc_capacity_cb(uint8_t lun, uint32_t* block_count, uint16_t* block_size) {
 	(void) lun;
+	msc_capacity_passed = 1;
 	*block_count = FS_INT_TFL_SECT;
 	*block_size  = 512;
 }
