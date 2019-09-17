@@ -6,7 +6,7 @@ module ledctl (
 	output reg [2:0] leda
 );
 
-reg [7:0] ctr;
+reg [10:0] ctr;
 
 
 always @(posedge clk) begin

@@ -7,7 +7,6 @@ module soc(
 		input clkint, //internal clock of ecp5, <24MHz, used for rng
 		input [7:0] btn, 
 		output [8:0] led,
-		output [27:0] genio,
 		output uart_tx,
 		input uart_rx,
 		output irda_tx,
@@ -60,9 +59,23 @@ module soc(
 		inout usb_dp,
 		inout usb_dn,
 		output usb_pu,
+		input usb_vdet,
 
 		output adcrefout,
-		input adc4
+		input adc4,
+
+		input [29:0] genio_in,
+		output reg [29:0] genio_out,
+		output reg [29:0] genio_oe,
+		input [5:0] sao1_in,
+		output reg [5:0] sao1_out,
+		output reg [5:0] sao1_oe,
+		input [5:0] sao2_in,
+		output reg [5:0] sao2_out,
+		output reg [5:0] sao2_oe,
+		input [7:0] pmod_in,
+		output reg [7:0] pmod_out,
+		output reg [7:0] pmod_oe
 	);
 
 
@@ -192,9 +205,6 @@ module soc(
 	assign `SLICE_32(arb_addr, JTAG_ARB_PRT) = jtag_addr;
 	assign arb_valid[JTAG_ARB_PRT] = jtag_mem_valid;
 	assign `SLICE_4(arb_wstrb, JTAG_ARB_PRT) = 'hf; //write only for now
-	assign genio[0] = dbgreg_sel;
-	assign genio[1] = dbgreg_strobe;
-	assign genio[15:3] = dbgreg_in;
 	reg [32:0] dbgfifo [32:0];
 	reg [4:0] dbgfifo_w;
 	reg [4:0] dbgfifo_r;
@@ -308,7 +318,16 @@ module soc(
 	parameter MISC_REG_FLASH_SEL = 11;
 	parameter MISC_REG_ADC_CTL = 12;
 	parameter MISC_REG_ADC_VAL = 13;
-
+	parameter MISC_REG_GENIO_IN = 14;
+	parameter MISC_REG_GENIO_OUT = 15;
+	parameter MISC_REG_GENIO_OE = 16;
+	parameter MISC_REG_GENIO_W2S = 17;
+	parameter MISC_REG_GENIO_W2C = 18;
+	parameter MISC_REG_GPEXT_IN = 19;
+	parameter MISC_REG_GPEXT_OUT = 20;
+	parameter MISC_REG_GPEXT_OE = 21;
+	parameter MISC_REG_GPEXT_W2S = 22;
+	parameter MISC_REG_GPEXT_W2C = 23;
 
 	wire [31:0] rngno;
 	rng rng(
@@ -348,30 +367,42 @@ module soc(
 			end
 		end else if (mem_addr[31:28]=='h2) begin
 			misc_select = mem_valid;
-			if (mem_addr[5:2]==MISC_REG_LED) begin
+			if (mem_addr[6:2]==MISC_REG_LED) begin
 				mem_rdata = { 16'h0, pic_led };
-			end else if (mem_addr[5:2]==MISC_REG_BTN) begin
+			end else if (mem_addr[6:2]==MISC_REG_BTN) begin
 				mem_rdata = { 24'h0, ~btn};
-			end else if (mem_addr[5:2]==MISC_REG_SOC_VER) begin
+			end else if (mem_addr[6:2]==MISC_REG_SOC_VER) begin
 				mem_rdata = soc_version;
-			end else if (mem_addr[5:2]==MISC_REG_CPU_NO) begin
+			end else if (mem_addr[6:2]==MISC_REG_CPU_NO) begin
 				mem_rdata = arb_currcpu;
-			end else if (mem_addr[5:2]==MISC_REG_PSRAMOVR_A) begin
+			end else if (mem_addr[6:2]==MISC_REG_PSRAMOVR_A) begin
 				mem_rdata = psrama_ovr;
-			end else if (mem_addr[5:2]==MISC_REG_PSRAMOVR_B) begin
+			end else if (mem_addr[6:2]==MISC_REG_PSRAMOVR_B) begin
 				mem_rdata = psramb_ovr;
-			end else if (mem_addr[5:2]==MISC_REG_FLASH_CTL) begin
+			end else if (mem_addr[6:2]==MISC_REG_FLASH_CTL) begin
 				mem_rdata = {30'h0, flash_idle, flash_claim};
-			end else if (mem_addr[5:2]==MISC_REG_FLASH_RDATA) begin
+			end else if (mem_addr[6:2]==MISC_REG_FLASH_RDATA) begin
 				mem_rdata = {24'h0, flash_rdata};
-			end else if (mem_addr[5:2]==MISC_REG_RNG) begin
+			end else if (mem_addr[6:2]==MISC_REG_RNG) begin
 				mem_rdata = rngno;
-			end else if (mem_addr[5:2]==MISC_REG_FLASH_SEL) begin
+			end else if (mem_addr[6:2]==MISC_REG_FLASH_SEL) begin
 				mem_rdata = {31'h0, fsel_d};
-			end else if (mem_addr[5:2]==MISC_REG_ADC_CTL) begin
+			end else if (mem_addr[6:2]==MISC_REG_ADC_CTL) begin
 				mem_rdata = {11'h0, adc_divider, 14'h0, adc_valid, adc_enabled};
-			end else if (mem_addr[5:2]==MISC_REG_ADC_VAL) begin
+			end else if (mem_addr[6:2]==MISC_REG_ADC_VAL) begin
 				mem_rdata = adc_value;
+			end else if (mem_addr[6:2]==MISC_REG_GENIO_IN) begin
+				mem_rdata = {2'h0, genio_in};
+			end else if (mem_addr[6:2]==MISC_REG_GENIO_OUT) begin
+				mem_rdata = {2'h0, genio_out};
+			end else if (mem_addr[6:2]==MISC_REG_GENIO_OE) begin
+				mem_rdata = {2'h0, genio_oe};
+			end else if (mem_addr[6:2]==MISC_REG_GPEXT_IN) begin
+				mem_rdata = {usb_vdet, 7'h0, pmod_in, 2'h0, sao2_in, 2'h0, sao1_in};
+			end else if (mem_addr[6:2]==MISC_REG_GPEXT_OUT) begin
+				mem_rdata = {8'h0, pmod_out, 2'h0, sao2_out, 2'h0, sao1_out};
+			end else if (mem_addr[6:2]==MISC_REG_GPEXT_OE) begin
+				mem_rdata = {8'h0, pmod_oe, 2'h0, sao2_oe, 2'h0, sao1_oe};
 			end else begin
 				mem_rdata = 0;
 			end
@@ -767,28 +798,52 @@ module soc(
 		end else begin
 			fsel_strobe <= 0;
 			if (misc_select && mem_wstrb[0]) begin
-				if (mem_addr[5:2]==MISC_REG_LED) begin
+				if (mem_addr[6:2]==MISC_REG_LED) begin
 					pic_led <= mem_wdata[16:0];
-				end else if (mem_addr[5:2]==MISC_REG_PSRAMOVR_A) begin
+				end else if (mem_addr[6:2]==MISC_REG_PSRAMOVR_A) begin
 					psrama_ovr <= mem_wdata;
-				end else if (mem_addr[5:2]==MISC_REG_PSRAMOVR_B) begin
+				end else if (mem_addr[6:2]==MISC_REG_PSRAMOVR_B) begin
 					psramb_ovr <= mem_wdata;
-				end else if (mem_addr[5:2]==MISC_REG_RESETN) begin
+				end else if (mem_addr[6:2]==MISC_REG_RESETN) begin
 					cpu_resetn[1] <= mem_wdata[1];
-				end else if (mem_addr[5:2]==MISC_REG_FLASH_CTL) begin
+				end else if (mem_addr[6:2]==MISC_REG_FLASH_CTL) begin
 					flash_claim <= mem_wdata[0];
-				end else if (mem_addr[5:2]==MISC_REG_FLASH_WDATA) begin
+				end else if (mem_addr[6:2]==MISC_REG_FLASH_WDATA) begin
 					//handled in combinatorial block above
-				end else if (mem_addr[5:2]==MISC_REG_FLASH_SEL) begin
+				end else if (mem_addr[6:2]==MISC_REG_FLASH_SEL) begin
 					fsel_d <= mem_wdata[0];
 					fsel_strobe <= 1;
 					if (mem_wdata[24:0]==24'hD0F1A5) begin
 						//D0F1A50x is written. Pull PROGRAMN.
 						programn_queue <= 1;
 					end
-				end else if (mem_addr[5:2]==MISC_REG_ADC_CTL) begin
+				end else if (mem_addr[6:2]==MISC_REG_ADC_CTL) begin
 					adc_divider <= mem_wdata[23:16];
 					adc_enabled <= mem_wdata[0];
+				end else if (mem_addr[6:2]==MISC_REG_GENIO_OUT) begin
+					genio_out <= mem_wdata[29:0];
+				end else if (mem_addr[6:2]==MISC_REG_GENIO_OE) begin
+					genio_oe <= mem_wdata[29:0];
+				end else if (mem_addr[6:2]==MISC_REG_GENIO_W2S) begin
+					genio_out <= genio_out | mem_wdata[29:0];
+				end else if (mem_addr[6:2]==MISC_REG_GENIO_W2C) begin
+					genio_out <= genio_out & ~mem_wdata[29:0];
+				end else if (mem_addr[6:2]==MISC_REG_GPEXT_OUT) begin
+					pmod_out <= mem_wdata[23:16];
+					sao2_out <= mem_wdata[13:8];
+					sao1_out <= mem_wdata[5:0];
+				end else if (mem_addr[6:2]==MISC_REG_GPEXT_OE) begin
+					pmod_oe <= mem_wdata[23:16];
+					sao2_oe <= mem_wdata[13:8];
+					sao1_oe <= mem_wdata[5:0];
+				end else if (mem_addr[6:2]==MISC_REG_GPEXT_W2S) begin
+					pmod_out <= pmod_out | mem_wdata[23:16];
+					sao2_out <= sao2_out | mem_wdata[13:8];
+					sao1_out <= sao1_out | mem_wdata[5:0];
+				end else if (mem_addr[6:2]==MISC_REG_GPEXT_W2C) begin
+					pmod_out <= pmod_out & ~mem_wdata[23:16];
+					sao2_out <= sao2_out & ~mem_wdata[13:8];
+					sao1_out <= sao1_out & ~mem_wdata[5:0];
 				end
 			end
 		end
