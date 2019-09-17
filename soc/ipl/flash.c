@@ -26,6 +26,7 @@ static inline uint8_t flash_send_recv(uint8_t data) {
 }
 
 #define CMD_GETID 0x9f
+#define CMD_GETUID 0x4B
 #define CMD_FASTREAD 0x0B
 #define CMD_PAGE_PGM 0x02
 #define CMD_READSR1 0x05
@@ -42,7 +43,6 @@ static inline uint8_t flash_send_recv(uint8_t data) {
 
 uint32_t flash_get_id(int flash_sel) {
 	int id=0;
-	MISC_REG(MISC_FLASH_CTL_REG)=MISC_FLASH_CTL_CLAIM;
 	flash_start_xfer(flash_sel);
 	flash_send_recv(CMD_GETID);
 	id=flash_send_recv(0)<<16;
@@ -50,6 +50,19 @@ uint32_t flash_get_id(int flash_sel) {
 	id|=flash_send_recv(0);
 	flash_end_xfer();
 	return id;
+}
+
+uint64_t flash_get_uid(int flash_sel) {
+	uint64_t uid;
+	flash_start_xfer(flash_sel);
+	flash_send_recv(CMD_GETUID);
+	for (int i=0; i<4; i++) flash_send_recv(0);
+	for (int i=0; i<8; i++) {
+		uid<<=8;
+		uid|=flash_send_recv(0);
+	}
+	flash_end_xfer();
+	return uid;
 }
 
 void flash_read(int flash_sel, uint32_t addr, uint8_t *buff, int len) {

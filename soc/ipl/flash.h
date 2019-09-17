@@ -6,6 +6,7 @@
 #define FLASH_SEL_CART 1
 
 uint32_t flash_get_id(int flash_sel);
+uint64_t flash_get_uid(int flash_sel);
 void flash_read(int flash_sel, uint32_t addr, uint8_t *buff, int len);
 uint8_t flash_read_status(int flash_sel, int reg);
 bool flash_write_status(int flash_sel, int reg);
