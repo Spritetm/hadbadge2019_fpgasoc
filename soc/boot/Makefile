@@ -17,7 +17,7 @@ rom.elf: $(OBJS) sections.lds
 rom.bin: rom.elf
 	$(TOOLCHAIN_PREFIX)objcopy -O binary $< $@
 	$(TOOLCHAIN_PREFIX)objdump -S $< > rom.disasm
-	chmod -x $@
+	$(CHMOD) -x $@
 
 clean:
 	rm -f rom.bin rom.elf $(OBJS)
