@@ -11,6 +11,7 @@ V PSRAM (initial psram test as is implemented in boot/rom.S)
 V * Perhaps test while rest of the test screen is shown?
 V USB
   * Plug into a laptop/computer/RPi/... and detect enumeration?
+  * Vbus
 - Display
   * Checkerboard pattern on test screen so faults are easy to spot
 - Cartridge port

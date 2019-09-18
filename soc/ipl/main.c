@@ -69,7 +69,7 @@ typedef struct {
 #define MEMTEST_RET_OK 1
 #define MEMTEST_RET_FAIL 2
 #define MEMTEST_SIZE (10*1024*1024)
-#define MEMTEST_IT_PER_LOOP 10240
+#define MEMTEST_IT_PER_LOOP 2048
 
 #define SCRAMBLE(p) ((((p)<<16)|(p))^0xaaaaaaaa)
 
@@ -97,6 +97,7 @@ int memtest(memtest_t *t) {
 			t->pos+=4;
 		}
 	}
+	t->pos+=t->pos/2;  //log inc in test addr
 	if (t->pos >= (MEMTEST_SIZE/4)) {
 		if (t->state==MEMTEST_STATE_WRITE) {
 			t->pos=0;
@@ -110,10 +111,10 @@ int memtest(memtest_t *t) {
 
 
 const int genio_pair[15][2]={
-	{2, 15}, {1, 17}, {3, 19}, {5, 21},
-	{7, 23}, {9, 25}, {11, 27}, {13, 29},
-	{4, 18}, {6, 20}, {8, 22}, {10, 24},
-	{12, 26}, {14, 28}, {16, 30}
+	{1, 16}, {2, 18}, {4, 20}, {6, 22},
+	{8, 24}, {10, 26}, {12, 28}, {14, 30},
+	{3, 17}, {5, 19}, {7, 21}, {9, 23},
+	{11, 25}, {13, 27}, {15, 29}
 };
 
 
@@ -125,13 +126,13 @@ int test_genio() {
 	int oe=0, out=0, ex=0;
 	for (int i=0; i<15; i++) {
 		int a, b;
-		if (0) {
+		if (rand()&1) {
 			a=1; b=0;
 		} else {
 			a=0; b=1;
 		}
 		oe|=(1<<(genio_pair[i][a]-1));
-		if (geniopin==i) {
+		if (rand()) {
 			out|=(1<<(genio_pair[i][a]-1));
 			ex|=(1<<(genio_pair[i][a]-1));
 			ex|=(1<<(genio_pair[i][b]-1));
@@ -150,6 +151,30 @@ int test_genio() {
 	}
 }
 
+uint32_t test_irda() {
+	uint8_t r;
+	uint32_t res=0;
+	UART_REG(UART_IRDA_DIV_REG)=416;
+	MISC_REG(MISC_GPEXT_W2S_REG)=(1<<30);
+	r=UART_REG(UART_IRDA_DATA_REG);
+	UART_REG(UART_IRDA_DATA_REG)=0x55;
+	UART_REG(UART_IRDA_DATA_REG)=0xaa;
+	r=UART_REG(UART_IRDA_DATA_REG);
+	res|=(r<<24);
+	UART_REG(UART_IRDA_DATA_REG)=0x5a;
+	r=UART_REG(UART_IRDA_DATA_REG);
+	res|=(r<<16);
+	MISC_REG(MISC_GPEXT_W2C_REG)=(1<<30);
+	UART_REG(UART_IRDA_DATA_REG)=0x55;
+	UART_REG(UART_IRDA_DATA_REG)=0xaa;
+	r=UART_REG(UART_IRDA_DATA_REG);
+	res|=(r<<8);
+	UART_REG(UART_IRDA_DATA_REG)=0x5a;
+	r=UART_REG(UART_IRDA_DATA_REG);
+	res|=(r<<0);
+	return res;
+
+}
 
 extern int msc_capacity_passed;
 
@@ -169,7 +194,8 @@ void main() {
 	fs_init();
 	usb_msc_on();
 	MISC_REG(MISC_LED_REG)=0xfffff;
-	UART_REG(UART_IRDA_DIV_REG)=416;
+
+	uint32_t irda_res=test_irda();
 	int adcdiv=2;
 	
 	//loop
@@ -177,15 +203,14 @@ void main() {
 	char buf[200];
 	MISC_REG(MISC_ADC_CTL_REG)=MISC_ADC_CTL_DIV(adcdiv)|MISC_ADC_CTL_ENA;
 	memtest_t mt={0};
-	int irda_sent=(MISC_REG(MISC_RNG_REG)&0xff);
-	int irda_recv_ok=0;
 	int adc_avg=32767;
 	int btn_ok=0;
+	MISC_REG(MISC_GPEXT_W2C_REG)=(1<<30);
+	UG_SetForecolor(C_WHITE);
+	UG_PutString(0, 0, "Hackaday Supercon Badge HW test");
 	while(1) {
 		p++;
 
-		UG_SetForecolor(C_WHITE);
-		UG_PutString(0, 0, "Hackaday Supercon Badge HW test");
 		
 		UG_SetForecolor(C_BLUE);
 		sprintf(buf, "%d %06X", mt.state, mt.pos);
@@ -225,34 +250,17 @@ void main() {
 			UG_PutString(160, 64, "...");
 		}
 
-
-		if ((p&3)==0) {
-			irda_sent=(irda_sent+1)&0xff;
-			UART_REG(UART_IRDA_DATA_REG)=irda_sent;
-			UG_SetForecolor(C_BLUE);
-			sprintf(buf, "%02X", irda_sent);
-			UG_PutString(250, 80, buf);
-		}
-		r=UART_REG(UART_IRDA_DATA_REG);
-		if (r!=-1) {
-			if (r==irda_sent) {
-				irda_recv_ok++;
-			} else {
-				UART_REG(UART_IRDA_DATA_REG)=r;
-			}
-			UG_SetForecolor(C_BLUE);
-			sprintf(buf, "%02X", r);
-			UG_PutString(220, 80, buf);
-		}
-
+		UG_SetForecolor(C_BLUE);
+		sprintf(buf, "%08X", irda_res);
+		UG_PutString(220, 80, buf);
 		UG_SetForecolor(C_YELLOW);
 		UG_PutString(8, 80, "IRDA");
-		if (irda_recv_ok>=3) {
+		if ((irda_res&0xffff00ff)==0xffff00AA) {
 			UG_SetForecolor(C_GREEN);
 			UG_PutString(160, 80, "OK!");
 		} else  {
-			UG_SetForecolor(C_YELLOW);
-			UG_PutString(160, 80, "...");
+			UG_SetForecolor(C_RED);
+			UG_PutString(160, 80, "ERR");
 		}
 
 		r=MISC_REG(MISC_ADC_VAL_REG);
@@ -272,7 +280,7 @@ void main() {
 			if (btn == (1<<i)) btn_ok|=btn;
 		}
 		UG_SetForecolor(C_YELLOW);
-		UG_PutString(8, 112, "ADC");
+		UG_PutString(8, 112, "BUTTONS");
 		if (btn_ok==0xff) {
 			UG_SetForecolor(C_GREEN);
 			UG_PutString(160, 112, "OK!");
