@@ -206,6 +206,14 @@ void main() {
 	int adc_avg=32767;
 	int btn_ok=0;
 	MISC_REG(MISC_GPEXT_W2C_REG)=(1<<30);
+
+//	uint8_t cols[]={0x9A, 0xc0, 0xf0};
+	uint8_t cols[]={0x12, 0x40, 0x70};
+	for (int y=0; y<320; y++) {
+		for (int x=0; x<480; x+=2) {
+			lcdfb[(x+y*512)/2]=cols[(x+y)%3];
+		}
+	}
 	UG_SetForecolor(C_WHITE);
 	UG_PutString(0, 0, "Hackaday Supercon Badge HW test");
 	while(1) {
@@ -255,7 +263,7 @@ void main() {
 		UG_PutString(220, 80, buf);
 		UG_SetForecolor(C_YELLOW);
 		UG_PutString(8, 80, "IRDA");
-		if ((irda_res&0xffff00ff)==0xffff00AA) {
+		if ((irda_res&0xffff0000)==0xffff0000 && (irda_res&0xffff)!=0xffff) {
 			UG_SetForecolor(C_GREEN);
 			UG_PutString(160, 80, "OK!");
 		} else  {

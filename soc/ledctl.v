@@ -6,7 +6,7 @@ module ledctl (
 	output reg [2:0] leda
 );
 
-reg [10:0] ctr;
+reg [21:0] ctr;
 
 
 always @(posedge clk) begin
@@ -15,16 +15,16 @@ always @(posedge clk) begin
 		leda <= 0;
 		ledc <= 0;
 	end else begin
+		ledc <= (ctr[5:4]==0)?11'hFFF:0;
 		ctr <= ctr + 1;
 		if (ctr == 0) begin
-			leda <= 'b001;
-			ledc <= { 2'b11, (led & 9'b100010101)};
-		end else if (ctr == 85) begin
-			leda <= 'b010;
-			ledc <= { 2'b00, (led & 9'b000101010)};
-		end else if (ctr == 170) begin
-			leda <= 'b100;
-			ledc <= { 2'b00, (led & 9'b011000000)};
+			if (leda==1) begin
+				leda <= 2;
+			end else if (leda==2) begin
+				leda <= 4;
+			end else begin
+				leda <= 1;
+			end
 		end
 	end
 end
