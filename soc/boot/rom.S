@@ -71,11 +71,11 @@ bbloop:
 	sw a2, LCD_CONTROL_REG(a1)
 
 //if verilator, we skip the memtest
-	j memtestok
 
 
 //Memtest
 memtest_start:
+	j memtestok //no memtest in ate boot rom, we do that in ipl
 	li a2, MISC_OFFSET
 	li a1, 0x3
 	sw a1, MISC_LED_REG(a2)
