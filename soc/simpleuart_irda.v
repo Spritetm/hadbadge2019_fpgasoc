@@ -53,6 +53,8 @@ module simpleuart_irda (
 	assign reg_dat_wait = reg_dat_we && (send_bitcnt || send_dummy);
 	assign reg_dat_do = recv_buf_valid ? recv_buf_data : ~0;
 
+	//Note: tx sends positive pulses of 1/4th baud rate when the bit to send is a 0.
+	//      rx receives negative pulses when the bit to receive is a 0. (high otherwise)
 
 	always @(posedge clk) begin
 		if (!resetn) begin
@@ -65,7 +67,7 @@ module simpleuart_irda (
 		end
 	end
 
-	reg [3:0] rx_deglitch;
+	reg [2:0] rx_deglitch;
 
 	always @(posedge clk) begin
 		if (!resetn) begin
@@ -75,20 +77,21 @@ module simpleuart_irda (
 			recv_buf_data <= 0;
 			recv_buf_valid <= 0;
 			recved_is_zero <= 0;
+			rx_deglitch <= 3'h0;
 		end else begin
 			recv_divcnt <= recv_divcnt + 1;
 			if (reg_dat_re) begin
 				recv_buf_valid <= 0;
 			end
-			rx_deglitch <= { rx_deglitch[2:0], ser_rx };
+			rx_deglitch <= { rx_deglitch[1:0], ser_rx };
 			if (recv_divcnt == 0) begin
 				recved_is_zero <= 0;
-			end else if (rx_deglitch[3]==0) begin
+			end else if (rx_deglitch[2]==0 && rx_deglitch[1]==0) begin
 				recved_is_zero <= 1;
 			end
 			case (recv_state)
 				0: begin
-					if ((rx_deglitch[3]==0) && (send_bitcnt == 0)) begin
+					if ((rx_deglitch[2]==0 && rx_deglitch[1]==0)) begin// && (send_bitcnt == 0)) begin
 						recv_state <= 1;
 					end
 					recv_divcnt <= cfg_divider/2; //pulse is in give-or-take the middle of the frame
@@ -121,8 +124,9 @@ module simpleuart_irda (
 	assign ser_tx = (send_divcnt < (cfg_divider/4)) && (send_pattern[0] == 0);
 
 	always @(posedge clk) begin
-		if (reg_div_we)
+		if (reg_div_we) begin
 			send_dummy <= 1;
+		end
 		send_divcnt <= send_divcnt + 1;
 		if (!resetn) begin
 			send_pattern <= ~0;
