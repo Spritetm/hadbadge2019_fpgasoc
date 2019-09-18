@@ -37,14 +37,14 @@ assign ready = (wen && ready_write) || (ren && ready_read);
 
 initial begin
 	palette[0] = 24'h000000;
-	palette[1] = 24'h000080;
-	palette[2] = 24'h008000;
-	palette[3] = 24'h008080;
-	palette[4] = 24'h800000;
-	palette[5] = 24'h800080;
-	palette[6] = 24'h808000;
-	palette[7] = 24'h808080;
-	palette[8] = 24'h404040;
+	palette[1] = 24'h00007F;
+	palette[2] = 24'h007F00;
+	palette[3] = 24'h007F7F;
+	palette[4] = 24'h7F0000;
+	palette[5] = 24'h7F007F;
+	palette[6] = 24'h7F7F00;
+	palette[7] = 24'h7F7F7F;
+	palette[8] = 24'h3F3F3F;
 	palette[9] = 24'h0000ff;
 	palette[10] = 24'h00ff00;
 	palette[11] = 24'h00ffff;
