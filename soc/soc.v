@@ -11,7 +11,7 @@ module soc(
 		input uart_rx,
 		output irda_tx,
 		input irda_rx,
-		output irda_sd,
+		output reg irda_sd,
 		output pwmout,
 		output [17:0] lcd_db,
 		output lcd_rd,
@@ -400,7 +400,7 @@ module soc(
 			end else if (mem_addr[6:2]==MISC_REG_GPEXT_IN) begin
 				mem_rdata = {usb_vdet, 7'h0, pmod_in, 2'h0, sao2_in, 2'h0, sao1_in};
 			end else if (mem_addr[6:2]==MISC_REG_GPEXT_OUT) begin
-				mem_rdata = {8'h0, pmod_out, 2'h0, sao2_out, 2'h0, sao1_out};
+				mem_rdata = {1'h0, irda_sd, 6'h0, pmod_out, 2'h0, sao2_out, 2'h0, sao1_out};
 			end else if (mem_addr[6:2]==MISC_REG_GPEXT_OE) begin
 				mem_rdata = {8'h0, pmod_oe, 2'h0, sao2_oe, 2'h0, sao1_oe};
 			end else begin
@@ -556,8 +556,6 @@ module soc(
 		.reg_dat_do  (uart_reg_dat_do),
 		.reg_dat_wait(uart_reg_dat_wait)
 	);
-
-	assign irda_sd = rst;
 
 	simpleuart_irda simpleuart_irda (
 		.clk         (clk48m      ),
@@ -795,6 +793,7 @@ module soc(
 			programn_queue <= 0;
 			adc_enabled <= 0;
 			adc_divider <= 0;
+			irda_sd <= 1;
 		end else begin
 			fsel_strobe <= 0;
 			if (misc_select && mem_wstrb[0]) begin
@@ -829,6 +828,7 @@ module soc(
 				end else if (mem_addr[6:2]==MISC_REG_GENIO_W2C) begin
 					genio_out <= genio_out & ~mem_wdata[29:0];
 				end else if (mem_addr[6:2]==MISC_REG_GPEXT_OUT) begin
+					irda_sd <= mem_wdata[30];
 					pmod_out <= mem_wdata[23:16];
 					sao2_out <= mem_wdata[13:8];
 					sao1_out <= mem_wdata[5:0];
@@ -837,10 +837,12 @@ module soc(
 					sao2_oe <= mem_wdata[13:8];
 					sao1_oe <= mem_wdata[5:0];
 				end else if (mem_addr[6:2]==MISC_REG_GPEXT_W2S) begin
+					irda_sd <= irda_sd | mem_wdata[30];
 					pmod_out <= pmod_out | mem_wdata[23:16];
 					sao2_out <= sao2_out | mem_wdata[13:8];
 					sao1_out <= sao1_out | mem_wdata[5:0];
 				end else if (mem_addr[6:2]==MISC_REG_GPEXT_W2C) begin
+					irda_sd <= irda_sd & ~mem_wdata[30];
 					pmod_out <= pmod_out & ~mem_wdata[23:16];
 					sao2_out <= sao2_out & ~mem_wdata[13:8];
 					sao1_out <= sao1_out & ~mem_wdata[5:0];
