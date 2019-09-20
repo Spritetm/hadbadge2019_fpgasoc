@@ -812,7 +812,7 @@ module soc(
 				end else if (mem_addr[6:2]==MISC_REG_FLASH_SEL) begin
 					fsel_d <= mem_wdata[0];
 					fsel_strobe <= 1;
-					if (mem_wdata[24:0]==24'hD0F1A5) begin
+					if (mem_wdata[31:8]==24'hD0F1A5) begin
 						//D0F1A50x is written. Pull PROGRAMN.
 						programn_queue <= 1;
 					end
@@ -894,31 +894,6 @@ IRQs used:
 	end
 
 
-//Debugging stuff
-	reg [7:0] dbgval;
-	reg [15:0] my_dbgdata;
-	always @(posedge clk48m) begin
-		if (rst) begin
-			dbgval<=0;
-		end else begin
-			if (mem_addr == 'h40000010) begin
-				dbgval<='hff;
-			end else begin
-				if (dbgval!=0) begin
-					dbgval <= dbgval - 1;
-				end
-			end
-//			my_dbgdata <= ram_rdata[15:0];
-			my_dbgdata <= mem_addr[31:16];
-		end
-	end
-	
-//	assign genio[15:0]={mem_addr[31:17], bus_error};//my_dbgdata;
-//	assign genio[15:0]={mem_addr[15:1], bus_error};//my_dbgdata;
-//	assign genio[16]=(dbgval!=0);
-//	assign genio[17]=bus_error;
-//	assign genio[27:18]='h0;
-	
 	//Unused pins
 	assign pwmout = 0;
 endmodule
