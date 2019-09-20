@@ -1,9 +1,10 @@
-module top(input clk, input [7:0] btn, output [5:0] led);
+module top(input clk, input [7:0] btn, output [10:0] ledc, output [2:0] leda);
     localparam ctr_width = 24;
     localparam ctr_max = 2**ctr_width - 1;
     reg [ctr_width-1:0] ctr = 0;
     reg [9:0] pwm_ctr = 0;
     reg dir = 0;
+    assign leda=3'h1;
 
     always@(posedge clk) begin
     ctr <= dir ? ctr - 1'b1 - btn[7]: ctr + 1'b1 + btn[7];
@@ -35,5 +36,6 @@ module top(input clk, input [7:0] btn, output [5:0] led);
     end
     endgenerate
 
-    assign led = led_reg[6:1];
+    assign ledc[5:0] = led_reg[6:1];
+    assign ledc[10:6] = 0;
 endmodule
