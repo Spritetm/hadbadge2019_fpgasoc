@@ -151,6 +151,44 @@ int test_genio() {
 	}
 }
 
+int test_sao() {
+	int v=rand()&0x3F;
+	int r;
+	volatile int w;
+	if (rand()&1) {
+		MISC_REG(MISC_GPEXT_OE_REG)=0xFF00;
+		MISC_REG(MISC_GPEXT_OUT_REG)=v<<8;
+		for (w=0; w<10; w++) ;
+		r=MISC_REG(MISC_GPEXT_IN_REG)&0x3F;
+	} else {
+		MISC_REG(MISC_GPEXT_OE_REG)=0xFF;
+		MISC_REG(MISC_GPEXT_OUT_REG)=v;
+		for (w=0; w<10; w++) ;
+		r=(MISC_REG(MISC_GPEXT_IN_REG)>>8)&0x3f;
+	}
+	if (r!=v) printf("SAO: %02x %02x\n", r, v);
+	return r==v;
+}
+
+int test_pmod() {
+	int v=rand()&0xF;
+	int r;
+	volatile int w;
+	if (rand()&1) {
+		MISC_REG(MISC_GPEXT_OE_REG)=0xF0000;
+		MISC_REG(MISC_GPEXT_OUT_REG)=v<<16;
+		for (w=0; w<10; w++) ;
+		r=(MISC_REG(MISC_GPEXT_IN_REG)>>20)&0xf;
+	} else {
+		MISC_REG(MISC_GPEXT_OE_REG)=0xF00000;
+		MISC_REG(MISC_GPEXT_OUT_REG)=v<<20;
+		for (w=0; w<10; w++) ;
+		r=(MISC_REG(MISC_GPEXT_IN_REG)>>16)&0xf;
+	}
+	if (r!=v) printf("PMOD: %x %x\n", r, v);
+	return r==v;
+}
+
 uint32_t test_irda() {
 	uint8_t r;
 	uint32_t res=0;
@@ -176,7 +214,28 @@ uint32_t test_irda() {
 
 }
 
+void boot_cart() {
+	MISC_REG(MISC_FLASH_SEL_REG)=MISC_FLASH_SEL_CARTFLASH;
+	volatile int w;
+	for (w=0; w<16; w++) ;
+	MISC_REG(MISC_FLASH_SEL_REG)=MISC_FLASH_SEL_CARTFLASH|MISC_FLASH_SEL_FPGARELOAD_MAGIC;
+}
+
+#define  TEST_THR 5
+
+int check_test(int res, int *ctr) {
+	if (*ctr<0) {
+		if (res) *ctr=TEST_THR; else *ctr=0;
+	} else if (res) {
+		(*ctr)++;
+	} else {
+		(*ctr)=0;
+	}
+	return ((*ctr)>=TEST_THR);
+}
+
 extern int msc_capacity_passed;
+void usb_poll();
 
 void main() {
 	syscall_reinit();
@@ -200,7 +259,7 @@ void main() {
 	
 	//loop
 	int p;
-	char buf[200];
+	char buf[400];
 	MISC_REG(MISC_ADC_CTL_REG)=MISC_ADC_CTL_DIV(adcdiv)|MISC_ADC_CTL_ENA;
 	memtest_t mt={0};
 	int adc_avg=32767;
@@ -214,87 +273,131 @@ void main() {
 			lcdfb[(x+y*512)/2]=cols[(x+y)%3];
 		}
 	}
+	
+	uint8_t sig[8];
+	uint8_t sig_chk[8]="FLASHCAR";
+	flash_read(FLASH_SEL_CART, 0x17f000, sig, 8);
+	for (int i=0; i<32; i++) printf("%02X ", sig[i]);
+	printf("\n");
+	if (memcmp(sig, sig_chk, 8)==0) {
+		boot_cart();
+	}
+	//Evil compensation for delay on ext flash lines...
+	for (int i=0; i<8; i++) sig_chk[i]=sig_chk[i]>>1;
+	if (memcmp(sig, sig_chk, 8)==0) {
+		boot_cart();
+	}
+
+
+	int allokpossible=1;
 	UG_SetForecolor(C_WHITE);
 	UG_PutString(0, 0, "Hackaday Supercon Badge HW test");
+	UG_SetForecolor(C_YELLOW);
+	UG_PutString(8, 32, "RAM");
+	UG_SetForecolor(C_YELLOW);
+	UG_PutString(8, 48, "USB");
+	UG_SetForecolor(C_YELLOW);
+	UG_PutString(8, 64, "USB VBUS");
+	UG_SetForecolor(C_YELLOW);
+	UG_PutString(8, 96, "ADC");
+	UG_SetForecolor(C_YELLOW);
+	UG_PutString(8, 112, "BUTTONS");
+	UG_SetForecolor(C_YELLOW);
+	UG_PutString(8, 128, "FLASH");
+	UG_SetForecolor(C_YELLOW);
+	UG_PutString(8, 144, "CART IO");
+	UG_SetForecolor(C_YELLOW);
+	UG_PutString(8, 160, "J9/J10");
+	UG_SetForecolor(C_YELLOW);
+	UG_PutString(8, 176, "J11");
+
+
+	/* IRDA */
+	UG_SetForecolor(C_BLUE);
+	sprintf(buf, "%08X", irda_res);
+	UG_PutString(220, 80, buf);
+	UG_SetForecolor(C_YELLOW);
+	UG_PutString(8, 80, "IRDA");
+	if ((irda_res&0xffff0000)==0xffff0000 && (irda_res&0xffff)!=0xffff) {
+		UG_SetForecolor(C_GREEN);
+		UG_PutString(160, 80, "OK!");
+	} else  {
+		UG_SetForecolor(C_RED);
+		UG_PutString(160, 80, "ERR");
+		allokpossible=0;
+	}
+
+
+	int sao_ok=-1, genio_ok=-1, pmod_ok=-1;
+	int lastok=-1;
 	while(1) {
 		p++;
 
-		
+		int allok=allokpossible;
 		UG_SetForecolor(C_BLUE);
 		sprintf(buf, "%d %06X", mt.state, mt.pos);
 		UG_PutString(220, 32, buf);
 
-		UG_SetForecolor(C_YELLOW);
+		// * RAM *
 		int r=memtest(&mt);
-		UG_PutString(8, 32, "RAM");
 		if (r==MEMTEST_RET_CONT) {
 			UG_SetForecolor(C_YELLOW);
 			UG_PutString(160, 32, "...");
+			allok=0;
 		} else if (r==MEMTEST_RET_OK) {
 			UG_SetForecolor(C_GREEN);
 			UG_PutString(160, 32, "OK!");
 		} else  {
 			UG_SetForecolor(C_RED);
 			UG_PutString(160, 32, "ERROR!");
+			allok=0;
 		}
 
-		UG_SetForecolor(C_YELLOW);
-		UG_PutString(8, 48, "USB");
+		// * USB *
 		if (msc_capacity_passed) {
 			UG_SetForecolor(C_GREEN);
 			UG_PutString(160, 48, "OK!");
 		} else  {
 			UG_SetForecolor(C_YELLOW);
 			UG_PutString(160, 48, "...");
+			allok=0;
 		}
 
-		UG_SetForecolor(C_YELLOW);
-		UG_PutString(8, 64, "USB VBUS");
+		// * USB VBUS
 		if (MISC_REG(MISC_GPEXT_IN_REG)&(1<<31)) {
 			UG_SetForecolor(C_GREEN);
 			UG_PutString(160, 64, "OK!");
 		} else  {
 			UG_SetForecolor(C_YELLOW);
 			UG_PutString(160, 64, "...");
+			allok=0;
 		}
 
-		UG_SetForecolor(C_BLUE);
-		sprintf(buf, "%08X", irda_res);
-		UG_PutString(220, 80, buf);
-		UG_SetForecolor(C_YELLOW);
-		UG_PutString(8, 80, "IRDA");
-		if ((irda_res&0xffff0000)==0xffff0000 && (irda_res&0xffff)!=0xffff) {
-			UG_SetForecolor(C_GREEN);
-			UG_PutString(160, 80, "OK!");
-		} else  {
-			UG_SetForecolor(C_RED);
-			UG_PutString(160, 80, "ERR");
-		}
 
+		// * ADC *
 		r=MISC_REG(MISC_ADC_VAL_REG);
 		adc_avg=(adc_avg*15+r)/16;
-		UG_SetForecolor(C_YELLOW);
-		UG_PutString(8, 96, "ADC");
 		if (adc_avg>5 && adc_avg<65530) {
 			UG_SetForecolor(C_GREEN);
 			UG_PutString(160, 96, "OK!");
 		} else  {
 			UG_SetForecolor(C_RED);
 			UG_PutString(160, 96, "ERROR!");
+			allok=0;
 		}
 
+		// * BUTTONS *
 		int btn=MISC_REG(MISC_BTN_REG);
 		for (int i=0; i<8; i++) {
 			if (btn == (1<<i)) btn_ok|=btn;
 		}
-		UG_SetForecolor(C_YELLOW);
-		UG_PutString(8, 112, "BUTTONS");
 		if (btn_ok==0xff) {
 			UG_SetForecolor(C_GREEN);
 			UG_PutString(160, 112, "OK!");
 		} else  {
 			UG_SetForecolor(C_YELLOW);
 			UG_PutString(160, 112, "...");
+			allok=0;
 		}
 		for (int i=0; i<8; i++) {
 			if (btn&(1<<i)) {
@@ -307,37 +410,77 @@ void main() {
 				UG_SetForecolor(C_RED);
 				sprintf(buf, "%d.", i+1);
 			}
-			UG_PutString(160+32*i, 128, buf);
+			UG_PutString(220+32*i, 112, buf);
 		}
 
-
+		// * FLASH *
 		uint64_t id_int=flash_get_uid(FLASH_SEL_INT);
 		uint64_t id_ext=flash_get_uid(FLASH_SEL_CART);
 		UG_SetForecolor(C_BLUE);
 		sprintf(buf, "i: %016llX", id_int);
-		UG_PutString(220, 144, buf);
+		UG_PutString(220, 128, buf);
 		sprintf(buf, "e: %016llX", id_ext);
-		UG_PutString(220, 160, buf);
-		UG_SetForecolor(C_YELLOW);
-		UG_PutString(8, 144, "FLASH");
+		UG_PutString(220, 144, buf);
 		if (id_int==0 || ~id_int==0 || id_ext==0 || ~id_ext==0 || id_int==id_ext) {
 			UG_SetForecolor(C_RED);
-			UG_PutString(160, 144, "ERR");
+			UG_PutString(160, 128, "ERR");
+			allok=0;
 		} else  {
 			UG_SetForecolor(C_GREEN);
-			UG_PutString(160, 144, "OK!");
+			UG_PutString(160, 128, "OK!");
 		}
 
-		UG_SetForecolor(C_YELLOW);
-		UG_PutString(8, 176, "CART IO");
-		if (test_genio()) {
+		// * CART IO *
+		if (check_test(test_genio(), &genio_ok)) {
+			UG_SetForecolor(C_GREEN);
+			UG_PutString(160, 144, "OK!");
+		} else  {
+			UG_SetForecolor(C_RED);
+			UG_PutString(160, 144, "ERR");
+			allok=0;
+		}
+
+		// * J9/J10
+		if (check_test(test_sao(), &sao_ok)) {
+			UG_SetForecolor(C_GREEN);
+			UG_PutString(160, 160, "OK!");
+		} else  {
+			UG_SetForecolor(C_RED);
+			UG_PutString(160, 160, "ERR");
+			allok=0;
+		}
+
+		// * J11 *
+		if (check_test(test_pmod(), &pmod_ok)) {
 			UG_SetForecolor(C_GREEN);
 			UG_PutString(160, 176, "OK!");
 		} else  {
 			UG_SetForecolor(C_RED);
 			UG_PutString(160, 176, "ERR");
+			allok=0;
 		}
 
+
+		if (lastok!=allok) {
+			lastok=allok;
+			for (int y=200; y<300; y++) {
+				for (int x=50; x<150; x+=2) {
+					lcdfb[(x+y*512)/2]=cols[(x+y)%3];
+				}
+			}
+			if (allok) {
+				UG_SetForecolor(C_GREEN);
+				UG_FillCircle(100, 250, 48, C_GREEN);
+				UG_PutString(160, 242, " PASS! ");
+			} else {
+				UG_SetForecolor(C_RED);
+				UG_PutString(160, 242, "NO PASS");
+				for (int x=0; x<20; x++) {
+					UG_DrawLine(50+x, 200, 130+x, 299, C_RED);
+					UG_DrawLine(130+x, 200, 50+x, 299, C_RED);
+				}
+			}
+		}
 
 		cache_flush(lcdfb, lcdfb+320*480/2);
 		for (int i=0; i<500; i++) {
