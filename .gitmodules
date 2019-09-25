@@ -6,7 +6,7 @@
 	url = https://github.com/PocketSprite/UGUI.git
 [submodule "TinyFPGA-Bootloader"]
 	path = TinyFPGA-Bootloader
-	url = git@github.com:Spritetm/hadbadge2019_tinyfpgabootloader.git
+	url = https://github.com/Spritetm/hadbadge2019_tinyfpgabootloader.git
 [submodule "soc/app/tinyusb"]
 	path = soc/ipl/tinyusb
 	url = https://github.com/hathach/tinyusb.git
