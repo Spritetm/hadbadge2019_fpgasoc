@@ -21,6 +21,12 @@ EXTRA_DEPEND=rom_random_seeds0x123456.hex pic/rom_initial.hex
 BRAMFILE=rom.hex
 CONSTR=$(word $(BADGE_VER), had19_proto1.lpf had19_proto2.lpf had19_proto3.lpf had19_prod.lpf)
 TRELLIS=/usr/share/trellis
+ifeq ($(OS),Windows_NT)
+EXE:=.exe
+CHMOD:=echo WINDOWS: Skipping chmod
+else
+CHMOD:=chmod
+endif
 
 #Image read mode: qspi, dual-spi, fast-read
 FLASH_MODE=qspi
@@ -38,11 +44,13 @@ $(PROJ).json $(PROJ).blif: $(SRC) $(SRC_SYNTH) $(EXTRA_DEPEND)
 %_out_synth.config: %.json clock-constrainsts.py
 	nextpnr-ecp5 --json $< --lpf $(CONSTR) --textcfg $@ --45k --package CABGA381 --speed 8  --pre-pack clock-constrainsts.py --seed 2
 
-%_out.config: %_out_synth.config bram_replace/bram_replace rom.hex
-	bram_replace/bram_replace -l 8192 -r $< $@ rom.hex
+%_out.config: %_out_synth.config bram_replace/bram_replace$(EXE) rom.hex
+	bram_replace/bram_replace$(EXE) -l 8192 -r $< $@ rom.hex
 
 bram_replace/bram_replace:
+ifneq ($(OS),Windows_NT)
 	make -C bram_replace
+endif
 
 #Note: can't generate bit and svf at the same time as some silicon revs of the ECP5 don't seem to accept
 #bitstreams with SPI-specific things over JTAG.
@@ -74,7 +82,11 @@ verilator-build/Vsoc: $(SRC) $(SRC_SIM) $(BRAMFILE)
 
 rom.hex: boot/
 	make -C boot
+ifeq ($(OS),Windows_NT)
+	bin2hex.exe boot/rom.bin rom.hex
+else
 	cat boot/rom.bin | hexdump -v -e '/4 "%08X\n"' > rom.hex
+endif
 
 gdb:
 	$(RISCV_TOOLCHAIN_PATH)riscv32-unknown-elf-gdb -b 115200 -ex "set debug remote 1" -ex "target remote /dev/ttyUSB0" app/app.elf
