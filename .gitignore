@@ -2,3 +2,7 @@ decode_status_reg
 pll
 *.gtkw
 local-settings.mk
+*.elf
+*.map
+*.o
+*.a
