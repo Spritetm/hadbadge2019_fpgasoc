@@ -1,4 +1,4 @@
--include include.mk
+-include ../local-settings.mk
 #Badge version. Green (unused) is 1, red is 2, blue is 3, prod (black) is 4
 BADGE_VER ?= 2
 PROJ=soc
