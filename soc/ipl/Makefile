@@ -1,4 +1,4 @@
--include ../include.mk
+-include ../../local-settings.mk
 
 PREFIX := $(RISCV_TOOLCHAIN_PATH)riscv32-unknown-elf-
 CC := $(PREFIX)gcc
