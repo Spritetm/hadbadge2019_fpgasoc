@@ -4,3 +4,4 @@ rom.map
 rom.disasm
 *.o
 send
+.deps

@@ -6,3 +6,4 @@ send
 *.a
 *.o
 *.svf
+.deps

@@ -30,6 +30,24 @@ CFLAGS := -Os -ggdb -I. -IUGUI -Iusb -Igloss -Itinyusb/src -Ifatfs/source -I../t
 LDFLAGS := -Wl,-Bstatic -Wl,--gc-sections  -Wl,-T,$(LDSCRIPT) -Wl,-Map,$(TARGET_MAP) -lgcc -nostartfiles -Lgloss 
 export PREFIX CC AR LD OBJCOPY CFLAGS LDFLAGS APPNAME
 
+default: $(TARGET_BIN)
+
+DEPDIR := .deps
+DEPFLAGS = -MT $@ -MMD -MP -MF $(patsubst %.o,%.d,$(dir $@)$(DEPDIR)/$(notdir $@))
+DEPFILES := $(foreach obj,$(OBJS),$(dir $(obj))$(DEPDIR)/$(notdir $(obj:%.o=%.d)))
+DEPTREE := $(sort $(dir $(DEPFILES)))
+
+$(DEPFILES):
+
+$(DEPTREE):
+	mkdir -p $(DEPTREE)
+
+
+%.o: %.c
+%.o: %.c $(DEPDIR)/%.d | $(DEPTREE)
+	$(CC) $(DEPFLAGS) $(CFLAGS) -c -o $@ $<
+
+
 $(TARGET_BIN): $(TARGET_ELF)
 	$(SIZE) $^
 	$(OBJCOPY) -O binary $^ $@
@@ -41,6 +59,7 @@ $(TARGET_ELF): $(LIBS) $(OBJS) $(LDSCRIPT)
 .PHONY: clean
 clean:
 	rm -f $(TARGET_ELF) $(TARGET_BIN) $(OBJS) $(TARGET_MAP) $(TARGET_SVF) $(APPNAME).disasm
+	rm -rf $(DEPTREE)
 	$(MAKE) -C gloss clean
 
 .PHONY: prog
@@ -60,3 +79,5 @@ gdb: $(TARGET_ELF)
 .PHONY: gloss/libgloss.a
 gloss/libgloss.a:
 	$(MAKE) -C gloss
+
+include $(wildcard $(DEPFILES))
