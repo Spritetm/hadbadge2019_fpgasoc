@@ -13,3 +13,6 @@
 [submodule "soc/ipl/elfload"]
 	path = soc/ipl/elfload
 	url = https://github.com/Spritetm/elfload.git
+[submodule "app-basic/my_basic"]
+	path = app-basic/my_basic
+	url = https://github.com/paladin-t/my_basic.git

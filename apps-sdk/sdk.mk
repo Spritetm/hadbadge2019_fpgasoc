@@ -23,8 +23,9 @@ BUILD_DIR := build/
 BUILD_DIR_SDK := $(BUILD_DIR)/apps-sdk
 
 #Ipl gloss is in include path because mach_defines.h
-CFLAGS := -Os -ggdb -I$(APPSSDK_DIR) -I$(APPSSDK_DIR)/gloss -I$(APPSSDK_DIR)/../soc/ipl/gloss
-LDFLAGS := -Wl,-Bstatic -Wl,--gc-sections -Wl,-T,$(LDSCRIPT) -Wl,-Map,$(TARGET_MAP) -lgcc -nostartfiles
+INCLUDEDIRS += $(APPSSDK_DIR) $(APPSSDK_DIR)/gloss $(APPSSDK_DIR)/../soc/ipl/gloss
+CFLAGS += -Os -ggdb $(addprefix -I,$(INCLUDEDIRS))
+LDFLAGS += -Wl,-Bstatic -Wl,--gc-sections -Wl,-T,$(LDSCRIPT) -Wl,-Map,$(TARGET_MAP) -lgcc -lm -nostartfiles
 DEPFLAGS := -MMD -MP 
 
 export PREFIX CC AR LD OBJCOPY CFLAGS LDFLAGS APPNAME
@@ -51,7 +52,12 @@ LIBS += $(addprefix $(BUILD_DIR_SDK)/,$(SDK_LIBS))
 #are generated from. (They're effectively the names of and paths to the source files, but with .c/.S/...
 #changed to .o.) OBJS_BUILDDIR contains the actual locations of the object files so we can depend
 #on them when generating the elf.
-OBJS_BUILDDIR := $(abspath $(addprefix $(BUILD_DIR),$(OBJS)))
+OBJS_BUILDDIR := $(abspath $(addprefix $(BUILD_DIR)/,$(OBJS)) $(addprefix $(BUILD_DIR_SDK)/,$(SDK_OBJS)))
+$(info objs $(OBJS_BUILDDIR))
+
+DEPFILES := $(OBJS_BUILDDIR:%.o=%.d)
+
+$(DEPFILES):
 
 #Handle verbosity setting. Run e.g. 'make V=1' to show full command lines.
 ifeq ("$(V)","1")
@@ -65,13 +71,13 @@ endif
 #Template to generate recipes to compile all files in one dir.
 #Called with $1 being build dir, $2 being source dir
 define build_template
-#$$(info build_template called with $(1) $(2))
-$(1)/%.o: $(2)/%.c
+#$(info build_template called with $(1) $(2))
+$(1)/%.o: $(2)/%.c $(1)/%.d
 	$$(vecho) CC $$(notdir $$<)
 	$$(Q)mkdir -p $(1)
-	$$(Q)$$(CC) $$(CFLAGS) $$(2DEPFLAGS) -c -o $$@ $$<
+	$$(Q)$$(CC) $$(CFLAGS) $$(DEPFLAGS) -c -o $$@ $$<
 
-$(1)/%.o: $(2)/%.S
+$(1)/%.o: $(2)/%.S $(1)/%.d
 	$$(vecho) CC $$(notdir $$<)
 	$$(Q)mkdir -p $(1)
 	$$(Q)$$(CC) $$(CFLAGS) $$(DEPFLAGS) -c -o $$@ $$<
@@ -102,7 +108,7 @@ LIBREFS=$(patsubst lib%,-l%,$(notdir $(basename $(LIBS))))
 #Main target
 $(TARGET_ELF): $(LIBS) $(OBJS_BUILDDIR) $(LDSCRIPT)
 	$(vecho) LD $@
-	$(Q)$(CC) $(LDFLAGS) -o $@ $(LIBPATHS) $(LIBREFS) -lm $(OBJS_BUILDDIR) 
+	$(Q)$(CC) -o $@ $(LIBPATHS) $(OBJS_BUILDDIR) $(LIBREFS) $(LDFLAGS) 
 	$(vecho) STRIP $@
 	$(Q)$(PREFIX)strip $@
 
