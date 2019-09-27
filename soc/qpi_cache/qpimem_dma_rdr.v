@@ -98,9 +98,9 @@ module qpimem_dma_rd_fifomem #(
 	input clk,
 	input w_en,
 	input [31:0] w_data,
-	input [$clog2(FIFO_WORDS):0] w_addr,
+	input [$clog2(FIFO_WORDS)-1:0] w_addr,
 	output [31:0] r_data,
-	input [$clog2(FIFO_WORDS):0] r_addr
+	input [$clog2(FIFO_WORDS)-1:0] r_addr
 );
 
 reg [31:0] ram [0:FIFO_WORDS-1];

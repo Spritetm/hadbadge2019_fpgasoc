@@ -37,7 +37,7 @@ int main(int argc, char **argv) {
 	tb->trace(trace, 99);
 	trace->open("vidtrace.vcd");
 
-	Video_renderer *vid=new Video_renderer();
+	Video_renderer *vid=new Video_renderer(true);
 
 	tb->reset=1;
 	tb->ren=0;
@@ -51,47 +51,27 @@ int main(int argc, char **argv) {
 	}
 	tb->reset=0;
 
-	///Init default palette
-	for (int x=0; x<16; x++) {
-		int d=(x>7)?0xff:0x80;
-		tb_write(tb, trace, x*4, ((x&1)?(d<<16):0)|((x&2)?(d<<8):0)|((x&4)?(d<<0):0));
-	}
-
-	//init line buffers
-	int v=0x12345678;
-	for (int l=0; l<4; l++) {
-		int line_offset=4*512*l+(1<<20);
-		for (int x=0; x<480; x+=8) {
-			v+=0x11111111;
-			tb_write(tb, trace, line_offset+x*4, v);
-		}
-	}
-
 	printf("Buffers inited.\n");
 
 	int fetch_next=0;
 	int next_line=0;
 	int next_field=0;
+	float pixelclk_pos=0;
 	while(1) {
-		tb->pixelclk = 1;
-		tb->clk = 1;
+		tb->pixelclk = (pixelclk_pos>0.5)?1:0;
+		tb->clk = !tb->clk;
 		tb->eval();
 		trace->dump(ts++);
-		tb->clk = 0;
-		tb->eval();
-		trace->dump(ts++);
-		tb->pixelclk = 0;
-		tb->clk = 1;
-		tb->eval();
-		trace->dump(ts++);
-		tb->clk = 0;
-		tb->eval();
-		trace->dump(ts++);
-		vid->next_pixel(tb->red, tb->green, tb->blue, &fetch_next, &next_line, &next_field);
-		tb->fetch_next=fetch_next;
-		tb->next_line=next_line;
-		tb->next_field=next_field;
-	};
+
+		pixelclk_pos=pixelclk_pos+0.26;
+		if (pixelclk_pos>1.0) {
+			pixelclk_pos-=1.0;
+			vid->next_pixel(tb->red, tb->green, tb->blue, &fetch_next, &next_line, &next_field);
+			tb->fetch_next=fetch_next;
+			tb->next_line=next_line;
+			tb->next_field=next_field;
+		}
+	}
 	trace->flush();
 
 	trace->close();

@@ -3,6 +3,12 @@ This effectively is the GPU. It has a slave interface to the CPU, for register-s
 'on-chip' video memory, as well as a master interface for the SPI RAM, for grabbing a bitmap.
 */
 
+/*
+Note we have slightly more than 4 clock cycles per pixel here. 
+
+*/
+
+
 module vid_linerenderer (
 	input clk, reset,
 

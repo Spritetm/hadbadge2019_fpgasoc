@@ -3,6 +3,8 @@
 #include <sys/select.h>
 #include "video_renderer.hpp"
 
+//This emulates the HDMI encoder, and instead shows the image in a SDL window.
+
 #define SCALE 2
 
 Video_renderer::Video_renderer(bool show_display) {

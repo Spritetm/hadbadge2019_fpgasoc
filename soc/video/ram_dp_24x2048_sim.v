@@ -15,7 +15,7 @@ module ram_dp_24x2048 (
 	output reg [23:0] QB
 );
 
-reg [24:0] mem[0:2047];
+reg [23:0] mem[0:2047];
 
 
 always @(posedge ClockA) begin

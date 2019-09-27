@@ -131,6 +131,19 @@ Cart and internal flash: 2 problems.
   * This can be fixed by looking for the 32-bit marker in 2 places.
 
 
+More renderers!
+
+At this point, we only have vid_linerenderer.v, which happily grabs a framebuffer from psram, then yeets it
+to an (external, in video_mem.v) line buffer.
+
+We can add more of these interfaces to video_mem.v and merge these as we're dithering the HDMI and LCD output
+streams. We 'only' need some logic that creates lines at least as fast as we spit them out. At 48MHz, we have
+about 4 clockticks per pixel, so there is some leeway for messing about with pixel effects and shit.
+
+
+
+
+
 
 
 
