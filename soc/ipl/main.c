@@ -103,8 +103,7 @@ void main() {
 	MISC_REG(MISC_LED_REG)=0xfffff;
 	syscall_reinit();
 	printf("IPL running.\n");
-	lcdfb=malloc(320*512/2);
-	lcd_init();
+	lcdfb=calloc(320*512/2, 1);
 	pal_init();
 	GFX_REG(GFX_FBADDR_REG)=((uint32_t)lcdfb)&0xFFFFFF;
 	GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB;
@@ -115,7 +114,8 @@ void main() {
 	UG_PutString(0, 320-20, "Narf.");
 	UG_SetForecolor(C_GREEN);
 	UG_PutString(0, 16, "This is a test of the framebuffer to HDMI and LCD thingamajig. What you see now is the framebuffer memory.");
-	printf("GFX inited.\n");
+	printf("GFX inited. Yay!!\n");
+	lcd_init();
 
 
 	tusb_init();

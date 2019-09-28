@@ -226,7 +226,7 @@ vid_palettemem palettemem(
 	.ClockEnB(1),
 	.DataInA(din),
 	.DataInB(0),
-	.WrA(&wstrb & cpu_sel_palette),
+	.WrA((wstrb=='hf) && cpu_sel_palette),
 	.WrB(0),
 	.AddressA(addr[10:2]),
 	.AddressB(pal_addr),
@@ -281,22 +281,22 @@ always @(*) begin
 		tilepix_x = (vid_xpos + tileb_xoff);
 		tilepix_y = (vid_ypos + tileb_yoff);
 		tilemem_no = tileb_data[8:0];
-		pal_addr = {5'h2, tilemem_pixel}; //from tilemap a
+		pal_addr = {5'h1, tilemem_pixel}; //from tilemap b
 	end else if (cycle==1) begin
 		tilepix_x = 0;
 		tilepix_y = 0;
 		tilemem_no = 0;
-		pal_addr = {5'h1, tilemem_pixel}; //from tilemap b
+		pal_addr = 0; //todo: sprite
 	end else if (cycle==2) begin
 		tilepix_x = 0;
 		tilepix_y = 0;
 		tilemem_no = 0;
-		pal_addr = 0; //todo: sprite
+		pal_addr = {5'h0, dma_data[vid_xpos[3:0]*4+:4]};
 	end else if (cycle==3) begin
 		tilepix_x = (vid_xpos + tilea_xoff);
 		tilepix_y = (vid_ypos + tilea_yoff);
 		tilemem_no = tilea_data[8:0];
-		pal_addr = {5'h0, dma_data[vid_xpos[3:0]*4+:4]};
+		pal_addr = {5'h2, tilemem_pixel}; //from tilemap a
 	end
 end
 
@@ -372,7 +372,6 @@ always @(posedge clk) begin
 					if (layer_en[2]) pixel_hold <= pal_data; //tilemap b
 				end else if (cycle==3) begin
 					if (layer_en[3]) pixel_hold <= pal_data; //sprite
-
 					//Move to the next pixel
 					vid_wen <= 1;
 					if (write_vid_addr[8:0]>479) begin
