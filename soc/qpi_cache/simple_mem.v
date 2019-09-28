@@ -1,4 +1,4 @@
-//note: output is not registered
+//note: output is registered
 module simple_mem #(
 	parameter integer WORDS = 256,
 	parameter integer WIDTH = 8,
@@ -9,7 +9,7 @@ module simple_mem #(
 	input wen,
 	input [$clog2(WORDS)-1:0] addr,
 	input [WIDTH-1:0] wdata,
-	output [WIDTH-1:0] rdata
+	output reg [WIDTH-1:0] rdata
 );
 	reg [WIDTH:0] mem [0:WORDS-1];
 	
@@ -22,8 +22,8 @@ module simple_mem #(
 		end
 	end
 
-	assign rdata = mem[addr];
 	always @(posedge clk) begin
+		rdata <= mem[addr];
 		if (wen) mem[addr] <= wdata;
 	end
 endmodule

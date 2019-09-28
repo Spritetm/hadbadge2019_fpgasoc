@@ -81,6 +81,10 @@ wire [31:0] cachedata_rdata;
 reg [CACHE_SET_BITS+CACHE_OFFSET_BITS:0] cachedata_addr;
 reg [ADDR_WIDTH-1:0] caddr; //normally equals addr but when flushing will be controlled by the cache itself.
 
+//We need to delay wen and ren by 1 clock cycle as the tag and flag memories are registered...
+reg ren_delayed;
+reg [3:0] wen_delayed;
+
 //Cache memory, tag memory, flags memory.
 simple_mem_words #(
 	.WORDS(CACHELINE_CT*CACHELINE_WORDS),
@@ -162,22 +166,22 @@ always @(*) begin
 	if (tag_rdata[0]==`TAG_FROM_ADDR(caddr)) begin
 		found_tag=1;
 		cachehit_way=0; //DO U KNOW THE WAY
-		flag_wdata[FLAG_CW1_CLEAN] = flag_rdata[FLAG_CW1_CLEAN] && (wen == 0);
+		flag_wdata[FLAG_CW1_CLEAN] = flag_rdata[FLAG_CW1_CLEAN] && (wen_delayed == 0);
 		flag_wdata[FLAG_CW2_CLEAN] = flag_rdata[FLAG_CW2_CLEAN];
 		flag_wdata[FLAG_LRU]=1;
-		flag_wen = 1;
+		flag_wen = (wen_delayed!=0 || ren_delayed);
 	end else if (tag_rdata[1]==`TAG_FROM_ADDR(caddr)) begin
 		found_tag=1;
 		cachehit_way=1;
 		flag_wdata[FLAG_CW1_CLEAN] = flag_rdata[FLAG_CW1_CLEAN];
-		flag_wdata[FLAG_CW2_CLEAN] = flag_rdata[FLAG_CW2_CLEAN] && (wen == 0);
+		flag_wdata[FLAG_CW2_CLEAN] = flag_rdata[FLAG_CW2_CLEAN] && (wen_delayed == 0);
 		flag_wdata[FLAG_LRU]=0;
-		flag_wen = 1;
+		flag_wen = (wen_delayed!=0 || ren_delayed);
 	end
 	if (found_tag && !doing_cache_refill && !flushing) begin
 		//Tag is found. Route the read or write to the cache data store
 		cachedata_addr = `CACHEDATA_ADDR(cachehit_way, `SET_FROM_ADDR(caddr), `OFFSET_FROM_ADDR(caddr));
-		cachedata_wen = wen;
+		cachedata_wen = wen_delayed;
 		cachedata_wdata = wdata;
 	end else begin
 		//No tag. Switch over control of cache data to refill logic.
@@ -208,7 +212,7 @@ wire need_cache_refill;
 wire cache_line_lru;
 wire cache_line_lru_clean;
 //Assumption: ren/wen/addr will stay stable until we have signaled the memory is ready.
-assign need_cache_refill = !found_tag && (ren || wen!=0);
+assign need_cache_refill = !found_tag && (ren_delayed || wen_delayed!=0) && (ren || wen!=0);
 assign cache_line_lru = flag_rdata[FLAG_LRU];
 assign cache_line_lru_clean = cache_line_lru ? 
 		flag_rdata[FLAG_CW2_CLEAN] : 
@@ -240,6 +244,8 @@ always @(*) begin
 	end
 end
 
+reg flush_delay_prop;
+
 always @(posedge clk) begin
 	if (rst) begin
 		qpi_do_read <= 0;
@@ -254,19 +260,22 @@ always @(posedge clk) begin
 		flush_line <= 0;
 		flush_way <= 0;
 		flushing <= 0;
+		flush_delay_prop <= 0;
 	end else begin
 		ready <= 0;
 		cache_refill_flag_wen <= 0;
 		tag_wen[0] <= 0;
 		tag_wen[1] <= 0;
 		cache_refill_wen <= 0;
+		wen_delayed <= wen;
+		ren_delayed <= ren;
 		if (flush && !flushing) begin
 			flushing <= 1;
 			flush_line <= 0;
 			flush_way <= 0;
-		end else if (found_tag && (ren || wen!=0) && !doing_cache_refill) begin
+		end else if (found_tag && (ren_delayed || wen_delayed!=0) && !doing_cache_refill) begin
 			//Cache hit
-			ready <= 1;
+			ready <= (wen!=0 || ren); //do not linger because the delayed signals do
 		end else if (!need_cache_refill && !flushing) begin
 			//Nothing going on. Idle.
 		end else if (!qpi_do_read && !qpi_do_write && !qpi_is_idle) begin
@@ -327,7 +336,10 @@ always @(posedge clk) begin
 			//Note: when flushing, flush_line/flush_way are used in a combinatorial
 			//block above to pull the correct tag out of tag memory and send it to
 			//caddr so the flushing mechanism can use it.
-			if ((&flush_line) && flush_way) begin
+			if (flush_delay_prop) begin
+				//wait until flush_way has propagated through tag mem etc
+				flush_delay_prop <= 0;
+			end else if ((&flush_line) && flush_way) begin
 				flushing <= 0;
 				ready <= 1;
 			end else begin
@@ -337,6 +349,7 @@ always @(posedge clk) begin
 				end else begin
 					flush_way <= 1;
 				end
+				flush_delay_prop <= 1;
 			end
 		end
 	end

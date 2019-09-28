@@ -40,7 +40,7 @@ do_reset:
 	li a2, MISC_OFFSET
 	lw a2, MISC_SOC_VER(a2)
 //	srli a2, a2, 31 //mask out 31th bit - does not work?
-	beq a2, zero, memtest_start
+	beq a2, zero, is_real_badge
 
 	li a2, MISC_OFFSET
 	li a1, 0x2
@@ -66,6 +66,8 @@ kill:
 //if verilator, we skip the memtest
 	j memtestok
 
+
+is_real_badge:
 
 //Bitbang PSRAM port initialization command
 bbpsraminit:
