@@ -107,8 +107,12 @@ for (i=0; i<2; i=i+1) begin
 	simple_mem #(
 		.WORDS(CACHE_SETS),
 		.WIDTH(CACHE_TAG_BITS),
-		//Cache maps to first block of memory.
+`ifdef verilator
+		//Cache maps to nowhere in particular. This means psram should already be in qpi mode otherwise cache does not work.
+		.INITIAL_FILL(i+800)
+`else
 		.INITIAL_FILL(i) //*10 is random: we want only the first 8K for simulation as the app is in the 2nd.
+`endif
 	) tagdata (
 		.clk(clk),
 		.wen(tag_wen[i]),

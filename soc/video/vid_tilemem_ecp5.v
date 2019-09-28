@@ -25,9 +25,11 @@ module vid_tilemem (DataInA, DataInB, AddressA, AddressB, ClockA,
     wire scuba_vhi;
     wire scuba_vlo;
 
-    VHI scuba_vhi_inst (.Z(scuba_vhi));
+    //VHI scuba_vhi_inst (.Z(scuba_vhi));
+	assign scuba_vhi = 1;
+	assign scuba_vlo = 0;
 
-    defparam tilemem_ecp5_inst_0_0_31.INIT_DATA = "STATIC" ;
+//    defparam tilemem_ecp5_inst_0_0_31.INIT_DATA = "STATIC" ;
     defparam tilemem_ecp5_inst_0_0_31.ASYNC_RESET_RELEASE = "SYNC" ;
     defparam tilemem_ecp5_inst_0_0_31.INITVAL_3F = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
     defparam tilemem_ecp5_inst_0_0_31.INITVAL_3E = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
@@ -132,7 +134,7 @@ module vid_tilemem (DataInA, DataInB, AddressA, AddressB, ClockA,
              /* synthesis MEM_LPC_FILE="tilemem_ecp5_inst.lpc" */
              /* synthesis MEM_INIT_FILE="INIT_ALL_0s" */;
 
-    defparam tilemem_ecp5_inst_0_1_30.INIT_DATA = "STATIC" ;
+//    defparam tilemem_ecp5_inst_0_1_30.INIT_DATA = "STATIC" ;
     defparam tilemem_ecp5_inst_0_1_30.ASYNC_RESET_RELEASE = "SYNC" ;
     defparam tilemem_ecp5_inst_0_1_30.INITVAL_3F = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
     defparam tilemem_ecp5_inst_0_1_30.INITVAL_3E = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
@@ -237,7 +239,7 @@ module vid_tilemem (DataInA, DataInB, AddressA, AddressB, ClockA,
              /* synthesis MEM_LPC_FILE="tilemem_ecp5_inst.lpc" */
              /* synthesis MEM_INIT_FILE="INIT_ALL_0s" */;
 
-    defparam tilemem_ecp5_inst_0_2_29.INIT_DATA = "STATIC" ;
+//    defparam tilemem_ecp5_inst_0_2_29.INIT_DATA = "STATIC" ;
     defparam tilemem_ecp5_inst_0_2_29.ASYNC_RESET_RELEASE = "SYNC" ;
     defparam tilemem_ecp5_inst_0_2_29.INITVAL_3F = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
     defparam tilemem_ecp5_inst_0_2_29.INITVAL_3E = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
@@ -342,7 +344,7 @@ module vid_tilemem (DataInA, DataInB, AddressA, AddressB, ClockA,
              /* synthesis MEM_LPC_FILE="tilemem_ecp5_inst.lpc" */
              /* synthesis MEM_INIT_FILE="INIT_ALL_0s" */;
 
-    defparam tilemem_ecp5_inst_0_3_28.INIT_DATA = "STATIC" ;
+//    defparam tilemem_ecp5_inst_0_3_28.INIT_DATA = "STATIC" ;
     defparam tilemem_ecp5_inst_0_3_28.ASYNC_RESET_RELEASE = "SYNC" ;
     defparam tilemem_ecp5_inst_0_3_28.INITVAL_3F = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
     defparam tilemem_ecp5_inst_0_3_28.INITVAL_3E = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
@@ -447,7 +449,7 @@ module vid_tilemem (DataInA, DataInB, AddressA, AddressB, ClockA,
              /* synthesis MEM_LPC_FILE="tilemem_ecp5_inst.lpc" */
              /* synthesis MEM_INIT_FILE="INIT_ALL_0s" */;
 
-    defparam tilemem_ecp5_inst_0_4_27.INIT_DATA = "STATIC" ;
+//    defparam tilemem_ecp5_inst_0_4_27.INIT_DATA = "STATIC" ;
     defparam tilemem_ecp5_inst_0_4_27.ASYNC_RESET_RELEASE = "SYNC" ;
     defparam tilemem_ecp5_inst_0_4_27.INITVAL_3F = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
     defparam tilemem_ecp5_inst_0_4_27.INITVAL_3E = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
@@ -552,7 +554,7 @@ module vid_tilemem (DataInA, DataInB, AddressA, AddressB, ClockA,
              /* synthesis MEM_LPC_FILE="tilemem_ecp5_inst.lpc" */
              /* synthesis MEM_INIT_FILE="INIT_ALL_0s" */;
 
-    defparam tilemem_ecp5_inst_0_5_26.INIT_DATA = "STATIC" ;
+//    defparam tilemem_ecp5_inst_0_5_26.INIT_DATA = "STATIC" ;
     defparam tilemem_ecp5_inst_0_5_26.ASYNC_RESET_RELEASE = "SYNC" ;
     defparam tilemem_ecp5_inst_0_5_26.INITVAL_3F = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
     defparam tilemem_ecp5_inst_0_5_26.INITVAL_3E = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
@@ -657,7 +659,7 @@ module vid_tilemem (DataInA, DataInB, AddressA, AddressB, ClockA,
              /* synthesis MEM_LPC_FILE="tilemem_ecp5_inst.lpc" */
              /* synthesis MEM_INIT_FILE="INIT_ALL_0s" */;
 
-    defparam tilemem_ecp5_inst_0_6_25.INIT_DATA = "STATIC" ;
+//    defparam tilemem_ecp5_inst_0_6_25.INIT_DATA = "STATIC" ;
     defparam tilemem_ecp5_inst_0_6_25.ASYNC_RESET_RELEASE = "SYNC" ;
     defparam tilemem_ecp5_inst_0_6_25.INITVAL_3F = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
     defparam tilemem_ecp5_inst_0_6_25.INITVAL_3E = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
@@ -762,7 +764,7 @@ module vid_tilemem (DataInA, DataInB, AddressA, AddressB, ClockA,
              /* synthesis MEM_LPC_FILE="tilemem_ecp5_inst.lpc" */
              /* synthesis MEM_INIT_FILE="INIT_ALL_0s" */;
 
-    defparam tilemem_ecp5_inst_0_7_24.INIT_DATA = "STATIC" ;
+//    defparam tilemem_ecp5_inst_0_7_24.INIT_DATA = "STATIC" ;
     defparam tilemem_ecp5_inst_0_7_24.ASYNC_RESET_RELEASE = "SYNC" ;
     defparam tilemem_ecp5_inst_0_7_24.INITVAL_3F = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
     defparam tilemem_ecp5_inst_0_7_24.INITVAL_3E = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
@@ -867,7 +869,7 @@ module vid_tilemem (DataInA, DataInB, AddressA, AddressB, ClockA,
              /* synthesis MEM_LPC_FILE="tilemem_ecp5_inst.lpc" */
              /* synthesis MEM_INIT_FILE="INIT_ALL_0s" */;
 
-    defparam tilemem_ecp5_inst_0_8_23.INIT_DATA = "STATIC" ;
+//    defparam tilemem_ecp5_inst_0_8_23.INIT_DATA = "STATIC" ;
     defparam tilemem_ecp5_inst_0_8_23.ASYNC_RESET_RELEASE = "SYNC" ;
     defparam tilemem_ecp5_inst_0_8_23.INITVAL_3F = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
     defparam tilemem_ecp5_inst_0_8_23.INITVAL_3E = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
@@ -972,7 +974,7 @@ module vid_tilemem (DataInA, DataInB, AddressA, AddressB, ClockA,
              /* synthesis MEM_LPC_FILE="tilemem_ecp5_inst.lpc" */
              /* synthesis MEM_INIT_FILE="INIT_ALL_0s" */;
 
-    defparam tilemem_ecp5_inst_0_9_22.INIT_DATA = "STATIC" ;
+//    defparam tilemem_ecp5_inst_0_9_22.INIT_DATA = "STATIC" ;
     defparam tilemem_ecp5_inst_0_9_22.ASYNC_RESET_RELEASE = "SYNC" ;
     defparam tilemem_ecp5_inst_0_9_22.INITVAL_3F = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
     defparam tilemem_ecp5_inst_0_9_22.INITVAL_3E = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
@@ -1077,7 +1079,7 @@ module vid_tilemem (DataInA, DataInB, AddressA, AddressB, ClockA,
              /* synthesis MEM_LPC_FILE="tilemem_ecp5_inst.lpc" */
              /* synthesis MEM_INIT_FILE="INIT_ALL_0s" */;
 
-    defparam tilemem_ecp5_inst_0_10_21.INIT_DATA = "STATIC" ;
+//    defparam tilemem_ecp5_inst_0_10_21.INIT_DATA = "STATIC" ;
     defparam tilemem_ecp5_inst_0_10_21.ASYNC_RESET_RELEASE = "SYNC" ;
     defparam tilemem_ecp5_inst_0_10_21.INITVAL_3F = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
     defparam tilemem_ecp5_inst_0_10_21.INITVAL_3E = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
@@ -1182,7 +1184,7 @@ module vid_tilemem (DataInA, DataInB, AddressA, AddressB, ClockA,
              /* synthesis MEM_LPC_FILE="tilemem_ecp5_inst.lpc" */
              /* synthesis MEM_INIT_FILE="INIT_ALL_0s" */;
 
-    defparam tilemem_ecp5_inst_0_11_20.INIT_DATA = "STATIC" ;
+//    defparam tilemem_ecp5_inst_0_11_20.INIT_DATA = "STATIC" ;
     defparam tilemem_ecp5_inst_0_11_20.ASYNC_RESET_RELEASE = "SYNC" ;
     defparam tilemem_ecp5_inst_0_11_20.INITVAL_3F = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
     defparam tilemem_ecp5_inst_0_11_20.INITVAL_3E = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
@@ -1287,7 +1289,7 @@ module vid_tilemem (DataInA, DataInB, AddressA, AddressB, ClockA,
              /* synthesis MEM_LPC_FILE="tilemem_ecp5_inst.lpc" */
              /* synthesis MEM_INIT_FILE="INIT_ALL_0s" */;
 
-    defparam tilemem_ecp5_inst_0_12_19.INIT_DATA = "STATIC" ;
+//    defparam tilemem_ecp5_inst_0_12_19.INIT_DATA = "STATIC" ;
     defparam tilemem_ecp5_inst_0_12_19.ASYNC_RESET_RELEASE = "SYNC" ;
     defparam tilemem_ecp5_inst_0_12_19.INITVAL_3F = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
     defparam tilemem_ecp5_inst_0_12_19.INITVAL_3E = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
@@ -1392,7 +1394,7 @@ module vid_tilemem (DataInA, DataInB, AddressA, AddressB, ClockA,
              /* synthesis MEM_LPC_FILE="tilemem_ecp5_inst.lpc" */
              /* synthesis MEM_INIT_FILE="INIT_ALL_0s" */;
 
-    defparam tilemem_ecp5_inst_0_13_18.INIT_DATA = "STATIC" ;
+//    defparam tilemem_ecp5_inst_0_13_18.INIT_DATA = "STATIC" ;
     defparam tilemem_ecp5_inst_0_13_18.ASYNC_RESET_RELEASE = "SYNC" ;
     defparam tilemem_ecp5_inst_0_13_18.INITVAL_3F = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
     defparam tilemem_ecp5_inst_0_13_18.INITVAL_3E = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
@@ -1497,7 +1499,7 @@ module vid_tilemem (DataInA, DataInB, AddressA, AddressB, ClockA,
              /* synthesis MEM_LPC_FILE="tilemem_ecp5_inst.lpc" */
              /* synthesis MEM_INIT_FILE="INIT_ALL_0s" */;
 
-    defparam tilemem_ecp5_inst_0_14_17.INIT_DATA = "STATIC" ;
+//    defparam tilemem_ecp5_inst_0_14_17.INIT_DATA = "STATIC" ;
     defparam tilemem_ecp5_inst_0_14_17.ASYNC_RESET_RELEASE = "SYNC" ;
     defparam tilemem_ecp5_inst_0_14_17.INITVAL_3F = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
     defparam tilemem_ecp5_inst_0_14_17.INITVAL_3E = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
@@ -1602,7 +1604,7 @@ module vid_tilemem (DataInA, DataInB, AddressA, AddressB, ClockA,
              /* synthesis MEM_LPC_FILE="tilemem_ecp5_inst.lpc" */
              /* synthesis MEM_INIT_FILE="INIT_ALL_0s" */;
 
-    defparam tilemem_ecp5_inst_0_15_16.INIT_DATA = "STATIC" ;
+//    defparam tilemem_ecp5_inst_0_15_16.INIT_DATA = "STATIC" ;
     defparam tilemem_ecp5_inst_0_15_16.ASYNC_RESET_RELEASE = "SYNC" ;
     defparam tilemem_ecp5_inst_0_15_16.INITVAL_3F = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
     defparam tilemem_ecp5_inst_0_15_16.INITVAL_3E = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
@@ -1707,7 +1709,7 @@ module vid_tilemem (DataInA, DataInB, AddressA, AddressB, ClockA,
              /* synthesis MEM_LPC_FILE="tilemem_ecp5_inst.lpc" */
              /* synthesis MEM_INIT_FILE="INIT_ALL_0s" */;
 
-    defparam tilemem_ecp5_inst_0_16_15.INIT_DATA = "STATIC" ;
+//    defparam tilemem_ecp5_inst_0_16_15.INIT_DATA = "STATIC" ;
     defparam tilemem_ecp5_inst_0_16_15.ASYNC_RESET_RELEASE = "SYNC" ;
     defparam tilemem_ecp5_inst_0_16_15.INITVAL_3F = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
     defparam tilemem_ecp5_inst_0_16_15.INITVAL_3E = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
@@ -1812,7 +1814,7 @@ module vid_tilemem (DataInA, DataInB, AddressA, AddressB, ClockA,
              /* synthesis MEM_LPC_FILE="tilemem_ecp5_inst.lpc" */
              /* synthesis MEM_INIT_FILE="INIT_ALL_0s" */;
 
-    defparam tilemem_ecp5_inst_0_17_14.INIT_DATA = "STATIC" ;
+//    defparam tilemem_ecp5_inst_0_17_14.INIT_DATA = "STATIC" ;
     defparam tilemem_ecp5_inst_0_17_14.ASYNC_RESET_RELEASE = "SYNC" ;
     defparam tilemem_ecp5_inst_0_17_14.INITVAL_3F = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
     defparam tilemem_ecp5_inst_0_17_14.INITVAL_3E = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
@@ -1917,7 +1919,7 @@ module vid_tilemem (DataInA, DataInB, AddressA, AddressB, ClockA,
              /* synthesis MEM_LPC_FILE="tilemem_ecp5_inst.lpc" */
              /* synthesis MEM_INIT_FILE="INIT_ALL_0s" */;
 
-    defparam tilemem_ecp5_inst_0_18_13.INIT_DATA = "STATIC" ;
+//    defparam tilemem_ecp5_inst_0_18_13.INIT_DATA = "STATIC" ;
     defparam tilemem_ecp5_inst_0_18_13.ASYNC_RESET_RELEASE = "SYNC" ;
     defparam tilemem_ecp5_inst_0_18_13.INITVAL_3F = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
     defparam tilemem_ecp5_inst_0_18_13.INITVAL_3E = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
@@ -2022,7 +2024,7 @@ module vid_tilemem (DataInA, DataInB, AddressA, AddressB, ClockA,
              /* synthesis MEM_LPC_FILE="tilemem_ecp5_inst.lpc" */
              /* synthesis MEM_INIT_FILE="INIT_ALL_0s" */;
 
-    defparam tilemem_ecp5_inst_0_19_12.INIT_DATA = "STATIC" ;
+//    defparam tilemem_ecp5_inst_0_19_12.INIT_DATA = "STATIC" ;
     defparam tilemem_ecp5_inst_0_19_12.ASYNC_RESET_RELEASE = "SYNC" ;
     defparam tilemem_ecp5_inst_0_19_12.INITVAL_3F = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
     defparam tilemem_ecp5_inst_0_19_12.INITVAL_3E = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
@@ -2127,7 +2129,7 @@ module vid_tilemem (DataInA, DataInB, AddressA, AddressB, ClockA,
              /* synthesis MEM_LPC_FILE="tilemem_ecp5_inst.lpc" */
              /* synthesis MEM_INIT_FILE="INIT_ALL_0s" */;
 
-    defparam tilemem_ecp5_inst_0_20_11.INIT_DATA = "STATIC" ;
+//    defparam tilemem_ecp5_inst_0_20_11.INIT_DATA = "STATIC" ;
     defparam tilemem_ecp5_inst_0_20_11.ASYNC_RESET_RELEASE = "SYNC" ;
     defparam tilemem_ecp5_inst_0_20_11.INITVAL_3F = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
     defparam tilemem_ecp5_inst_0_20_11.INITVAL_3E = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
@@ -2232,7 +2234,7 @@ module vid_tilemem (DataInA, DataInB, AddressA, AddressB, ClockA,
              /* synthesis MEM_LPC_FILE="tilemem_ecp5_inst.lpc" */
              /* synthesis MEM_INIT_FILE="INIT_ALL_0s" */;
 
-    defparam tilemem_ecp5_inst_0_21_10.INIT_DATA = "STATIC" ;
+//    defparam tilemem_ecp5_inst_0_21_10.INIT_DATA = "STATIC" ;
     defparam tilemem_ecp5_inst_0_21_10.ASYNC_RESET_RELEASE = "SYNC" ;
     defparam tilemem_ecp5_inst_0_21_10.INITVAL_3F = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
     defparam tilemem_ecp5_inst_0_21_10.INITVAL_3E = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
@@ -2337,7 +2339,7 @@ module vid_tilemem (DataInA, DataInB, AddressA, AddressB, ClockA,
              /* synthesis MEM_LPC_FILE="tilemem_ecp5_inst.lpc" */
              /* synthesis MEM_INIT_FILE="INIT_ALL_0s" */;
 
-    defparam tilemem_ecp5_inst_0_22_9.INIT_DATA = "STATIC" ;
+//    defparam tilemem_ecp5_inst_0_22_9.INIT_DATA = "STATIC" ;
     defparam tilemem_ecp5_inst_0_22_9.ASYNC_RESET_RELEASE = "SYNC" ;
     defparam tilemem_ecp5_inst_0_22_9.INITVAL_3F = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
     defparam tilemem_ecp5_inst_0_22_9.INITVAL_3E = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
@@ -2442,7 +2444,7 @@ module vid_tilemem (DataInA, DataInB, AddressA, AddressB, ClockA,
              /* synthesis MEM_LPC_FILE="tilemem_ecp5_inst.lpc" */
              /* synthesis MEM_INIT_FILE="INIT_ALL_0s" */;
 
-    defparam tilemem_ecp5_inst_0_23_8.INIT_DATA = "STATIC" ;
+//    defparam tilemem_ecp5_inst_0_23_8.INIT_DATA = "STATIC" ;
     defparam tilemem_ecp5_inst_0_23_8.ASYNC_RESET_RELEASE = "SYNC" ;
     defparam tilemem_ecp5_inst_0_23_8.INITVAL_3F = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
     defparam tilemem_ecp5_inst_0_23_8.INITVAL_3E = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
@@ -2547,7 +2549,7 @@ module vid_tilemem (DataInA, DataInB, AddressA, AddressB, ClockA,
              /* synthesis MEM_LPC_FILE="tilemem_ecp5_inst.lpc" */
              /* synthesis MEM_INIT_FILE="INIT_ALL_0s" */;
 
-    defparam tilemem_ecp5_inst_0_24_7.INIT_DATA = "STATIC" ;
+//    defparam tilemem_ecp5_inst_0_24_7.INIT_DATA = "STATIC" ;
     defparam tilemem_ecp5_inst_0_24_7.ASYNC_RESET_RELEASE = "SYNC" ;
     defparam tilemem_ecp5_inst_0_24_7.INITVAL_3F = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
     defparam tilemem_ecp5_inst_0_24_7.INITVAL_3E = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
@@ -2652,7 +2654,7 @@ module vid_tilemem (DataInA, DataInB, AddressA, AddressB, ClockA,
              /* synthesis MEM_LPC_FILE="tilemem_ecp5_inst.lpc" */
              /* synthesis MEM_INIT_FILE="INIT_ALL_0s" */;
 
-    defparam tilemem_ecp5_inst_0_25_6.INIT_DATA = "STATIC" ;
+//    defparam tilemem_ecp5_inst_0_25_6.INIT_DATA = "STATIC" ;
     defparam tilemem_ecp5_inst_0_25_6.ASYNC_RESET_RELEASE = "SYNC" ;
     defparam tilemem_ecp5_inst_0_25_6.INITVAL_3F = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
     defparam tilemem_ecp5_inst_0_25_6.INITVAL_3E = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
@@ -2757,7 +2759,7 @@ module vid_tilemem (DataInA, DataInB, AddressA, AddressB, ClockA,
              /* synthesis MEM_LPC_FILE="tilemem_ecp5_inst.lpc" */
              /* synthesis MEM_INIT_FILE="INIT_ALL_0s" */;
 
-    defparam tilemem_ecp5_inst_0_26_5.INIT_DATA = "STATIC" ;
+//    defparam tilemem_ecp5_inst_0_26_5.INIT_DATA = "STATIC" ;
     defparam tilemem_ecp5_inst_0_26_5.ASYNC_RESET_RELEASE = "SYNC" ;
     defparam tilemem_ecp5_inst_0_26_5.INITVAL_3F = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
     defparam tilemem_ecp5_inst_0_26_5.INITVAL_3E = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
@@ -2862,7 +2864,7 @@ module vid_tilemem (DataInA, DataInB, AddressA, AddressB, ClockA,
              /* synthesis MEM_LPC_FILE="tilemem_ecp5_inst.lpc" */
              /* synthesis MEM_INIT_FILE="INIT_ALL_0s" */;
 
-    defparam tilemem_ecp5_inst_0_27_4.INIT_DATA = "STATIC" ;
+//    defparam tilemem_ecp5_inst_0_27_4.INIT_DATA = "STATIC" ;
     defparam tilemem_ecp5_inst_0_27_4.ASYNC_RESET_RELEASE = "SYNC" ;
     defparam tilemem_ecp5_inst_0_27_4.INITVAL_3F = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
     defparam tilemem_ecp5_inst_0_27_4.INITVAL_3E = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
@@ -2967,7 +2969,7 @@ module vid_tilemem (DataInA, DataInB, AddressA, AddressB, ClockA,
              /* synthesis MEM_LPC_FILE="tilemem_ecp5_inst.lpc" */
              /* synthesis MEM_INIT_FILE="INIT_ALL_0s" */;
 
-    defparam tilemem_ecp5_inst_0_28_3.INIT_DATA = "STATIC" ;
+//    defparam tilemem_ecp5_inst_0_28_3.INIT_DATA = "STATIC" ;
     defparam tilemem_ecp5_inst_0_28_3.ASYNC_RESET_RELEASE = "SYNC" ;
     defparam tilemem_ecp5_inst_0_28_3.INITVAL_3F = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
     defparam tilemem_ecp5_inst_0_28_3.INITVAL_3E = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
@@ -3072,7 +3074,7 @@ module vid_tilemem (DataInA, DataInB, AddressA, AddressB, ClockA,
              /* synthesis MEM_LPC_FILE="tilemem_ecp5_inst.lpc" */
              /* synthesis MEM_INIT_FILE="INIT_ALL_0s" */;
 
-    defparam tilemem_ecp5_inst_0_29_2.INIT_DATA = "STATIC" ;
+//    defparam tilemem_ecp5_inst_0_29_2.INIT_DATA = "STATIC" ;
     defparam tilemem_ecp5_inst_0_29_2.ASYNC_RESET_RELEASE = "SYNC" ;
     defparam tilemem_ecp5_inst_0_29_2.INITVAL_3F = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
     defparam tilemem_ecp5_inst_0_29_2.INITVAL_3E = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
@@ -3177,7 +3179,7 @@ module vid_tilemem (DataInA, DataInB, AddressA, AddressB, ClockA,
              /* synthesis MEM_LPC_FILE="tilemem_ecp5_inst.lpc" */
              /* synthesis MEM_INIT_FILE="INIT_ALL_0s" */;
 
-    defparam tilemem_ecp5_inst_0_30_1.INIT_DATA = "STATIC" ;
+//    defparam tilemem_ecp5_inst_0_30_1.INIT_DATA = "STATIC" ;
     defparam tilemem_ecp5_inst_0_30_1.ASYNC_RESET_RELEASE = "SYNC" ;
     defparam tilemem_ecp5_inst_0_30_1.INITVAL_3F = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
     defparam tilemem_ecp5_inst_0_30_1.INITVAL_3E = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
@@ -3282,9 +3284,9 @@ module vid_tilemem (DataInA, DataInB, AddressA, AddressB, ClockA,
              /* synthesis MEM_LPC_FILE="tilemem_ecp5_inst.lpc" */
              /* synthesis MEM_INIT_FILE="INIT_ALL_0s" */;
 
-    VLO scuba_vlo_inst (.Z(scuba_vlo));
+    //VLO scuba_vlo_inst (.Z(scuba_vlo));
 
-    defparam tilemem_ecp5_inst_0_31_0.INIT_DATA = "STATIC" ;
+//    defparam tilemem_ecp5_inst_0_31_0.INIT_DATA = "STATIC" ;
     defparam tilemem_ecp5_inst_0_31_0.ASYNC_RESET_RELEASE = "SYNC" ;
     defparam tilemem_ecp5_inst_0_31_0.INITVAL_3F = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
     defparam tilemem_ecp5_inst_0_31_0.INITVAL_3E = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;

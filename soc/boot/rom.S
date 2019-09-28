@@ -4,6 +4,7 @@
 #include "../ipl/gloss/mach_defines.h"
 
 	.global load_ipl
+	.global run_ipl
 
 	.section .text
 
@@ -26,22 +27,6 @@ do_reset:
 	//see if we are the 2nd cpu
 	lw a2,MISC_CPU_NO(a1)
 	bne a2, zero, secondcpu
-
-//Bitbang PSRAM port initialization command
-bbpsraminit:
-	la a1, psram_init
-	li a2, MISC_OFFSET //bitbang port
-bbloop:
-	lbu a3, 0(a1)
-	sw a3, MISC_PSRAMOVRA_REG(a2)
-	sw a3, MISC_PSRAMOVRB_REG(a2)
-	addi a1, a1, 1
-	bne zero, a3, bbloop
-
-	//flush cache to psram
-	li a1, MACH_FLUSH_REGION
-	li a2, MACH_RAM_SIZE
-	sw a2, 0(a1)
 
 	//Set up UART divider
 	li a1, UART_OFFSET
@@ -70,8 +55,35 @@ bbloop:
 	li a2, LCD_CONTROL_BLEN | LCD_CONTROL_FBSTART
 	sw a2, LCD_CONTROL_REG(a1)
 
+	//Directly jump to IPL
+	call run_ipl
+	li a2, MISC_OFFSET
+	li a1, 0xF
+	sw a1, MISC_LED_REG(a2)
+kill:
+	j kill
+
 //if verilator, we skip the memtest
 	j memtestok
+
+
+//Bitbang PSRAM port initialization command
+bbpsraminit:
+	la a1, psram_init
+	li a2, MISC_OFFSET //bitbang port
+bbloop:
+	lbu a3, 0(a1)
+	sw a3, MISC_PSRAMOVRA_REG(a2)
+	sw a3, MISC_PSRAMOVRB_REG(a2)
+	addi a1, a1, 1
+	bne zero, a3, bbloop
+
+	//flush cache to psram
+	li a1, MACH_FLUSH_REGION
+	li a2, MACH_RAM_SIZE
+	sw a2, 0(a1)
+
+
 
 
 //Memtest
@@ -175,6 +187,7 @@ s11            0x3	3
 //	sw a2, MISC_LED_REG(a1)
 
 	call load_ipl
+	call run_ipl
 
 jtagwait:
 	li a1, 0x40000000

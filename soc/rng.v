@@ -69,7 +69,6 @@ module lfsr64b #(
 	);
 	
 	reg [63:0] prngdata;
-	wire [31:0] prngout;
 	assign prngout = prngdata[31:0];
 
 	wire feedback;

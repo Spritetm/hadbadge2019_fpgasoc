@@ -23,7 +23,11 @@ void load_ipl() {
 	flash_read(FLASH_SEL_INT, IPL_FLASH_LOC, (uint8_t*)ipl, sizeof(ipl_t));
 	if (ipl->magic != IPL_MAGIC) return;
 	flash_read(FLASH_SEL_INT, IPL_FLASH_LOC, (uint8_t*)ipl, ipl->size);
-	
+}
+
+void run_ipl() {
+	ipl_t *ipl=(ipl_t*)MEM_IPL_START;
+	if (ipl->magic != IPL_MAGIC) return;
 	fun_ptr_t entrypoint=(fun_ptr_t)&ipl->entry_point;
 	entrypoint();
 }

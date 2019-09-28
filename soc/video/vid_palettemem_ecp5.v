@@ -25,7 +25,10 @@ module vid_palettemem (DataInA, DataInB, AddressA, AddressB,
     wire scuba_vhi;
     wire scuba_vlo;
 
-    defparam palettemem_ecp5_inst_0_0_1.INIT_DATA = "STATIC" ;
+	assign scuba_vhi = 1;
+	assign scuba_vlo = 0;
+
+//    defparam palettemem_ecp5_inst_0_0_1.INIT_DATA = "STATIC" ;
     defparam palettemem_ecp5_inst_0_0_1.ASYNC_RESET_RELEASE = "SYNC" ;
     defparam palettemem_ecp5_inst_0_0_1.INITVAL_3F = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
     defparam palettemem_ecp5_inst_0_0_1.INITVAL_3E = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
@@ -132,11 +135,8 @@ module vid_palettemem (DataInA, DataInB, AddressA, AddressB,
              /* synthesis MEM_LPC_FILE="palettemem_ecp5_inst.lpc" */
              /* synthesis MEM_INIT_FILE="INIT_ALL_0s" */;
 
-    VHI scuba_vhi_inst (.Z(scuba_vhi));
-
-    VLO scuba_vlo_inst (.Z(scuba_vlo));
-
-    defparam palettemem_ecp5_inst_0_1_0.INIT_DATA = "STATIC" ;
+  
+//    defparam palettemem_ecp5_inst_0_1_0.INIT_DATA = "STATIC" ;
     defparam palettemem_ecp5_inst_0_1_0.ASYNC_RESET_RELEASE = "SYNC" ;
     defparam palettemem_ecp5_inst_0_1_0.INITVAL_3F = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
     defparam palettemem_ecp5_inst_0_1_0.INITVAL_3E = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;

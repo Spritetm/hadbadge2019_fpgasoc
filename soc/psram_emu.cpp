@@ -52,13 +52,13 @@ int Psram_emu::load_file_nibbles(const char *file, int offset, bool is_ro, bool 
 	fclose(f);
 	for (int i=0; i<fsize; i+=2) {
 		if (msb_nibble) {
-			m_mem[offset+(i/2)]=((buf[i]>>4)<<4)+(buf[i+1]>>4);
+			m_mem[(offset+i)/2]=((buf[i]>>4)<<4)+(buf[i+1]>>4);
 		} else {
-			m_mem[offset+(i/2)]=((buf[i]&0xf)<<4)+(buf[i+1]&0xf);
+			m_mem[(offset+i)/2]=((buf[i]&0xf)<<4)+(buf[i+1]&0xf);
 		}
 	}
 	if (is_ro) {
-		for (int i=offset; i<offset+(fsize/2); i++) m_roflag[i]=1;
+		for (int i=offset/2; i<(offset+fsize)/2; i++) m_roflag[i]=1;
 	}
 	free(buf);
 	printf("Loaded file %s to 0x%X - 0x%X\n", file, offset, offset+(fsize/2));

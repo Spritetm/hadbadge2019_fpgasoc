@@ -66,7 +66,7 @@ void load_tilemap(Vvid *tb, VerilatedVcdC *trace, char *file) {
 	for (int y=0; y<64; y++) {
 		tile=y*(gdImageSX(im)/16);
 		for (int x=0; x<64; x+=2) {
-			tb_write(tb, NULL, TILEMAPA_OFF+pos*4, ((tile+1)<<16)|tile);
+			tb_write(tb, trace, TILEMAPA_OFF+pos*4, ((tile+1)<<16)|tile);
 			pos++;
 			tile+=2;
 		}
@@ -120,7 +120,7 @@ int main(int argc, char **argv) {
 	tb_write(tb, trace, PAL_OFF+0x3c, 0xffffff); 
 	load_tilemap(tb, trace, "tileset.png");
 	printf("Buffers inited.\n");
-	tb_write(tb, trace,REG_OFF+2*4, 0x2); //ena tile map a
+//	tb_write(tb, trace,REG_OFF+2*4, 0x2); //ena tile map a
 //	tb_write(tb, trace,REG_OFF+2*4, 0x1); //ena fb
 
 	int fetch_next=0;

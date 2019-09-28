@@ -35,7 +35,7 @@ void Lcd_renderer::update(int db, int wr, int rd, int rs) {
 	lastwr=wr;
 	if (rs==0) {
 		//command
-		if (db!=0x2c) printf("Unknown command 0x%X\n", db);
+		if (db!=0x2c) printf("LCD: Unknown command 0x%X\n", db);
 		xpos=0;
 		ypos=0;
 	} else {

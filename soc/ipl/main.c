@@ -24,8 +24,10 @@ extern volatile uint32_t MISC[];
 #define MISC_REG(i) MISC[(i)/4]
 extern volatile uint32_t LCD[];
 #define LCD_REG(i) LCD[(i)/4]
-extern volatile uint32_t GFX[];
-#define GFX_REG(i) GFX[(i)/4]
+extern volatile uint32_t GFXREG[];
+#define GFX_REG(i) GFXREG[(i)/4]
+extern volatile uint32_t GFXPAL[];
+
 
 uint8_t *lcdfb;
 UG_GUI ugui;
@@ -76,17 +78,45 @@ void start_app(char *app) {
 	printf("App returned.\n");
 }
 
+void pal_init() {
+	GFXPAL[0] =0x101000;
+	GFXPAL[1] =0x00007f;
+	GFXPAL[2] =0x007f00;
+	GFXPAL[3] =0x007f7f;
+	GFXPAL[4] =0x7f0000;
+	GFXPAL[5] =0x7f007f;
+	GFXPAL[6] =0x7f7f00;
+	GFXPAL[7] =0x7f007f;
+	GFXPAL[8] =0x4f4f4f;
+	GFXPAL[9] =0x0000ff;
+	GFXPAL[10]=0x00ff00;
+	GFXPAL[11]=0x00ffff;
+	GFXPAL[12]=0xff0000;
+	GFXPAL[13]=0xff00ff;
+	GFXPAL[14]=0xffff00;
+	GFXPAL[15]=0xffffff;
+}
+
 void cdc_task();
 
 void main() {
+	MISC_REG(MISC_LED_REG)=0xfffff;
 	syscall_reinit();
 	printf("IPL running.\n");
-	lcd_init();
 	lcdfb=calloc(320*512/2, 1);
-	GFX_REG(GFX_FBADDR_REG)=((uint32_t)lcdfb)&0x7FFFFF;
+	pal_init();
+	GFX_REG(GFX_FBADDR_REG)=((uint32_t)lcdfb)&0xFFFFFF;
+	GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB;
 	UG_Init(&ugui, lcd_pset, 480, 320);
 	UG_FontSelect(&FONT_12X16);
 	UG_SetForecolor(C_WHITE);
+	UG_PutString(0, 0, "Hello world!");
+	UG_PutString(0, 320-20, "Narf.");
+	UG_SetForecolor(C_GREEN);
+	UG_PutString(0, 16, "This is a test of the framebuffer to HDMI and LCD thingamajig. What you see now is the framebuffer memory.");
+	printf("GFX inited.\n");
+	lcd_init();
+
 
 	tusb_init();
 	printf("USB inited.\n");
@@ -98,18 +128,13 @@ void main() {
 		printf("%d: %08X (%d)\n", i, r, r);
 	}
 
-		fs_init();
+	fs_init();
 
 
 	//loop
 	int p;
 	char buf[200];
-	UG_PutString(0, 0, "Hello world!");
-	UG_PutString(0, 320-20, "Narf.");
-	UG_SetForecolor(C_GREEN);
-	UG_PutString(0, 16, "This is a test of the framebuffer to HDMI and LCD thingamajig. What you see now is the framebuffer memory.");
 	usb_msc_on();
-	MISC_REG(MISC_LED_REG)=0xfffff;
 	UART_REG(UART_IRDA_DIV_REG)=416;
 	int adcdiv=2;
 	MISC_REG(MISC_ADC_CTL_REG)=MISC_ADC_CTL_DIV(adcdiv)|MISC_ADC_CTL_ENA;

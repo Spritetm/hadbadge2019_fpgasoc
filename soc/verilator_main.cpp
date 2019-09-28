@@ -37,22 +37,25 @@ int main(int argc, char **argv) {
 	trace->open("soctrace.vcd");
 
 	tb->btn=0xff; //no buttons pressed
-	int do_trace=1;
+	int do_trace=0;
 
 	Psram_emu psrama=Psram_emu(8*1024*1024);
 	Psram_emu psramb=Psram_emu(8*1024*1024);
+	psrama.force_qpi(); psramb.force_qpi();
 	//ToDo: load elfs so we can mark ro sections as read-only
 	psrama.load_file_nibbles("boot/rom.bin", 0, true, false);
 	psramb.load_file_nibbles("boot/rom.bin", 0, true, true);
-//	psram.load_file("app/app.bin", 0x2000, false);
+
+	psrama.load_file_nibbles("ipl/ipl.bin", 0x2000, false, false);
+	psramb.load_file_nibbles("ipl/ipl.bin", 0x2000, false, true);
 
 	Uart_emu uart=Uart_emu(64);
 //	Uart_emu_gdb uart=Uart_emu_gdb(64);
 //	Uart_emu uart=Uart_emu(416);
 
-	Video_renderer *vid=new Video_renderer(false);
-	Lcd_renderer *lcd=new Lcd_renderer();
-//	Lcd_renderer *lcd=NULL;
+	Video_renderer *vid=new Video_renderer(true);
+//	Lcd_renderer *lcd=new Lcd_renderer();
+	Lcd_renderer *lcd=NULL;
 
 	int oldled=0;
 	int fetch_next=0;

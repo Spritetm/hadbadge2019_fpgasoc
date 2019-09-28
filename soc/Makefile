@@ -17,8 +17,8 @@ SRC_SYNTH+= video/ram_dp_24x2048_ecp5.v rng.v video/vid_palettemem_ecp5.v
 SRC_SYNTH+= video/vid_tilemapmem_ecp5.v video/vid_tilemem_ecp5.v
 SRC_SIM=verilator_main.cpp psram_emu.cpp uart_emu.cpp uart_emu_gdb.cpp mul_18x18_sim.v
 SRC_SIM+=video/video_renderer.cpp video/lcd_renderer.cpp video/ram_dp_24x2048_sim.v
-SRC_SIM+=trellis_io_sim.v video/vid_palettemem_sim.v video/vid_tilemapmem_ecp5.v 
-SRC_SIM+=video/vid_tilemem_ecp5.v
+SRC_SIM+=trellis_io_sim.v video/vid_palettemem_sim.v video/vid_tilemapmem_sim.v 
+SRC_SIM+=video/vid_tilemem_sim.v
 EXTRA_DEPEND=rom_random_seeds0x123456.hex pic/rom_initial.hex
 BRAMFILE=rom.hex
 CONSTR=$(word $(BADGE_VER), had19_proto1.lpf had19_proto2.lpf had19_proto3.lpf had19_prod.lpf)
@@ -44,7 +44,7 @@ $(PROJ).json $(PROJ).blif: $(SRC) $(SRC_SYNTH) $(EXTRA_DEPEND)
 			  synth_ecp5 -top top_fpga -json $(PROJ).json -blif $(PROJ).blif"
 
 %_out_synth.config: %.json clock-constrainsts.py
-	nextpnr-ecp5 --json $< --lpf $(CONSTR) --textcfg $@ --45k --package CABGA381 --speed 8  --pre-pack clock-constrainsts.py --seed 2
+	nextpnr-ecp5 --json $< --lpf $(CONSTR) --textcfg $@ --45k --package CABGA381 --speed 8  --pre-pack clock-constrainsts.py --seed 6
 
 %_out.config: %_out_synth.config bram_replace/bram_replace$(EXE) rom.hex
 	bram_replace/bram_replace$(EXE) -l 8192 -r $< $@ rom.hex

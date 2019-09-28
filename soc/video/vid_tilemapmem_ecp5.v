@@ -180,17 +180,18 @@ module vid_tilemapmem (DataInA, DataInB, ByteEnA, ByteEnB,
     wire mdout1_1_34;
     wire mdout1_0_34;
 
-    VHI scuba_vhi_inst (.Z(scuba_vhi));
+	assign scuba_vhi = 1;
+	assign scuba_vlo = 0;
 
-    INV INV_1 (.A(WrA), .Z(wren0_inv));
+    assign wren0_inv = ~WrA;
 
-    AND2 AND2_t1 (.A(wren0_inv), .B(ClockEnA), .Z(wren0_inv_g));
+	assign wren0_inv_g=wren0_inv&ClockEnA;
 
-    INV INV_0 (.A(WrB), .Z(wren1_inv));
+    assign wren1_inv = ~WrB;
 
-    AND2 AND2_t0 (.A(wren1_inv), .B(ClockEnB), .Z(wren1_inv_g));
+	assign wren1_inv_g=wren1_inv&ClockEnB;
 
-    defparam tilemapmem_ecp5_inst_0_0_3.INIT_DATA = "STATIC" ;
+//    defparam tilemapmem_ecp5_inst_0_0_3.INIT_DATA = "STATIC" ;
     defparam tilemapmem_ecp5_inst_0_0_3.ASYNC_RESET_RELEASE = "SYNC" ;
     defparam tilemapmem_ecp5_inst_0_0_3.INITVAL_3F = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
     defparam tilemapmem_ecp5_inst_0_0_3.INITVAL_3E = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
@@ -299,7 +300,7 @@ module vid_tilemapmem (DataInA, DataInB, ByteEnA, ByteEnB,
              /* synthesis MEM_LPC_FILE="tilemapmem_ecp5_inst.lpc" */
              /* synthesis MEM_INIT_FILE="INIT_ALL_0s" */;
 
-    defparam tilemapmem_ecp5_inst_0_1_2.INIT_DATA = "STATIC" ;
+//    defparam tilemapmem_ecp5_inst_0_1_2.INIT_DATA = "STATIC" ;
     defparam tilemapmem_ecp5_inst_0_1_2.ASYNC_RESET_RELEASE = "SYNC" ;
     defparam tilemapmem_ecp5_inst_0_1_2.INITVAL_3F = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
     defparam tilemapmem_ecp5_inst_0_1_2.INITVAL_3E = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
@@ -408,7 +409,7 @@ module vid_tilemapmem (DataInA, DataInB, ByteEnA, ByteEnB,
              /* synthesis MEM_LPC_FILE="tilemapmem_ecp5_inst.lpc" */
              /* synthesis MEM_INIT_FILE="INIT_ALL_0s" */;
 
-    defparam tilemapmem_ecp5_inst_1_0_1.INIT_DATA = "STATIC" ;
+//    defparam tilemapmem_ecp5_inst_1_0_1.INIT_DATA = "STATIC" ;
     defparam tilemapmem_ecp5_inst_1_0_1.ASYNC_RESET_RELEASE = "SYNC" ;
     defparam tilemapmem_ecp5_inst_1_0_1.INITVAL_3F = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
     defparam tilemapmem_ecp5_inst_1_0_1.INITVAL_3E = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
@@ -517,7 +518,7 @@ module vid_tilemapmem (DataInA, DataInB, ByteEnA, ByteEnB,
              /* synthesis MEM_LPC_FILE="tilemapmem_ecp5_inst.lpc" */
              /* synthesis MEM_INIT_FILE="INIT_ALL_0s" */;
 
-    defparam tilemapmem_ecp5_inst_1_1_0.INIT_DATA = "STATIC" ;
+//    defparam tilemapmem_ecp5_inst_1_1_0.INIT_DATA = "STATIC" ;
     defparam tilemapmem_ecp5_inst_1_1_0.ASYNC_RESET_RELEASE = "SYNC" ;
     defparam tilemapmem_ecp5_inst_1_1_0.INITVAL_3F = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
     defparam tilemapmem_ecp5_inst_1_1_0.INITVAL_3E = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
@@ -638,7 +639,6 @@ module vid_tilemapmem (DataInA, DataInB, ByteEnA, ByteEnB,
         .Q(addr110_ff))
              /* synthesis GSR="ENABLED" */;
 
-    VLO scuba_vlo_inst (.Z(scuba_vlo));
 
     FD1P3DX FF_0 (.D(addr110_ff), .SP(ClockEnB), .CK(ClockB), .CD(scuba_vlo), 
         .Q(addr110_ff2))
@@ -824,5 +824,30 @@ module vid_tilemapmem (DataInA, DataInB, ByteEnA, ByteEnB,
     // exemplar attribute FF_1 GSR ENABLED
     // exemplar attribute FF_0 GSR ENABLED
     // exemplar end
+
+endmodule
+
+module MUX21 (
+	input D0,
+	input D1,
+	input SD,
+	output Z
+);
+assign Z = SD?D1:D0;
+endmodule
+
+module FD1P3DX(
+	input D,
+	input SP,
+	input CK,
+	input CD,
+	output reg Q
+);
+
+always @(posedge CK) begin
+	if (SP) begin
+		Q <= D;
+	end
+end
 
 endmodule

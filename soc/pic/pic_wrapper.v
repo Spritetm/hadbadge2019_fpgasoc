@@ -52,14 +52,26 @@ risc16f84_clk2x pic(
 //Needed for memory:
 //- Program ram: 14bit*1K (max 8K, but 'F84 only has 1K)
 //- Data ram: 8bit*256
+wire [9:0] progmem_addr;
+wire progmem_wr;
+wire [13:0] progmem_dout;
 
-reg [13:0] progmem [0:1023];
+pic_progmem #(
+	.ROM_HEX(ROM_HEX)
+) progmem (
+	.clk(clk),
+	.reset(reset),
+	.addr(progmem_addr),
+	.wr(progmem_wr),
+	.din(data_in[13:0]),
+	.dout(progmem_dout)
+);
+
 reg [7:0] datamem [0:511];
 
 integer i;
 initial begin
 	for (i=0; i<512; i++) datamem[i]<=0;
-	$readmemh(ROM_HEX, progmem);
 end
 
 reg is_ready;
@@ -82,7 +94,7 @@ always @(posedge clk) begin
 				end else if (address[15:14]==2'b01) begin
 					data_out <= {24'h0, datamem[address[10:2]]};
 				end else if (address[15]==1) begin
-					data_out <= {18'h0, progmem[address[11:2]]};
+					data_out <= {18'h0, progmem_dout};
 				end
 				is_ready <= 1;
 			end
@@ -93,7 +105,7 @@ always @(posedge clk) begin
 				end else if (address[15:14]==2'b01) begin
 					datamem[address[10:2]] <= data_in[7:0];
 				end else if (address[15]==1) begin
-					progmem[address[11:2]] <= data_in[13:0];
+					//progmem[address[11:2]] <= data_in[13:0];
 				end
 				is_ready <= 1;
 			end
@@ -103,7 +115,6 @@ always @(posedge clk) begin
 				datamem[ram_adr] <= ram_dat_w;
 			end
 			ram_dat_r <= datamem[ram_adr];
-			prog_dat <= progmem[prog_adr];
 			pic_can_run <= 1;
 		end
 	end
@@ -111,6 +122,33 @@ end
 
 endmodule
 
+module pic_progmem #(
+	parameter ROM_HEX = "rom_initial.hex"
+) (
+	input clk,
+	input reset,
+	input [9:0] addr,
+	input wr,
+	input [13:0] din,
+	output [13:0] dout
+);
 
+reg [13:0] progmem [0:1023];
+reg [9:0] addr_reg;
+assign dout = progmem[addr_reg];
 
+integer i;
+initial begin
+	$readmemh(ROM_HEX, progmem);
+end
 
+always @(posedge clk) begin
+	if (reset) begin
+		addr_reg <= 0;
+	end else begin
+		addr_reg <= addr;
+		if (wr) progmem[addr]<=din;
+	end
+end
+
+endmodule

@@ -168,6 +168,50 @@ Info: 	              DDRDLL:     0/    4     0%
 Info: 	             DQSBUFM:     0/   10     0%
 Info: 	     TRELLIS_ECLKBUF:     0/    8     0%
 
+After partial 'more renderers'
+Info: Device utilisation:
+Info: 	       TRELLIS_SLICE: 14798/21924    67%
+Info: 	          TRELLIS_IO:   139/  244    56%
+Info: 	                DCCA:     5/   56     8%
+Info: 	              DP16KD:    74/  108    68%
+Info: 	          MULT18X18D:     8/   72    11%
+Info: 	              ALU54B:     0/   36     0%
+Info: 	             EHXPLLL:     2/    4    50%
+Info: 	             EXTREFB:     0/    2     0%
+Info: 	                DCUA:     0/    2     0%
+Info: 	           PCSCLKDIV:     0/    2     0%
+Info: 	             IOLOGIC:     8/  160     5%
+Info: 	            SIOLOGIC:     0/   84     0%
+Info: 	                 GSR:     0/    1     0%
+Info: 	               JTAGG:     1/    1   100%
+Info: 	                OSCG:     1/    1   100%
+Info: 	               SEDGA:     0/    1     0%
+Info: 	                 DTR:     0/    1     0%
+Info: 	             USRMCLK:     1/    1   100%
+Info: 	             CLKDIVF:     0/    4     0%
+Info: 	           ECLKSYNCB:     0/    8     0%
+Info: 	             DLLDELD:     0/    8     0%
+Info: 	              DDRDLL:     0/    4     0%
+Info: 	             DQSBUFM:     0/   10     0%
+Info: 	     TRELLIS_ECLKBUF:     0/    8     0%
+
+Move pic prog mem into BRAM
+(Moving stuff in DRAM: 1% TRELLIS_SLICE decrease per 2K)
+
+tagdata_mem 2816 bits NOK
+dbgfifo 1056 bits NOK
+cpuregs 1152x2 bits NOK
+linerenderer fifo 16384 Mapped
+pic datamem 4096 NOK
+pic stack 104 not efficient
+pic prog 14336 Mapped
+cachedata 262114 Mapped
+flagdata 1024 not efficient
+USB ok
+
+
+
+
 
 
 

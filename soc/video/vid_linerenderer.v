@@ -159,7 +159,7 @@ reg [16:0] tilea_x;
 reg [16:0] tilea_y;
 wire [9:0] tilea_data;
 reg [31:0] tilemapa_word;
-wire tilemapa_addr;
+wire [10:0] tilemapa_addr;
 assign tilemapa_addr = {tilea_y[5:0], tilea_x[5:1]};
 reg tilemapa_hsel;
 always @(posedge clk) tilemapa_hsel<=tilea_x[0];
@@ -188,7 +188,7 @@ reg [16:0] tileb_x;
 reg [16:0] tileb_y;
 wire [9:0] tileb_data;
 reg [31:0] tilemapb_word;
-wire tilemapb_addr;
+wire [10:0] tilemapb_addr;
 assign tilemapb_addr = {tileb_y[5:0], tileb_x[5:1]};
 reg tilemapb_hsel;
 always @(posedge clk) tilemapb_hsel<=tileb_x[0];
@@ -273,20 +273,20 @@ assign vid_xpos = write_vid_addr[8:0];
 assign vid_ypos = write_vid_addr[17:9];
 
 always @(*) begin
-	tilea_x = (vid_xpos + tilea_xoff)/16;
-	tilea_y = (vid_ypos + tilea_yoff)/16;
-	tileb_x = (vid_xpos + tileb_xoff)/16;
-	tileb_y = (vid_ypos + tileb_yoff)/16;
+	tilea_x = ({7'h0,vid_xpos} + tilea_xoff)/16;
+	tilea_y = ({7'h0,vid_ypos} + tilea_yoff)/16;
+	tileb_x = ({7'h0,vid_xpos} + tileb_xoff)/16;
+	tileb_y = ({7'h0,vid_ypos} + tileb_yoff)/16;
 	if (cycle==0) begin
 		tilepix_x = (vid_xpos + tileb_xoff);
 		tilepix_y = (vid_ypos + tileb_yoff);
 		tilemem_no = tileb_data[8:0];
-		pal_addr = tilemem_pixel; //from tilemap a
+		pal_addr = {5'h2, tilemem_pixel}; //from tilemap a
 	end else if (cycle==1) begin
 		tilepix_x = 0;
 		tilepix_y = 0;
 		tilemem_no = 0;
-		pal_addr = tilemem_pixel; //from tilemap b
+		pal_addr = {5'h1, tilemem_pixel}; //from tilemap b
 	end else if (cycle==2) begin
 		tilepix_x = 0;
 		tilepix_y = 0;
@@ -296,7 +296,7 @@ always @(*) begin
 		tilepix_x = (vid_xpos + tilea_xoff);
 		tilepix_y = (vid_ypos + tilea_yoff);
 		tilemem_no = tilea_data[8:0];
-		pal_addr = dma_data[vid_xpos[3:0]*4+:4];
+		pal_addr = {5'h0, dma_data[vid_xpos[3:0]*4+:4]};
 	end
 end
 
@@ -355,7 +355,7 @@ always @(posedge clk) begin
 			//If we're here, there is room in the line memory to write a new line into.
 			dma_run <= 1;
 			if (dma_ready || write_vid_addr[2:0]!=0) begin
-				if (write_vid_addr[2:0] == 7 && cycle==0) begin
+				if (write_vid_addr[2:0] == 7 && cycle==2) begin
 					//We need a new word. Enable read here because:
 					// dma_do_read actually goes high next cycle
 					// correct data will get returned next next cycle
