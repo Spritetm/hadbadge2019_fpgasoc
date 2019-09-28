@@ -674,7 +674,7 @@ module soc(
 		.reset(rst),
 		.addr(mem_addr),
 		.din(mem_wdata),
-		.wen(linerenderer_select && mem_wstrb==4'b1111), //todo: byte/halfword access
+		.wstrb(linerenderer_select?mem_wstrb:4'b0000),
 		.ren(linerenderer_select && mem_wstrb==4'b0000),
 		.dout(linerenderer_rdata),
 		.ready(linerenderer_ready),

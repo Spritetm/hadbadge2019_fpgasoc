@@ -8,7 +8,8 @@ module vid (
 	input [24:0] addr,
 	input [31:0] din,
 	output [31:0] dout,
-	input wen, ren,
+	input [3:0] wstrb,
+	input ren,
 	output ready,
 	
 	input pixelclk,
@@ -27,6 +28,7 @@ wire vid_wen, vid_ren;
 wire [23:0] vid_data_in;
 wire [19:0] curr_vid_addr;
 
+
 reg [31:0] qpi_rdata;
 wire [23:0] qpi_addr;
 wire qpi_do_read;
@@ -44,9 +46,14 @@ always @(posedge clk) begin
 	qpi_next_word <= 0;
 	if (&qpi_tick) begin
 		if (qpi_is_idle && qpi_do_read) begin
-			qpi_rdata <= qpi_addr;
-		end else begin
-			qpi_rdata <= qpi_rdata + 4;
+			qpi_rdata[3:0] <= qpi_addr[12:9];
+			qpi_rdata[7:4] <= qpi_addr[12:9];
+			qpi_rdata[11:8] <= qpi_addr[12:9];
+			qpi_rdata[15:12] <= qpi_addr[12:9];
+			qpi_rdata[19:16] <= qpi_addr[12:9];
+			qpi_rdata[23:20] <= qpi_addr[12:9];
+			qpi_rdata[27:24] <= qpi_addr[12:9];
+			qpi_rdata[31:28] <= qpi_addr[12:9];
 		end
 		qpi_is_idle <= !qpi_do_read;
 		qpi_next_word <= 1;
@@ -58,7 +65,7 @@ vid_linerenderer linerenderer (
 	.reset(reset),
 	.addr(addr),
 	.din(din),
-	.wen(wen),
+	.wstrb(wstrb),
 	.ren(ren),
 	.dout(dout),
 	.ready(ready),
@@ -77,6 +84,17 @@ vid_linerenderer linerenderer (
 	.m_addr(qpi_addr),
 	.m_is_idle(qpi_is_idle)
 );
+
+wire [8:0] linerenderer_w_x;
+wire [8:0] linerenderer_w_y;
+wire [8:0] curr_output_x;
+wire [8:0] curr_output_y;
+
+assign curr_output_x = curr_vid_addr[8:0];
+assign curr_output_y = curr_vid_addr[17:9];
+
+assign linerenderer_w_x = vid_addr[8:0];
+assign linerenderer_w_y = vid_addr[17:9];
 
 video_mem video_mem (
 	.clk(clk),

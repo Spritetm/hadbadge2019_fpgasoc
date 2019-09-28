@@ -48,7 +48,7 @@ ram_dp_24x2048 ram_hdmi (
 	.ClockA(clk),
 	.ClockEnA(1'b1),
 	.DataInA(data_in),
-	.AddressA(addr[11:0]),
+	.AddressA(addr[10:0]),
 	.WrA(wen),
 	.QA(data_out),
 	.WrB(0),
@@ -57,7 +57,7 @@ ram_dp_24x2048 ram_hdmi (
 	.ClockB(pixel_clk),
 	.ClockEnB(1'b1),
 	.DataInB('b0),
-	.AddressB(video_addr[11:0]),
+	.AddressB(video_addr[10:0]),
 	.QB(video_data)
 );
 
@@ -67,7 +67,7 @@ ram_dp_24x2048 ram_lcd (
 	.ClockA(clk),
 	.ClockEnA(1'b1),
 	.DataInA(data_in),
-	.AddressA(addr[11:0]),
+	.AddressA(addr[10:0]),
 	.WrA(wen),
 //	.QA(data_out),
 	.WrB(0),
@@ -76,7 +76,7 @@ ram_dp_24x2048 ram_lcd (
 	.ClockB(clk),
 	.ClockEnB(1'b1),
 	.DataInB('b0),
-	.AddressB(video_addr_lcd[11:0]),
+	.AddressB(video_addr_lcd[10:0]),
 	.QB(video_data_lcd)
 );
 

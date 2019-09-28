@@ -15,7 +15,7 @@ module qpimem_dma_rdr #(
 	input [ADDR_WIDTH-1:0] addr_start, //byte addr
 	input [ADDR_WIDTH-1:0] addr_end, //byte addr
 	input run,			//Start/continue DMA transaction. This going low will end the transaction.
-	output ready,		//A byte is available for reading
+	output ready,		//A word is available for reading
 	output all_done,	//DMA transaction is complete.
 	input do_read,		//Strobe for next word
 	output [31:0] rdata,	//Data read
