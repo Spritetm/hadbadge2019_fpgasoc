@@ -16,7 +16,7 @@
 #include "flash.h"
 #include "loadapp.h"
 #include "gloss/newlib_stubs.h"
-
+#include "font-8x16.h"
 
 extern volatile uint32_t UART[];
 #define UART_REG(i) UART[(i)/4]
@@ -27,7 +27,9 @@ extern volatile uint32_t LCD[];
 extern volatile uint32_t GFXREG[];
 #define GFX_REG(i) GFXREG[(i)/4]
 extern volatile uint32_t GFXPAL[];
-
+extern uint32_t GFXTILES[];
+extern uint32_t GFXTILEMAPA[];
+extern uint32_t GFXTILEMAPB[];
 
 uint8_t *lcdfb;
 UG_GUI ugui;
@@ -78,23 +80,41 @@ void start_app(char *app) {
 	printf("App returned.\n");
 }
 
-void pal_init() {
-	GFXPAL[0] =0x101000;
-	GFXPAL[1] =0x00007f;
-	GFXPAL[2] =0x007f00;
-	GFXPAL[3] =0x007f7f;
-	GFXPAL[4] =0x7f0000;
-	GFXPAL[5] =0x7f007f;
-	GFXPAL[6] =0x7f7f00;
-	GFXPAL[7] =0x7f007f;
-	GFXPAL[8] =0x4f4f4f;
-	GFXPAL[9] =0x0000ff;
-	GFXPAL[10]=0x00ff00;
-	GFXPAL[11]=0x00ffff;
-	GFXPAL[12]=0xff0000;
-	GFXPAL[13]=0xff00ff;
-	GFXPAL[14]=0xffff00;
-	GFXPAL[15]=0xffffff;
+void pal_init_egacolors(int offset) {
+	GFXPAL[offset+0] =0x101000;
+	GFXPAL[offset+1] =0x00007f;
+	GFXPAL[offset+2] =0x007f00;
+	GFXPAL[offset+3] =0x007f7f;
+	GFXPAL[offset+4] =0x7f0000;
+	GFXPAL[offset+5] =0x7f007f;
+	GFXPAL[offset+6] =0x7f7f00;
+	GFXPAL[offset+7] =0x7f007f;
+	GFXPAL[offset+8] =0x4f4f4f;
+	GFXPAL[offset+9] =0x0000ff;
+	GFXPAL[offset+10]=0x00ff00;
+	GFXPAL[offset+11]=0x00ffff;
+	GFXPAL[offset+12]=0xff0000;
+	GFXPAL[offset+13]=0xff00ff;
+	GFXPAL[offset+14]=0xffff00;
+	GFXPAL[offset+15]=0xffffff;
+}
+
+void load_font() {
+	int ix=0;
+	for (int ch=0; ch<256; ch++) {
+		for (int y=0; y<16; y++) {
+			uint32_t p;
+			uint8_t c=vga_font[ch*16+y];
+			for (int n=0; n<8; n++) {
+				p<<=4;
+				if (c&1) p|=0xf;
+				c>>=1;
+			}
+			GFXTILES[ix]=p;
+			GFXTILES[ix+1]=0;
+			ix+=2;
+		}
+	}
 }
 
 void cdc_task();
@@ -103,11 +123,17 @@ void main() {
 	MISC_REG(MISC_LED_REG)=0xfffff;
 	syscall_reinit();
 	printf("IPL running.\n");
-	lcdfb=calloc(320*512/2, 1);
-	pal_init();
+	lcdfb=malloc(320*512/2);
 	GFX_REG(GFX_FBADDR_REG)=((uint32_t)lcdfb)&0xFFFFFF;
-	GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB;
+	GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_LAYEREN_TILEA;
+	for (int i=0; i<512; i+=16) pal_init_egacolors(i);
+	for (int i=0; i<64*64; i++) GFXTILEMAPA[i]=i&255;
+//	for (int i=0; i<64*64; i++) GFXTILEMAPB[i]=i&255;
+	load_font();
+	printf("Tiles initialized\n");
+
 	UG_Init(&ugui, lcd_pset, 480, 320);
+	memset(lcdfb, 0, 320*512/2);
 	UG_FontSelect(&FONT_12X16);
 	UG_SetForecolor(C_WHITE);
 	UG_PutString(0, 0, "Hello world!");
