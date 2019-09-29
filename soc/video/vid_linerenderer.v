@@ -81,7 +81,7 @@ wire [31:0] dout_tilemapa;
 wire [31:0] dout_tilemapb;
 wire [31:0] dout_palette;
 wire [31:0] dout_tilemem;
-
+reg tilea_8x16;
 
 always @(*) begin
 	cpu_sel_tilemem = 0;
@@ -98,7 +98,7 @@ always @(*) begin
 		end else if (addr[5:2]==REG_SEL_FB_PITCH) begin
 			dout = {16'h0, pitch};
 		end else if (addr[5:2]==REG_SEL_LAYER_EN) begin
-			dout = {24'h0, layer_en};
+			dout = {23'h0, tilea_8x16, layer_en};
 		end else if (addr[5:2]==REG_SEL_TILEA_OFF) begin
 			dout = {tilea_yoff, tilea_xoff};
 		end else if (addr[5:2]==REG_SEL_TILEB_OFF) begin
@@ -273,7 +273,11 @@ assign vid_xpos = write_vid_addr[8:0];
 assign vid_ypos = write_vid_addr[17:9];
 
 always @(*) begin
-	tilea_x = ({7'h0,vid_xpos} + tilea_xoff)/16;
+	if (tilea_8x16) begin
+		tilea_x = ({7'h0,vid_xpos} + tilea_xoff)/8;
+	end else begin
+		tilea_x = ({7'h0,vid_xpos} + tilea_xoff)/16;
+	end
 	tilea_y = ({7'h0,vid_ypos} + tilea_yoff)/16;
 	tileb_x = ({7'h0,vid_xpos} + tileb_xoff)/16;
 	tileb_y = ({7'h0,vid_ypos} + tileb_yoff)/16;
@@ -281,22 +285,29 @@ always @(*) begin
 		tilepix_x = (vid_xpos + tileb_xoff);
 		tilepix_y = (vid_ypos + tileb_yoff);
 		tilemem_no = tileb_data[8:0];
-		pal_addr = {5'h1, tilemem_pixel}; //from tilemap b
+		pal_addr = {5'h2, tilemem_pixel}; //from tilemap a
 	end else if (cycle==1) begin
 		tilepix_x = 0;
 		tilepix_y = 0;
 		tilemem_no = 0;
-		pal_addr = 0; //todo: sprite
+		pal_addr = {5'h1, tilemem_pixel}; //from tilemap b
 	end else if (cycle==2) begin
 		tilepix_x = 0;
 		tilepix_y = 0;
 		tilemem_no = 0;
-		pal_addr = {5'h0, dma_data[vid_xpos[3:0]*4+:4]};
+		pal_addr = {5'h0, dma_data[vid_xpos[3:0]*4+:4]}; //from fb
 	end else if (cycle==3) begin
-		tilepix_x = (vid_xpos + tilea_xoff);
-		tilepix_y = (vid_ypos + tilea_yoff);
-		tilemem_no = tilea_data[8:0];
-		pal_addr = {5'h2, tilemem_pixel}; //from tilemap a
+		if (tilea_8x16) begin
+			tilepix_x[2:0] = (vid_xpos + tilea_xoff);
+			tilepix_x[3] = tilea_data[0];
+			tilepix_y = (vid_ypos + tilea_yoff);
+			tilemem_no = {1'h0, tilea_data[8:1]};
+		end else begin
+			tilepix_x = (vid_xpos + tilea_xoff);
+			tilepix_y = (vid_ypos + tilea_yoff);
+			tilemem_no = tilea_data[8:0];
+		end
+		pal_addr = 3; //todo: sprite
 	end
 end
 
@@ -316,6 +327,7 @@ always @(posedge clk) begin
 		tileb_xoff <= 0;
 		tilea_xoff <= 0;
 		tileb_xoff <= 0;
+		tilea_8x16 <= 0;
 	end else begin
 		/* CPU interface */
 		ready <= ((wstrb!=0) | ren);
@@ -326,6 +338,7 @@ always @(posedge clk) begin
 				pitch <= din[15:0];
 			end else if (addr[5:2]==REG_SEL_LAYER_EN) begin
 				layer_en <= din[3:0];
+				tilea_8x16 <= din[4];
 			end else if (addr[5:2]==REG_SEL_TILEA_OFF) begin
 				tilea_xoff <= din[15:0];
 				tilea_yoff <= din[31:16];

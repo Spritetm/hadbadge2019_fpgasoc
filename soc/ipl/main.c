@@ -28,8 +28,8 @@ extern volatile uint32_t GFXREG[];
 #define GFX_REG(i) GFXREG[(i)/4]
 extern volatile uint32_t GFXPAL[];
 extern uint32_t GFXTILES[];
-extern uint32_t GFXTILEMAPA[];
-extern uint32_t GFXTILEMAPB[];
+extern uint16_t GFXTILEMAPA[];
+extern uint16_t GFXTILEMAPB[];
 
 uint8_t *lcdfb;
 UG_GUI ugui;
@@ -88,7 +88,7 @@ void pal_init_egacolors(int offset) {
 	GFXPAL[offset+4] =0x7f0000;
 	GFXPAL[offset+5] =0x7f007f;
 	GFXPAL[offset+6] =0x7f7f00;
-	GFXPAL[offset+7] =0x7f007f;
+	GFXPAL[offset+7] =0x7f7f7f;
 	GFXPAL[offset+8] =0x4f4f4f;
 	GFXPAL[offset+9] =0x0000ff;
 	GFXPAL[offset+10]=0x00ff00;
@@ -101,18 +101,27 @@ void pal_init_egacolors(int offset) {
 
 void load_font() {
 	int ix=0;
+	int col;
 	for (int ch=0; ch<256; ch++) {
 		for (int y=0; y<16; y++) {
 			uint32_t p;
+			col=0x7;
 			uint8_t c=vga_font[ch*16+y];
 			for (int n=0; n<8; n++) {
 				p<<=4;
-				if (c&1) p|=0xf;
+				if (c&1) {
+					p|=col;
+					col=0xf;
+				} else {
+					col=0x7;
+				}
 				c>>=1;
 			}
-			GFXTILES[ix]=p;
-			GFXTILES[ix+1]=0;
-			ix+=2;
+			if ((ch&1)==0) {
+				GFXTILES[(ch/2)*32+y*2]=p;
+			} else {
+				GFXTILES[(ch/2)*32+y*2+1]=p;
+			}
 		}
 	}
 }
@@ -125,10 +134,10 @@ void main() {
 	printf("IPL running.\n");
 	lcdfb=malloc(320*512/2);
 	GFX_REG(GFX_FBADDR_REG)=((uint32_t)lcdfb)&0xFFFFFF;
-	GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_LAYEREN_TILEA;
+	GFX_REG(GFX_LAYEREN_REG)=(GFX_LAYEREN_FB&0)|GFX_LAYEREN_TILEA|GFX_TILEA_8x16;
 	for (int i=0; i<512; i+=16) pal_init_egacolors(i);
 	for (int i=0; i<64*64; i++) GFXTILEMAPA[i]=i&255;
-//	for (int i=0; i<64*64; i++) GFXTILEMAPB[i]=i&255;
+	for (int i=0; i<64*64; i++) GFXTILEMAPB[i]=i&255;
 	load_font();
 	printf("Tiles initialized\n");
 
