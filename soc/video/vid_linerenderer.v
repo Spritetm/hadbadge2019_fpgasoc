@@ -14,7 +14,7 @@ module vid_linerenderer (
 	input [3:0] wstrb,
 	input ren,
 	output reg [31:0] dout,
-	output reg ready,
+	output ready,
 	
 	//Video mem iface
 	output reg [19:0] vid_addr, //assume 1 meg-words linebuf mem max
@@ -107,15 +107,15 @@ always @(*) begin
 	end else if (addr[16:13]=='h1) begin
 		cpu_sel_palette = 1;
 		dout = dout_palette;
-	end else if (addr[16:13]=='h2) begin
+	end else if (addr[16:14]=='h1) begin //2,3
 		cpu_sel_tilemap_a = 1;
 		dout = dout_tilemapa;
-	end else if (addr[16:13]=='h3) begin
+	end else if (addr[16:14]=='h2) begin //4,5
 		cpu_sel_tilemap_b = 1;
 		dout = dout_tilemapb;
-	end else if (addr[16:13]=='h4) begin
+	end else if (addr[16:13]=='h6) begin
 		cpu_sel_sprites = 1;
-		//dout = dout_sprites;
+		dout = 0;//dout_sprites;
 	end else if (addr[16]==1) begin
 		cpu_sel_tilemem = 1;
 		dout = dout_tilemem;
@@ -157,13 +157,9 @@ vid_tilemem tilemem(
 
 reg [16:0] tilea_x;
 reg [16:0] tilea_y;
-wire [9:0] tilea_data;
-reg [31:0] tilemapa_word;
-wire [10:0] tilemapa_addr;
-assign tilemapa_addr = {tilea_y[5:0], tilea_x[5:1]};
-reg tilemapa_hsel;
-always @(posedge clk) tilemapa_hsel<=tilea_x[0];
-assign tilea_data = tilemapa_hsel? tilemapa_word[31:16] : tilemapa_word[15:0];
+wire [17:0] tilea_data;
+wire [11:0] tilemapa_addr;
+assign tilemapa_addr = {tilea_y[5:0], tilea_x[5:0]};
 
 vid_tilemapmem tilemapa (
 	.ClockA(clk),
@@ -172,27 +168,21 @@ vid_tilemapmem tilemapa (
 	.ResetB(reset),
 	.ClockEnA(1),
 	.ClockEnB(1),
-	.DataInA(din),
+	.DataInA(din[17:0]),
 	.DataInB(0),
-	.ByteEnA(wstrb==0 ? 'hf : wstrb),
-	.ByteEnB('hf),
-	.WrA((wstrb!=0) & cpu_sel_tilemap_a),
+	.WrA(&wstrb & cpu_sel_tilemap_a),
 	.WrB(0),
-	.AddressA(addr[12:2]),
+	.AddressA(addr[13:2]),
 	.AddressB(tilemapa_addr),
 	.QA(dout_tilemapa),
-	.QB(tilemapa_word)
+	.QB(tilea_data)
 );
 
 reg [16:0] tileb_x;
 reg [16:0] tileb_y;
-wire [9:0] tileb_data;
-reg [31:0] tilemapb_word;
-wire [10:0] tilemapb_addr;
-assign tilemapb_addr = {tileb_y[5:0], tileb_x[5:1]};
-reg tilemapb_hsel;
-always @(posedge clk) tilemapb_hsel<=tileb_x[0];
-assign tileb_data = tilemapb_hsel? tilemapb_word[31:16] : tilemapb_word[15:0];
+wire [17:0] tileb_data;
+wire [11:0] tilemapb_addr;
+assign tilemapb_addr = {tileb_y[5:0], tileb_x[5:0]};
 
 vid_tilemapmem tilemapb (
 	.ClockA(clk),
@@ -203,14 +193,12 @@ vid_tilemapmem tilemapb (
 	.ClockEnB(1),
 	.DataInA(din),
 	.DataInB(0),
-	.ByteEnA(wstrb==0 ? 'hf : wstrb),
-	.ByteEnB('hf),
-	.WrA((wstrb!=0) & cpu_sel_tilemap_b),
+	.WrA(&wstrb & cpu_sel_tilemap_b),
 	.WrB(0),
-	.AddressA(addr[12:2]),
+	.AddressA(addr[13:2]),
 	.AddressB(tilemapb_addr),
 	.QA(dout_tilemapb),
-	.QB(tilemapb_word)
+	.QB(tileb_data)
 );
 
 
@@ -273,6 +261,10 @@ assign vid_xpos = write_vid_addr[8:0];
 assign vid_ypos = write_vid_addr[17:9];
 
 always @(*) begin
+	tilepix_x=0;
+	tilepix_y=0;
+	tilemem_no=0;
+	pal_addr=0;
 	if (tilea_8x16) begin
 		tilea_x = ({7'h0,vid_xpos} + tilea_xoff)/8;
 	end else begin
@@ -313,10 +305,12 @@ end
 
 reg [31:0] pixel_hold;
 assign vid_data_out = pixel_hold[23:0];
+reg ready_delayed;
+assign ready = ready_delayed & ((wstrb!=0) || ren);
 
 always @(posedge clk) begin
 	if (reset) begin
-		ready <= 0;
+		ready_delayed <= 0;
 		fb_addr <= 'h7E0000; //top 128K of RAM
 		pitch <= 512;
 		write_vid_addr <= 'h400; //2 lines in advance, so we start writing immediately (good for sim)
@@ -330,7 +324,7 @@ always @(posedge clk) begin
 		tilea_8x16 <= 0;
 	end else begin
 		/* CPU interface */
-		ready <= ((wstrb!=0) | ren);
+		ready_delayed <= ((wstrb!=0) | ren);
 		if ((&wstrb) && cpu_sel_regs) begin
 			if (addr[5:2]==REG_SEL_FB_ADDR) begin
 				fb_addr <= din[23:0];
@@ -366,8 +360,8 @@ always @(posedge clk) begin
 			end
 		end else if (write_vid_addr[10:9] != curr_vid_addr[10:9]) begin
 			//If we're here, there is room in the line memory to write a new line into.
-			dma_run <= 1;
-			if (dma_ready || write_vid_addr[2:0]!=0) begin
+			dma_run <= layer_en[0];
+			if (dma_ready || write_vid_addr[2:0]!=0 || layer_en[0]==0) begin
 				if (write_vid_addr[2:0] == 7 && cycle==2) begin
 					//We need a new word. Enable read here because:
 					// dma_do_read actually goes high next cycle

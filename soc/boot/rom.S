@@ -86,8 +86,6 @@ bbloop:
 	sw a2, 0(a1)
 
 
-
-
 //Memtest
 memtest_start:
 	li a2, MISC_OFFSET

@@ -28,8 +28,8 @@ extern volatile uint32_t GFXREG[];
 #define GFX_REG(i) GFXREG[(i)/4]
 extern volatile uint32_t GFXPAL[];
 extern uint32_t GFXTILES[];
-extern uint16_t GFXTILEMAPA[];
-extern uint16_t GFXTILEMAPB[];
+extern uint32_t GFXTILEMAPA[];
+extern uint32_t GFXTILEMAPB[];
 
 uint8_t *lcdfb;
 UG_GUI ugui;
@@ -135,9 +135,14 @@ void main() {
 	lcdfb=malloc(320*512/2);
 	GFX_REG(GFX_FBADDR_REG)=((uint32_t)lcdfb)&0xFFFFFF;
 	GFX_REG(GFX_LAYEREN_REG)=(GFX_LAYEREN_FB&0)|GFX_LAYEREN_TILEA|GFX_TILEA_8x16;
+//	GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_TILEA_8x16;
 	for (int i=0; i<512; i+=16) pal_init_egacolors(i);
-	for (int i=0; i<64*64; i++) GFXTILEMAPA[i]=i&255;
-	for (int i=0; i<64*64; i++) GFXTILEMAPB[i]=i&255;
+	for (int i=0; i<64*64; i++) GFXTILEMAPA[i]=32;
+	for (int i=0; i<64*64; i++) GFXTILEMAPB[i]=32;
+	const char *msg="Hello world, from tilemap A!";
+	const char *msg2="This is tilemap B.";
+	for (int i=0; msg[i]!=0; i++) GFXTILEMAPA[i+64]=msg[i];
+	for (int i=0; msg2[i]!=0; i++) GFXTILEMAPB[i+64]=msg2[i];
 	load_font();
 	printf("Tiles initialized\n");
 
@@ -151,6 +156,16 @@ void main() {
 	UG_PutString(0, 16, "This is a test of the framebuffer to HDMI and LCD thingamajig. What you see now is the framebuffer memory.");
 	printf("GFX inited. Yay!!\n");
 	lcd_init();
+	cache_flush(lcdfb, lcdfb+320*480/2);
+
+	while(1) {
+		for (int i=0; i<4; i++) {
+			GFX_REG(GFX_LAYEREN_REG)=(1<<i)|GFX_TILEA_8x16;
+			printf("i %d\n", i);
+			volatile int m;
+			for (m=0; m<(1<<20); m++) ;
+		}
+	}
 
 
 	tusb_init();
