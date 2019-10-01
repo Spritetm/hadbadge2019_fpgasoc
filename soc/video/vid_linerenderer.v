@@ -1,6 +1,12 @@
 /*
 This effectively is the GPU. It has a slave interface to the CPU, for register-settings and 
 'on-chip' video memory, as well as a master interface for the SPI RAM, for grabbing a bitmap.
+
+It's called a line renderer as it renders lines asynchroneously from the pixel output (i.e.
+as fast as possible), then writes it into the video memory. This video memory is only 4 lines
+and is used as a FIFO. The downstream video hardware reads from this memory at it's own pace
+(namely the HDMI and/or LCD pixel clock) and spits out the pixels to the respective display
+devices.
 */
 
 
@@ -86,10 +92,16 @@ reg tilea_8x16;
 
 reg [1:0] cycle;
 reg [19:0] write_vid_addr;
+reg [19:0] write_vid_addr_next;
 wire [8:0] vid_ypos;
 wire [8:0] vid_xpos;
 assign vid_xpos = write_vid_addr[8:0];
 assign vid_ypos = write_vid_addr[17:9];
+wire [8:0] vid_ypos_next;
+wire [8:0] vid_xpos_next;
+assign vid_xpos = write_vid_addr_next[8:0];
+assign vid_ypos = write_vid_addr_next[17:9];
+
 
 
 always @(*) begin
@@ -272,30 +284,30 @@ always @(*) begin
 	tilemem_no=0;
 	pal_addr=0;
 	tilea_x=0;
-	tilea_y = ({7'h0,vid_ypos} + tilea_yoff)/16;
-	tileb_x = ({7'h0,vid_xpos} + tileb_xoff)/16;
-	tileb_y = ({7'h0,vid_ypos} + tileb_yoff)/16;
+	tilea_y = ({7'h0,vid_ypos_next} + tilea_yoff)/16;
+	tileb_x = ({7'h0,vid_xpos_next} + tileb_xoff)/16;
+	tileb_y = ({7'h0,vid_ypos_next} + tileb_yoff)/16;
 	if (tilea_8x16) begin
-		tilea_x = ({7'h0,vid_xpos} + tilea_xoff)/8;
+		tilea_x = ({7'h0,vid_xpos_next} + tilea_xoff)/8;
 	end else begin
-		tilea_x = ({7'h0,vid_xpos} + tilea_xoff)/16;
+		tilea_x = ({7'h0,vid_xpos_next} + tilea_xoff)/16;
 	end
 
 	if (cycle==0) begin
 		tilepix_x = (vid_xpos + tileb_xoff);
 		tilepix_y = (vid_ypos + tileb_yoff);
 		tilemem_no = tileb_data[8:0];
-		pal_addr = 3; //todo: sprite
 		pal_addr = {5'h2, tilemem_pixel}; //from tilemap a
 	end else if (cycle==1) begin
-		tilepix_x = 480-vid_xpos;
+		tilepix_x = 480-vid_xpos;  //tilemap should not be used; give clear indication if it is.
 		tilepix_y = vid_ypos;
 		tilemem_no = 'h21;
 		pal_addr = {5'h1, tilemem_pixel}; //from tilemap b
 	end else if (cycle==2) begin
-		tilepix_x = 480-vid_xpos;
+		tilepix_x = 480-vid_xpos;  //tilemap should not be used; give clear indication if it is.
 		tilepix_y = vid_ypos;
 		tilemem_no = 'h21;
+		pal_addr = 3; //todo: sprite
 	end else begin //cycle==3
 		if (tilea_8x16) begin
 			tilepix_x[2:0] = (vid_xpos + tilea_xoff);
@@ -321,7 +333,7 @@ always @(posedge clk) begin
 		ready_delayed <= 0;
 		fb_addr <= 'h7E0000; //top 128K of RAM
 		pitch <= 512;
-		write_vid_addr <= 'h400; //2 lines in advance, so we start writing immediately (good for sim)
+		write_vid_addr_next <= 'h400; //2 lines in advance, so we start writing immediately (good for sim)
 		vid_addr <= 0;
 		vid_ren <= 0;
 		dma_start_addr <= fb_addr;
@@ -350,9 +362,15 @@ always @(posedge clk) begin
 			end
 		end
 
-		//vid_addr is write_vid_addr delayed by one cycle, so we can make
-		//decisions of the data to write depending on the contents of write_vid_addr.
+		//vid_address is the address that is sent to the write hardware. As this actually increases
+		//at the same time as we set the write strobe, we make sure it is write_vid_address delayed by
+		//one cycle. write_vid_address now is the address of the pixel we're reading from the palette
+		//memory and writing to the video memory.
 		vid_addr <= write_vid_addr;
+		//As the tile and sprite hardware needs some extra cycles to get the data from tile memory,
+		//we generate write_vid_address by delaying write_vid_address_next by one. This way, if 
+		//write_vid_address is the current pixel position, write_vid_address_next is the future one.
+		write_vid_addr <= write_vid_addr_next;
 		dma_do_read <= 0;
 		vid_wen <= 0;
 
@@ -361,7 +379,7 @@ always @(posedge clk) begin
 			//We're finished with this frame. Wait until the video generator starts drawing the next frame.
 			dma_run <= 0;
 			if (next_field) begin
-				write_vid_addr <= 0;
+				write_vid_addr_next <= 0;
 				dma_start_addr <= fb_addr;
 			end else begin
 				//Not yet, keep idling
@@ -392,12 +410,12 @@ always @(posedge clk) begin
 					vid_wen <= 1;
 					if (write_vid_addr[8:0]>479) begin
 						//next line
-						write_vid_addr[19:9] <= write_vid_addr[19:9] + 'h1;
-						write_vid_addr[8:0] <= 0;
+						write_vid_addr_next[19:9] <= write_vid_addr_next[19:9] + 'h1;
+						write_vid_addr_next[8:0] <= 0;
 						dma_start_addr <= dma_start_addr + pitch/2;
 						dma_run <= 0;
 					end else begin
-						write_vid_addr <= write_vid_addr + 'h1;
+						write_vid_addr_next <= write_vid_addr_next + 'h1;
 					end
 				end
 			end else begin

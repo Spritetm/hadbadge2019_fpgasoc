@@ -130,7 +130,6 @@ Cart and internal flash: 2 problems.
   the partition table?
   * This can be fixed by looking for the 32-bit marker in 2 places.
 
-
 More renderers!
 
 At this point, we only have vid_linerenderer.v, which happily grabs a framebuffer from psram, then yeets it
@@ -211,10 +210,9 @@ USB ok
 
 
 
-
-
-
-
+NOTE: BRAM always has registers on the address etc lines, so data pops out one clock cycle
+after the inputs are set. If registered outputs are enabled, data pops out *two* clock
+cycles after.
 
 
 

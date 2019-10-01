@@ -43,6 +43,10 @@ assign red=video_data[7:0];
 assign green=video_data[15:8];
 assign blue=video_data[23:16];
 
+
+//We're effectively creating a 3-port RAM here by writing to 2 copies of the RAM (port 1) and using the read
+//ports of the copies as individual outputs (port 2, 3).
+
 ram_dp_24x2048 ram_hdmi (
 	.ResetA(reset),
 	.ClockA(clk),
@@ -62,6 +66,7 @@ ram_dp_24x2048 ram_hdmi (
 );
 
 //We could decimate the colors to 18bit rgb here, but ehhh...
+//(Note: We could save a blockram by doing that.)
 ram_dp_24x2048 ram_lcd (
 	.ResetA(reset),
 	.ClockA(clk),
@@ -69,7 +74,6 @@ ram_dp_24x2048 ram_lcd (
 	.DataInA(data_in),
 	.AddressA(addr[10:0]),
 	.WrA(wen),
-//	.QA(data_out),
 	.WrB(0),
 
 	.ResetB(reset),

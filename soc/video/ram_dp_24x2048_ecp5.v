@@ -100,8 +100,8 @@ module ram_dp_24x2048 (DataInA, DataInB, AddressA, AddressB, ClockA,
     defparam ram_dp_24x2048_0_0_2.WRITEMODE_A = "NORMAL" ;
     defparam ram_dp_24x2048_0_0_2.GSR = "ENABLED" ;
     defparam ram_dp_24x2048_0_0_2.RESETMODE = "SYNC" ;
-    defparam ram_dp_24x2048_0_0_2.REGMODE_B = "OUTREG" ;
-    defparam ram_dp_24x2048_0_0_2.REGMODE_A = "OUTREG" ;
+    defparam ram_dp_24x2048_0_0_2.REGMODE_B = "NOREG" ;
+    defparam ram_dp_24x2048_0_0_2.REGMODE_A = "NOREG" ;
     defparam ram_dp_24x2048_0_0_2.DATA_WIDTH_B = 9 ;
     defparam ram_dp_24x2048_0_0_2.DATA_WIDTH_A = 9 ;
     DP16KD ram_dp_24x2048_0_0_2 (.DIA17(scuba_vlo), .DIA16(scuba_vlo), .DIA15(scuba_vlo), 

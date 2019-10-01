@@ -171,8 +171,8 @@ module vid_tilemapmem_2kx18_ecp5 (DataInA, DataInB, AddressA, AddressB, ClockA,
     defparam vid_tilemem_2kx18_0_0_1.WRITEMODE_A = "NORMAL" ;
     defparam vid_tilemem_2kx18_0_0_1.GSR = "ENABLED" ;
     defparam vid_tilemem_2kx18_0_0_1.RESETMODE = "SYNC" ;
-    defparam vid_tilemem_2kx18_0_0_1.REGMODE_B = "OUTREG" ;
-    defparam vid_tilemem_2kx18_0_0_1.REGMODE_A = "OUTREG" ;
+    defparam vid_tilemem_2kx18_0_0_1.REGMODE_B = "NOREG" ;
+    defparam vid_tilemem_2kx18_0_0_1.REGMODE_A = "NOREG" ;
     defparam vid_tilemem_2kx18_0_0_1.DATA_WIDTH_B = 9 ;
     defparam vid_tilemem_2kx18_0_0_1.DATA_WIDTH_A = 9 ;
     DP16KD vid_tilemem_2kx18_0_0_1 (.DIA17(scuba_vlo), .DIA16(scuba_vlo), 
@@ -278,8 +278,8 @@ module vid_tilemapmem_2kx18_ecp5 (DataInA, DataInB, AddressA, AddressB, ClockA,
     defparam vid_tilemem_2kx18_0_1_0.WRITEMODE_A = "NORMAL" ;
     defparam vid_tilemem_2kx18_0_1_0.GSR = "ENABLED" ;
     defparam vid_tilemem_2kx18_0_1_0.RESETMODE = "SYNC" ;
-    defparam vid_tilemem_2kx18_0_1_0.REGMODE_B = "OUTREG" ;
-    defparam vid_tilemem_2kx18_0_1_0.REGMODE_A = "OUTREG" ;
+    defparam vid_tilemem_2kx18_0_1_0.REGMODE_B = "NOREG" ;
+    defparam vid_tilemem_2kx18_0_1_0.REGMODE_A = "NOREG" ;
     defparam vid_tilemem_2kx18_0_1_0.DATA_WIDTH_B = 9 ;
     defparam vid_tilemem_2kx18_0_1_0.DATA_WIDTH_A = 9 ;
     DP16KD vid_tilemem_2kx18_0_1_0 (.DIA17(scuba_vlo), .DIA16(scuba_vlo), 
