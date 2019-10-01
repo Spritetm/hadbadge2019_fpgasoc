@@ -122,8 +122,14 @@ void load_font() {
 			} else {
 				GFXTILES[(ch/2)*32+y*2+1]=p;
 			}
+			GFXTILES[(ch+256)*32+y*2]=p;
+			GFXTILES[(ch+256)*32+y*2+1]=0;
 		}
 	}
+}
+
+int simulated() {
+	return MISC_REG(MISC_SOC_VER&0x8000);
 }
 
 void cdc_task();
@@ -142,28 +148,31 @@ void main() {
 	const char *msg="Hello world, from tilemap A!";
 	const char *msg2="This is tilemap B.";
 	for (int i=0; msg[i]!=0; i++) GFXTILEMAPA[i+64]=msg[i];
-	for (int i=0; msg2[i]!=0; i++) GFXTILEMAPB[i+64]=msg2[i];
+	for (int i=0; msg2[i]!=0; i++) GFXTILEMAPB[i+64]=msg2[i]+256;
 	load_font();
 	printf("Tiles initialized\n");
 
 	UG_Init(&ugui, lcd_pset, 480, 320);
-	memset(lcdfb, 0, 320*512/2);
+	if (!simulated) memset(lcdfb, 0, 320*512/2);
 	UG_FontSelect(&FONT_12X16);
 	UG_SetForecolor(C_WHITE);
 	UG_PutString(0, 0, "Hello world!");
 	UG_PutString(0, 320-20, "Narf.");
-	UG_SetForecolor(C_GREEN);
-	UG_PutString(0, 16, "This is a test of the framebuffer to HDMI and LCD thingamajig. What you see now is the framebuffer memory.");
-	printf("GFX inited. Yay!!\n");
-	lcd_init();
+	if (!simulated()) {
+		UG_SetForecolor(C_GREEN);
+		UG_PutString(0, 16, "This is a test of the framebuffer to HDMI and LCD thingamajig. What you see now is the framebuffer memory.");
+		lcd_init();
+	}
 	cache_flush(lcdfb, lcdfb+320*480/2);
+	printf("GFX inited. Yay!!\n");
 
 	while(1) {
 		for (int i=0; i<4; i++) {
 			GFX_REG(GFX_LAYEREN_REG)=(1<<i)|GFX_TILEA_8x16;
 			printf("i %d\n", i);
-			volatile int m;
-			for (m=0; m<(1<<20); m++) ;
+			volatile int m=simulated()?(1<<5):(1<<20);
+			while (m) m--;
+			while ((GFX_REG(GFX_VIDPOS)>>16)<319) ;
 		}
 	}
 

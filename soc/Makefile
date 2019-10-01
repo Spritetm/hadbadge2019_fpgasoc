@@ -44,7 +44,7 @@ $(PROJ).json $(PROJ).blif: $(SRC) $(SRC_SYNTH) $(EXTRA_DEPEND)
 			  synth_ecp5 -abc9 -top top_fpga -json $(PROJ).json -blif $(PROJ).blif"
 
 %_out_synth.config: %.json clock-constrainsts.py
-	nextpnr-ecp5 --json $< --lpf $(CONSTR) --textcfg $@ --45k --package CABGA381 --speed 8  --pre-pack clock-constrainsts.py --seed 4
+	nextpnr-ecp5 --json $< --lpf $(CONSTR) --textcfg $@ --45k --package CABGA381 --speed 8  --pre-pack clock-constrainsts.py --seed 2
 
 %_out.config: %_out_synth.config bram_replace/bram_replace$(EXE) rom.hex
 	bram_replace/bram_replace$(EXE) -l 8192 -r $< $@ rom.hex
@@ -75,7 +75,7 @@ clean:
 	make -C boot clean
 	rm -f rom.hex
 
-verilator: verilator-build/Vsoc $(EXTRA_DEPEND)
+verilator: verilator-build/Vsoc ipl boot/ $(EXTRA_DEPEND)
 	./verilator-build/Vsoc
 
 verilator-build/Vsoc: $(SRC) $(SRC_SIM) $(BRAMFILE)
@@ -100,6 +100,9 @@ pcpi_fastmul_dsp_testbench:
 pic/rom_initial.hex: pic/rom.asm
 	make -C pic rom_initial.hex
 
-.PHONY: prog clean verilator bram_replace boot/
+ipl:
+	make -C ipl
+
+.PHONY: prog clean verilator bram_replace boot/ ipl
 .PRECIOUS: $(PROJ).json $(PROJ)_out_synth.config $(PROJ)_out.config
 

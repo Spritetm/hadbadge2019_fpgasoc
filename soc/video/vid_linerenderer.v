@@ -41,7 +41,7 @@ reg [23:0] dma_start_addr;
 reg dma_run;
 wire dma_ready;
 reg dma_do_read;
-reg [31:0] dma_data;
+wire [31:0] dma_data;
 qpimem_dma_rdr dma_rdr(
 	.clk(clk),
 	.rst(reset),
@@ -71,6 +71,7 @@ parameter REG_SEL_FB_PITCH = 1;
 parameter REG_SEL_LAYER_EN = 2;
 parameter REG_SEL_TILEA_OFF = 3;
 parameter REG_SEL_TILEB_OFF = 4;
+parameter REG_SEL_VIDPOS = 5;
 
 reg [15:0] tilea_xoff;
 reg [15:0] tilea_yoff;
@@ -82,6 +83,14 @@ wire [31:0] dout_tilemapb;
 wire [31:0] dout_palette;
 wire [31:0] dout_tilemem;
 reg tilea_8x16;
+
+reg [1:0] cycle;
+reg [19:0] write_vid_addr;
+wire [8:0] vid_ypos;
+wire [8:0] vid_xpos;
+assign vid_xpos = write_vid_addr[8:0];
+assign vid_ypos = write_vid_addr[17:9];
+
 
 always @(*) begin
 	cpu_sel_tilemem = 0;
@@ -98,11 +107,13 @@ always @(*) begin
 		end else if (addr[5:2]==REG_SEL_FB_PITCH) begin
 			dout = {16'h0, pitch};
 		end else if (addr[5:2]==REG_SEL_LAYER_EN) begin
-			dout = {23'h0, tilea_8x16, layer_en};
+			dout = {27'h0, tilea_8x16, layer_en};
 		end else if (addr[5:2]==REG_SEL_TILEA_OFF) begin
 			dout = {tilea_yoff, tilea_xoff};
 		end else if (addr[5:2]==REG_SEL_TILEB_OFF) begin
 			dout = {tileb_yoff, tileb_xoff};
+		end else if (addr[5:2]==REG_SEL_VIDPOS) begin
+			dout <= {7'h0, vid_ypos, 7'h0, vid_xpos};
 		end
 	end else if (addr[16:13]=='h1) begin
 		cpu_sel_palette = 1;
@@ -191,7 +202,7 @@ vid_tilemapmem tilemapb (
 	.ResetB(reset),
 	.ClockEnA(1),
 	.ClockEnB(1),
-	.DataInA(din),
+	.DataInA(din[17:0]),
 	.DataInB(0),
 	.WrA(&wstrb & cpu_sel_tilemap_b),
 	.WrB(0),
@@ -200,6 +211,7 @@ vid_tilemapmem tilemapb (
 	.QA(dout_tilemapb),
 	.QB(tileb_data)
 );
+
 
 
 reg [8:0] pal_addr;
@@ -252,43 +264,39 @@ We have 4 states per pixel, 0-3 This is what happens in each state:
 */
 
 
-reg [1:0] cycle;
-
-reg [19:0] write_vid_addr;
-wire [8:0] vid_ypos;
-wire [8:0] vid_xpos;
-assign vid_xpos = write_vid_addr[8:0];
-assign vid_ypos = write_vid_addr[17:9];
+reg [3:0] fb_pixel;
 
 always @(*) begin
 	tilepix_x=0;
 	tilepix_y=0;
 	tilemem_no=0;
 	pal_addr=0;
+	tilea_x=0;
+	tilea_y = ({7'h0,vid_ypos} + tilea_yoff)/16;
+	tileb_x = ({7'h0,vid_xpos} + tileb_xoff)/16;
+	tileb_y = ({7'h0,vid_ypos} + tileb_yoff)/16;
 	if (tilea_8x16) begin
 		tilea_x = ({7'h0,vid_xpos} + tilea_xoff)/8;
 	end else begin
 		tilea_x = ({7'h0,vid_xpos} + tilea_xoff)/16;
 	end
-	tilea_y = ({7'h0,vid_ypos} + tilea_yoff)/16;
-	tileb_x = ({7'h0,vid_xpos} + tileb_xoff)/16;
-	tileb_y = ({7'h0,vid_ypos} + tileb_yoff)/16;
+
 	if (cycle==0) begin
 		tilepix_x = (vid_xpos + tileb_xoff);
 		tilepix_y = (vid_ypos + tileb_yoff);
 		tilemem_no = tileb_data[8:0];
+		pal_addr = 3; //todo: sprite
 		pal_addr = {5'h2, tilemem_pixel}; //from tilemap a
 	end else if (cycle==1) begin
-		tilepix_x = 0;
-		tilepix_y = 0;
-		tilemem_no = 0;
+		tilepix_x = 480-vid_xpos;
+		tilepix_y = vid_ypos;
+		tilemem_no = 'h21;
 		pal_addr = {5'h1, tilemem_pixel}; //from tilemap b
 	end else if (cycle==2) begin
-		tilepix_x = 0;
-		tilepix_y = 0;
-		tilemem_no = 0;
-		pal_addr = {5'h0, dma_data[vid_xpos[3:0]*4+:4]}; //from fb
-	end else if (cycle==3) begin
+		tilepix_x = 480-vid_xpos;
+		tilepix_y = vid_ypos;
+		tilemem_no = 'h21;
+	end else begin //cycle==3
 		if (tilea_8x16) begin
 			tilepix_x[2:0] = (vid_xpos + tilea_xoff);
 			tilepix_x[3] = tilea_data[0];
@@ -299,7 +307,7 @@ always @(*) begin
 			tilepix_y = (vid_ypos + tilea_yoff);
 			tilemem_no = tilea_data[8:0];
 		end
-		pal_addr = 3; //todo: sprite
+		pal_addr = {5'h0, fb_pixel}; //from fb
 	end
 end
 
@@ -371,6 +379,7 @@ always @(posedge clk) begin
 
 				cycle <= cycle + 1;
 				if (cycle==0) begin
+					fb_pixel <= dma_data[vid_xpos[3:0]*4+:4];
 					pixel_hold <= 0;
 					if (layer_en[0]) pixel_hold <= pal_data; //fb data
 				end else if (cycle==1) begin
