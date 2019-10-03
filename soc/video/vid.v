@@ -18,7 +18,13 @@ module vid (
 	output [7:0] green,
 	output [7:0] blue,
 	input next_line,
-	input next_field
+	input next_field,
+
+	input [31:0] qpi_rdata,
+	output [23:0] qpi_addr,
+	output qpi_do_read,
+	input qpi_is_idle,
+	input qpi_next_word
 );
 
 
@@ -27,38 +33,6 @@ wire [23:0] vid_data_out;
 wire vid_wen, vid_ren;
 wire [23:0] vid_data_in;
 wire [19:0] curr_vid_addr;
-
-
-reg [31:0] qpi_rdata;
-wire [23:0] qpi_addr;
-wire qpi_do_read;
-reg qpi_is_idle;
-reg qpi_next_word;
-
-reg [2:0] qpi_tick;
-always @(posedge clk) begin
-	if (qpi_is_idle && !qpi_do_read) begin
-		qpi_tick <= 'h0;
-		qpi_rdata <= 0;
-	end else begin
-		qpi_tick <= qpi_tick + 1;
-	end
-	qpi_next_word <= 0;
-	if (&qpi_tick) begin
-		if (qpi_is_idle && qpi_do_read) begin
-			qpi_rdata[3:0] <= qpi_addr[12:9];
-			qpi_rdata[7:4] <= qpi_addr[12:9];
-			qpi_rdata[11:8] <= qpi_addr[12:9];
-			qpi_rdata[15:12] <= qpi_addr[12:9];
-			qpi_rdata[19:16] <= qpi_addr[12:9];
-			qpi_rdata[23:20] <= qpi_addr[12:9];
-			qpi_rdata[27:24] <= qpi_addr[12:9];
-			qpi_rdata[31:28] <= qpi_addr[12:9];
-		end
-		qpi_is_idle <= !qpi_do_read;
-		qpi_next_word <= 1;
-	end
-end
 
 vid_linerenderer linerenderer (
 	.clk(clk),

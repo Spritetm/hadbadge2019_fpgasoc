@@ -9,6 +9,42 @@ and is used as a FIFO. The downstream video hardware reads from this memory at i
 devices.
 */
 
+/*
+Backgrounds are simple, for this: take a bunch of tiles in tilemem and a tilemap. Tilemap 
+resolves current tile for (x,y), tile mem resolves the pixel, palette mem resolves color.
+
+Sprites are harder because they can be anywhere. A sane setup would probably involve
+a dual memory to render in: one gets filled (random-access) by the sprite subsystem, the
+other is both read and zeroed by the line renderer.
+
+Now we have memory we can just randomly dump sprites in... how to do that? We don't have time
+to scan all sprites (how many?) every pixel, unfortunately. How many sprites do we want to have
+anyway?
+
+Let's say we do it like most consoles seem to do it: have x sprites in total, with a max of y
+sprites on one scanline. Take the snes: it can do max 32 sprites per scanline (or 256 pixels),
+128 sprites max. In our hw, we have 4 clocks per pixel, or 1920 clocks in total to process one
+line of sprites. Let's assume all sprites have one fixed size for now (although it would be
+awesome if we could add scaling or rotation to the mix.) Let's assume we wat to do max 32x32
+sprites.
+
+One of the ways to fix this up would be by just iterating over all 512 sprites; as soon as we find one
+that is supposed to be on the current line, we draw it out. This means we can process all 512
+sprites at the same time, perhaps iterating over them multiple times for priority stuff. Given we
+write pixels to the line memory one by one and we have 2/4 accesses to tile memory, this
+should cost us (512 + 32*2*32)=2560 cycles, with no prio and 32 sprites simultaneously. That ain't no
+good...
+
+Say, we hit this thing with 32 bit at a time. 4x per sprite, we read 32 bit from the tile memory.
+Then, 5x, we read what is in the current tile memory, overlay the 32-bits we have, and write it back.
+This means we need (512+5*2*32)=832 cycles. Nice, but no chance of rotation/scaling...
+
+Maybe meet in the middle? There's nothing stopping us from fetching 32 bit (8 pixels) from tile 
+mem at a time. We can process these in parallel with fetching the next one. That would worst-case
+cost us (512+32*32)=1536 cycles. That fits and allows us to do X-scaling as well.
+
+*/
+
 
 
 module vid_linerenderer (
@@ -52,7 +88,7 @@ qpimem_dma_rdr dma_rdr(
 	.clk(clk),
 	.rst(reset),
 	.addr_start(dma_start_addr),
-	.addr_end(dma_start_addr+(480/2)),
+	.addr_end(dma_start_addr+(fb_is_8bit?480:(480/2))),
 	.run(dma_run),
 	.do_read(dma_do_read),
 	.ready(dma_ready),
@@ -89,6 +125,7 @@ wire [31:0] dout_tilemapb;
 wire [31:0] dout_palette;
 wire [31:0] dout_tilemem;
 reg tilea_8x16;
+reg fb_is_8bit;
 
 reg [1:0] cycle;
 reg [19:0] write_vid_addr;
@@ -99,10 +136,8 @@ assign vid_xpos = write_vid_addr[8:0];
 assign vid_ypos = write_vid_addr[17:9];
 wire [8:0] vid_ypos_next;
 wire [8:0] vid_xpos_next;
-assign vid_xpos = write_vid_addr_next[8:0];
-assign vid_ypos = write_vid_addr_next[17:9];
-
-
+assign vid_xpos_next = write_vid_addr_next[8:0];
+assign vid_ypos_next = write_vid_addr_next[17:9];
 
 always @(*) begin
 	cpu_sel_tilemem = 0;
@@ -119,7 +154,7 @@ always @(*) begin
 		end else if (addr[5:2]==REG_SEL_FB_PITCH) begin
 			dout = {16'h0, pitch};
 		end else if (addr[5:2]==REG_SEL_LAYER_EN) begin
-			dout = {27'h0, tilea_8x16, layer_en};
+			dout = {15'h0, fb_is_8bit, 11'h0, tilea_8x16, layer_en};
 		end else if (addr[5:2]==REG_SEL_TILEA_OFF) begin
 			dout = {tilea_yoff, tilea_xoff};
 		end else if (addr[5:2]==REG_SEL_TILEB_OFF) begin
@@ -276,7 +311,7 @@ We have 4 states per pixel, 0-3 This is what happens in each state:
 */
 
 
-reg [3:0] fb_pixel;
+reg [7:0] fb_pixel;
 
 always @(*) begin
 	tilepix_x=0;
@@ -342,6 +377,7 @@ always @(posedge clk) begin
 		tilea_xoff <= 0;
 		tileb_xoff <= 0;
 		tilea_8x16 <= 0;
+		fb_is_8bit <= 0;
 	end else begin
 		/* CPU interface */
 		ready_delayed <= ((wstrb!=0) | ren);
@@ -353,6 +389,7 @@ always @(posedge clk) begin
 			end else if (addr[5:2]==REG_SEL_LAYER_EN) begin
 				layer_en <= din[3:0];
 				tilea_8x16 <= din[4];
+				fb_is_8bit <= din[16];
 			end else if (addr[5:2]==REG_SEL_TILEA_OFF) begin
 				tilea_xoff <= din[15:0];
 				tilea_yoff <= din[31:16];
@@ -387,9 +424,9 @@ always @(posedge clk) begin
 		end else if (write_vid_addr[10:9] != curr_vid_addr[10:9]) begin
 			//If we're here, there is room in the line memory to write a new line into.
 			dma_run <= layer_en[0];
-			if (dma_ready || write_vid_addr[2:0]!=0 || layer_en[0]==0) begin
-				if (write_vid_addr[2:0] == 7 && cycle==2) begin
-					//We need a new word. Enable read here because:
+			if (dma_ready || (fb_is_8bit==0 && write_vid_addr[3:0]!=0) || (fb_is_8bit==1 && write_vid_addr[2:0]!=0) || layer_en[0]==0) begin
+				if (((fb_is_8bit==0 && write_vid_addr[2:0] == 7) || (fb_is_8bit==1 && write_vid_addr[1:0]==3)) && cycle==3) begin
+					//We need a new word. Enable read here (at cycle 2) because:
 					// dma_do_read actually goes high next cycle
 					// correct data will get returned next next cycle
 					dma_do_read <= 1;
@@ -397,7 +434,11 @@ always @(posedge clk) begin
 
 				cycle <= cycle + 1;
 				if (cycle==0) begin
-					fb_pixel <= dma_data[vid_xpos[3:0]*4+:4];
+					if (fb_is_8bit) begin
+						fb_pixel <= {dma_data[vid_xpos[3:0]*8+:8]};
+					end else begin
+						fb_pixel <= {4'h0, dma_data[vid_xpos[3:0]*4+:4]};
+					end
 					pixel_hold <= 0;
 					if (layer_en[0]) pixel_hold <= pal_data; //fb data
 				end else if (cycle==1) begin
@@ -406,13 +447,16 @@ always @(posedge clk) begin
 					if (layer_en[2]) pixel_hold <= pal_data; //tilemap b
 				end else if (cycle==3) begin
 					if (layer_en[3]) pixel_hold <= pal_data; //sprite
+					if (vid_addr[8:0]==0 || vid_addr[8:0]==479 || vid_addr[19:9]==0 || vid_addr[19:9]==319) begin
+						pixel_hold <= 'hff00ff;
+					end
 					//Move to the next pixel
 					vid_wen <= 1;
 					if (write_vid_addr[8:0]>479) begin
 						//next line
 						write_vid_addr_next[19:9] <= write_vid_addr_next[19:9] + 'h1;
 						write_vid_addr_next[8:0] <= 0;
-						dma_start_addr <= dma_start_addr + pitch/2;
+						dma_start_addr <= dma_start_addr + (fb_is_8bit?pitch:pitch/2);
 						dma_run <= 0;
 					end else begin
 						write_vid_addr_next <= write_vid_addr_next + 'h1;

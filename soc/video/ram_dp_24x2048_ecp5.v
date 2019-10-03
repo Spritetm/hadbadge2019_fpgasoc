@@ -206,8 +206,8 @@ module ram_dp_24x2048 (DataInA, DataInB, AddressA, AddressB, ClockA,
     defparam ram_dp_24x2048_0_1_1.WRITEMODE_A = "NORMAL" ;
     defparam ram_dp_24x2048_0_1_1.GSR = "ENABLED" ;
     defparam ram_dp_24x2048_0_1_1.RESETMODE = "SYNC" ;
-    defparam ram_dp_24x2048_0_1_1.REGMODE_B = "OUTREG" ;
-    defparam ram_dp_24x2048_0_1_1.REGMODE_A = "OUTREG" ;
+    defparam ram_dp_24x2048_0_1_1.REGMODE_B = "NOREG" ;
+    defparam ram_dp_24x2048_0_1_1.REGMODE_A = "NOREG" ;
     defparam ram_dp_24x2048_0_1_1.DATA_WIDTH_B = 9 ;
     defparam ram_dp_24x2048_0_1_1.DATA_WIDTH_A = 9 ;
     DP16KD ram_dp_24x2048_0_1_1 (.DIA17(scuba_vlo), .DIA16(scuba_vlo), .DIA15(scuba_vlo), 
@@ -312,8 +312,8 @@ module ram_dp_24x2048 (DataInA, DataInB, AddressA, AddressB, ClockA,
     defparam ram_dp_24x2048_0_2_0.WRITEMODE_A = "NORMAL" ;
     defparam ram_dp_24x2048_0_2_0.GSR = "ENABLED" ;
     defparam ram_dp_24x2048_0_2_0.RESETMODE = "SYNC" ;
-    defparam ram_dp_24x2048_0_2_0.REGMODE_B = "OUTREG" ;
-    defparam ram_dp_24x2048_0_2_0.REGMODE_A = "OUTREG" ;
+    defparam ram_dp_24x2048_0_2_0.REGMODE_B = "NOREG" ;
+    defparam ram_dp_24x2048_0_2_0.REGMODE_A = "NOREG" ;
     defparam ram_dp_24x2048_0_2_0.DATA_WIDTH_B = 9 ;
     defparam ram_dp_24x2048_0_2_0.DATA_WIDTH_A = 9 ;
     DP16KD ram_dp_24x2048_0_2_0 (.DIA17(scuba_vlo), .DIA16(scuba_vlo), .DIA15(scuba_vlo), 

@@ -33,8 +33,6 @@ void lcd_init() {
 	WriteData(0x5A);
 	WriteData(0x5A);
 	
-	
-	
 	WriteComm(0xF2);
 	WriteData(0x3B);
 	WriteData(0x40);
@@ -150,8 +148,10 @@ void lcd_init() {
 	WriteComm(0x36);//Memory Data Access Control
 	WriteData(0xA0);
 	
-	WriteComm(0x3A);//SET 18bit Color
+	WriteComm(0x3A);//SET 16bit Color
 	WriteData(0x55); //55=16bit, 66=18bit, 77=24bit
+	//Note: The display is wired for 18-bit mode wrt data lines, however, the IM lines are
+	//wired in such a way *this* controller
 	
 	WriteComm(0x11); 
 	Delay(120);
@@ -159,9 +159,6 @@ void lcd_init() {
 	WriteComm(0x29);//Display on
 
 	//Connect to FB mem
-	WriteComm(0x2c); //Write mem start
-	for (int x=0; x<480*320; x++) WriteData(x);
-
 	WriteComm(0x2c); //Write mem start
 	LCD_REG(LCD_CONTROL_REG)=1|LCD_CONTROL_FBENA|LCD_CONTROL_FBSTART; //start automatically sending framebuffer
 }

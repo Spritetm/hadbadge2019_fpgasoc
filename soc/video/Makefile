@@ -1,5 +1,5 @@
 SRC := ram_dp_24x2048_sim.v video_mem.v vid_linerenderer.v vid.v video_renderer.cpp verilator_main.cpp ../qpi_cache/qpimem_dma_rdr.v
-SRC += vid_palettemem_sim.v vid_tilemapmem_sim.v vid_tilemem_sim.v
+SRC += vid_palettemem_sim.v vid_tilemapmem_sim.v vid_tilemem_sim.v ../ipl/vgapal.c
 
 verilator: verilator-build/Vvid $(EXTRA_DEPEND)
 	./verilator-build/Vvid

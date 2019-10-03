@@ -78,7 +78,8 @@
 #define GFX_LAYEREN_TILEB (1<<2)
 #define GFX_LAYEREN_TILEA (1<<1)
 #define GFX_LAYEREN_SPR (1<<3)
-#define GFX_TILEA_8x16 (1<<4)
+#define GFX_LAYEREN_TILEA_8x16 (1<<4)
+#define GFX_LAYEREN_FB_8BIT (1<<16)
 #define GFX_TILEA_OFF 0x0C
 #define GFX_TILEB_OFF 0x10
 #define GFX_VIDPOS 0x14

@@ -17,6 +17,7 @@
 #include "loadapp.h"
 #include "gloss/newlib_stubs.h"
 #include "font-8x16.h"
+#include "vgapal.h"
 
 extern volatile uint32_t UART[];
 #define UART_REG(i) UART[(i)/4]
@@ -40,7 +41,7 @@ void cache_flush(void *addr_start, void *addr_end) {
 }
 
 
-static void lcd_pset(UG_S16 x, UG_S16 y, UG_COLOR c) {
+static void lcd_pset_4bit(UG_S16 x, UG_S16 y, UG_COLOR c) {
 	if (lcdfb==NULL) return;
 	if (x<0 || x>480) return;
 	if (y<0 || y>320) return;
@@ -59,6 +60,22 @@ static void lcd_pset(UG_S16 x, UG_S16 y, UG_COLOR c) {
 	}
 	lcdfb[(x+y*512)/2]=o;
 }
+
+static void lcd_pset_8bit(UG_S16 x, UG_S16 y, UG_COLOR c) {
+	if (lcdfb==NULL) return;
+	if (x<0 || x>480) return;
+	if (y<0 || y>320) return;
+	int n=0;
+	if (c&(1<<7)) n|=4;
+	if (c&(1<<15)) n|=2;
+	if (c&(1<<23)) n|=1;
+	if (c&(1<<6)) n|=8;
+	if (c&(1<<14)) n|=8;
+	if (c&(1<<22)) n|=8;
+	lcdfb[x+y*512]=n;
+}
+
+
 volatile char *dummy;
 
 void usb_poll();
@@ -80,23 +97,15 @@ void start_app(char *app) {
 	printf("App returned.\n");
 }
 
-void pal_init_egacolors(int offset) {
-	GFXPAL[offset+0] =0x101000;
-	GFXPAL[offset+1] =0x00007f;
-	GFXPAL[offset+2] =0x007f00;
-	GFXPAL[offset+3] =0x007f7f;
-	GFXPAL[offset+4] =0x7f0000;
-	GFXPAL[offset+5] =0x7f007f;
-	GFXPAL[offset+6] =0x7f7f00;
-	GFXPAL[offset+7] =0x7f7f7f;
-	GFXPAL[offset+8] =0x4f4f4f;
-	GFXPAL[offset+9] =0x0000ff;
-	GFXPAL[offset+10]=0x00ff00;
-	GFXPAL[offset+11]=0x00ffff;
-	GFXPAL[offset+12]=0xff0000;
-	GFXPAL[offset+13]=0xff00ff;
-	GFXPAL[offset+14]=0xffff00;
-	GFXPAL[offset+15]=0xffffff;
+void pal_init_vgacolors(int offset) {
+	int j=0;
+	for (int i=0; i<256; i++) {
+		int p=0;
+		p+=vgapal[j++];
+		p+=vgapal[j++]<<8;
+		p+=vgapal[j++]<<16;
+		GFXPAL[offset+i] =p;
+	}
 }
 
 void load_font() {
@@ -129,7 +138,7 @@ void load_font() {
 }
 
 int simulated() {
-	return MISC_REG(MISC_SOC_VER&0x8000);
+	return MISC_REG(MISC_SOC_VER)&0x8000;
 }
 
 void cdc_task();
@@ -138,11 +147,12 @@ void main() {
 	MISC_REG(MISC_LED_REG)=0xfffff;
 	syscall_reinit();
 	printf("IPL running.\n");
-	lcdfb=malloc(320*512/2);
+	lcdfb=malloc(320*512);
 	GFX_REG(GFX_FBADDR_REG)=((uint32_t)lcdfb)&0xFFFFFF;
-	GFX_REG(GFX_LAYEREN_REG)=(GFX_LAYEREN_FB&0)|GFX_LAYEREN_TILEA|GFX_TILEA_8x16;
-//	GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_TILEA_8x16;
-	for (int i=0; i<512; i+=16) pal_init_egacolors(i);
+//	GFX_REG(GFX_LAYEREN_REG)=(GFX_LAYEREN_FB&0)|GFX_LAYEREN_TILEA|GFX_TILEA_8x16;
+	GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_LAYEREN_TILEA_8x16|GFX_LAYEREN_FB_8BIT;
+	pal_init_vgacolors(0);
+	pal_init_vgacolors(256);
 	for (int i=0; i<64*64; i++) GFXTILEMAPA[i]=32;
 	for (int i=0; i<64*64; i++) GFXTILEMAPB[i]=32;
 	const char *msg="Hello world, from tilemap A!";
@@ -152,7 +162,7 @@ void main() {
 	load_font();
 	printf("Tiles initialized\n");
 
-	UG_Init(&ugui, lcd_pset, 480, 320);
+	UG_Init(&ugui, lcd_pset_8bit, 480, 320);
 	if (!simulated) memset(lcdfb, 0, 320*512/2);
 	UG_FontSelect(&FONT_12X16);
 	UG_SetForecolor(C_WHITE);
@@ -163,9 +173,10 @@ void main() {
 		UG_PutString(0, 16, "This is a test of the framebuffer to HDMI and LCD thingamajig. What you see now is the framebuffer memory.");
 		lcd_init();
 	}
-	cache_flush(lcdfb, lcdfb+320*480/2);
+	cache_flush(lcdfb, lcdfb+320*480);
 	printf("GFX inited. Yay!!\n");
 
+/*
 	while(1) {
 		for (int i=0; i<4; i++) {
 			GFX_REG(GFX_LAYEREN_REG)=(1<<i)|GFX_TILEA_8x16;
@@ -175,7 +186,7 @@ void main() {
 			while ((GFX_REG(GFX_VIDPOS)>>16)<319) ;
 		}
 	}
-
+*/
 
 	tusb_init();
 	printf("USB inited.\n");
@@ -188,6 +199,15 @@ void main() {
 	}
 
 	fs_init();
+
+
+	FILE *f=fopen("background.raw", "r");
+	if (f) {
+		for (int y=0; y<480; y++) {
+			fread(&lcdfb[y*512], 480, 1, f);
+		}
+		fclose(f);
+	}
 
 
 	//loop

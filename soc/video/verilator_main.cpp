@@ -4,6 +4,8 @@
 #include <verilated_vcd_c.h>
 #include "video_renderer.hpp"
 #include <gd.h>
+#include <stdint.h>
+#include "../ipl/vgapal.h"
 
 uint64_t ts=0;
 double sc_time_stamp() {
@@ -76,6 +78,40 @@ void load_tilemap(Vvid *tb, VerilatedVcdC *trace, char *file) {
 	fclose(f);
 }
 
+int qpi_cur_adr;
+int qpi_state=0;
+uint8_t qpi_mem[1024*1024];
+void qpi_eval(int clk, int qpi_addr, int qpi_do_read, int *qpi_is_idle, int *qpi_next_word, uint32_t *qpi_rdata) {
+	if (clk) {
+		*qpi_next_word=0;
+		if (qpi_state==0) {
+			if (qpi_do_read) {
+//				printf("Read from %x\n", qpi_addr);
+				qpi_cur_adr=qpi_addr;
+				*qpi_is_idle=0;
+				qpi_state=1;
+			} else {
+				*qpi_is_idle=1;
+			}
+		} else if (qpi_state==4) {
+			qpi_state=1;
+			*qpi_next_word=1;
+			qpi_cur_adr &= 0xffffc;
+			(*qpi_rdata)=qpi_mem[qpi_cur_adr++];
+			(*qpi_rdata)|=qpi_mem[qpi_cur_adr++]<<8;
+			(*qpi_rdata)|=qpi_mem[qpi_cur_adr++]<<16;
+			(*qpi_rdata)|=qpi_mem[qpi_cur_adr++]<<24;
+
+			if (!qpi_do_read) {
+				*qpi_is_idle=1;
+				qpi_state=0;
+			}
+		} else  {
+			qpi_state++;
+		}
+	}
+}
+
 int main(int argc, char **argv) {
 	// Initialize Verilators variables
 	Verilated::commandArgs(argc, argv);
@@ -90,6 +126,13 @@ int main(int argc, char **argv) {
 
 	Video_renderer *vid=new Video_renderer(true);
 
+	FILE *f=fopen("../ipl/background.raw", "r");
+	if (!f) perror("raw fb data");
+	for (int i=0; i<320; i++) {
+		fread(&qpi_mem[512*i], 480, 1, f);
+	}
+	fclose(f);
+
 	tb->reset=1;
 	tb->ren=0;
 	for (int i=0; i<8; i++) {
@@ -101,35 +144,34 @@ int main(int argc, char **argv) {
 		trace->dump(ts++);
 	}
 	tb->reset=0;
+	
+	for (int i=0; i<255; i++) {
+		int p;
+		p=vgapal[i*3];
+		p|=vgapal[i*3+1]<<8;
+		p|=vgapal[i*3+2]<<16;
+		tb_write(tb, trace, PAL_OFF+(i*4), p);
+	}
 
-	tb_write(tb, trace, PAL_OFF+0x00, 0x000000); 
-	tb_write(tb, trace, PAL_OFF+0x04, 0x00007f); 
-	tb_write(tb, trace, PAL_OFF+0x08, 0x007f00); 
-	tb_write(tb, trace, PAL_OFF+0x0c, 0x007f7f); 
-	tb_write(tb, trace, PAL_OFF+0x10, 0x7f0000); 
-	tb_write(tb, trace, PAL_OFF+0x14, 0x7f007f); 
-	tb_write(tb, trace, PAL_OFF+0x18, 0x7f7f00); 
-	tb_write(tb, trace, PAL_OFF+0x1c, 0x7f7f7f); 
-	tb_write(tb, trace, PAL_OFF+0x20, 0x3f3f3f); 
-	tb_write(tb, trace, PAL_OFF+0x24, 0x0000ff); 
-	tb_write(tb, trace, PAL_OFF+0x28, 0x00ff00); 
-	tb_write(tb, trace, PAL_OFF+0x2c, 0x00ffff); 
-	tb_write(tb, trace, PAL_OFF+0x30, 0xff0000); 
-	tb_write(tb, trace, PAL_OFF+0x34, 0xff00ff); 
-	tb_write(tb, trace, PAL_OFF+0x38, 0xffff00); 
-	tb_write(tb, trace, PAL_OFF+0x3c, 0xffffff); 
 	load_tilemap(tb, trace, "tileset.png");
 	printf("Buffers inited.\n");
 //	tb_write(tb, trace,REG_OFF+2*4, 0x2); //ena tile map a
 //	tb_write(tb, trace,REG_OFF+2*4, 0x1); //ena fb
+	tb_write(tb, trace,REG_OFF+2*4, 0x10001); //ena fb, 8bit
 
 	int fetch_next=0;
 	int next_line=0;
 	int next_field=0;
 	float pixelclk_pos=0;
+	int qpi_is_idle=0, qpi_next_word=0;
+	uint32_t qpi_rdata=0;
 	while(1) {
 		tb->pixelclk = (pixelclk_pos>0.5)?1:0;
 		tb->clk = !tb->clk;
+		qpi_eval(tb->clk, tb->qpi_addr, tb->qpi_do_read, &qpi_is_idle, &qpi_next_word, &qpi_rdata);
+		tb->qpi_rdata=qpi_rdata;
+		tb->qpi_is_idle=qpi_is_idle;
+		tb->qpi_next_word=qpi_next_word;
 		tb->eval();
 		trace->dump(ts++);
 

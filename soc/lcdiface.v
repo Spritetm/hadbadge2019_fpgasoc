@@ -131,7 +131,8 @@ always @(posedge clk) begin
 					sent_newfield <= 1;
 				end else if (!lcdvm_wait) begin
 					lcd_rs <= 1;
-					lcd_db <= {lcdvm_red[7:2], lcdvm_green[7:2], lcdvm_blue[7:2]};
+					//lcd unfortunately is wired for 16-bit mode only :/
+					lcd_db <= {2'b0, lcdvm_red[7:3], lcdvm_green[7:2], lcdvm_blue[7:3]};
 					lcdvm_next_pixel <= 1;
 					state <= 1;
 					is_write <= 1;
