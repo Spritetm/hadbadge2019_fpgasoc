@@ -1,6 +1,10 @@
 -include ../../local-settings.mk
 
-PREFIX := $(RISCV_TOOLCHAIN_PATH)riscv32-unknown-elf-
+ifeq ("$(RISCV_TOOLCHAIN_PATH)", "")
+PREFIX := riscv32-unknown-elf-
+else
+PREFIX := $(RISCV_TOOLCHAIN_PATH)/riscv32-unknown-elf-
+endif
 CC := $(PREFIX)gcc
 AR := $(PREFIX)ar
 LD := $(PREFIX)ld

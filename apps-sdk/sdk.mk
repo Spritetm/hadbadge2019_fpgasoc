@@ -2,7 +2,11 @@
 -include ../local-settings.mk
 
 #Set prefixes and paths to all tools.
+ifeq ("$(RISCV_TOOLCHAIN_PATH)", "")
+PREFIX := riscv32-unknown-elf-
+else
 PREFIX := $(RISCV_TOOLCHAIN_PATH)/riscv32-unknown-elf-
+endif
 CC := $(PREFIX)gcc
 AR := $(PREFIX)ar
 LD := $(PREFIX)ld
