@@ -126,6 +126,18 @@ adapter. If you still want to do this, here's how:
 
 - Wait until flashing is complete.
 
+Install tinyprog from TinyFPGA-Bootloader
+-----------------------------------------
+
+tinyprog is used to flash SoC and IPL via USB. It can be installed from the TinyFPGA-Bootloader of this repo:
+
+```
+cd hadbadge2019_fpgasoc
+git submodule update --init --recursive
+cd TinyFPGA-Bootloader/programmer
+sudo python setup.py install
+```
+
 Synthesize and upload the SoC
 -----------------------------
 
