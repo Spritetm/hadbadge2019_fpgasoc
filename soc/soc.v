@@ -75,7 +75,9 @@ module soc(
 		output reg [5:0] sao2_oe,
 		input [7:0] pmod_in,
 		output reg [7:0] pmod_out,
-		output reg [7:0] pmod_oe
+		output reg [7:0] pmod_oe,
+		
+		output reg trace_en
 	);
 
 
@@ -493,6 +495,7 @@ module soc(
 	);
 
 	wire next_field;
+	wire vid_preload;
 
 	video_mem video_mem (
 		.clk(clk48m),
@@ -503,6 +506,7 @@ module soc(
 		.ren(vidmem_ren),
 		.data_out(vidmem_data_out),
 		.curr_vid_addr(curr_vid_addr),
+		.preload(vid_preload),
 		.next_field_out(next_field),
 
 		.lcd_next_pixel(lcdvm_next_pixel),
@@ -669,6 +673,7 @@ module soc(
 		.ready(ram_ready)
 	);
 
+
 	vid_linerenderer linerenderer (
 		.clk(clk48m),
 		.reset(rst),
@@ -680,6 +685,7 @@ module soc(
 		.ready(linerenderer_ready),
 
 		.vid_addr(vidmem_addr),
+		.preload(vid_preload),
 		.vid_data_out(vidmem_data_in),
 		.vid_wen(vidmem_wen),
 		.vid_ren(vidmem_ren),
@@ -794,11 +800,14 @@ module soc(
 			adc_enabled <= 0;
 			adc_divider <= 0;
 			irda_sd <= 1;
+			trace_en <= 0;
 		end else begin
 			fsel_strobe <= 0;
 			if (misc_select && mem_wstrb[0]) begin
 				if (mem_addr[6:2]==MISC_REG_LED) begin
 					pic_led <= mem_wdata[16:0];
+				end else if (mem_addr[6:2]==MISC_REG_SOC_VER) begin
+					trace_en <= mem_wdata[0];
 				end else if (mem_addr[6:2]==MISC_REG_PSRAMOVR_A) begin
 					psrama_ovr <= mem_wdata;
 				end else if (mem_addr[6:2]==MISC_REG_PSRAMOVR_B) begin

@@ -60,6 +60,7 @@ module vid_linerenderer (
 	
 	//Video mem iface
 	output reg [19:0] vid_addr, //assume 1 meg-words linebuf mem max
+	input preload, //will go high 4 lines before video frame starts (with vid_address=0)
 	output [23:0] vid_data_out,
 	output reg vid_wen, vid_ren,
 	input [23:0] vid_data_in,
@@ -421,7 +422,7 @@ always @(posedge clk) begin
 			end else begin
 				//Not yet, keep idling
 			end
-		end else if (write_vid_addr[10:9] != curr_vid_addr[10:9]) begin
+		end else if (write_vid_addr[10:9] != curr_vid_addr[10:9] || preload) begin
 			//If we're here, there is room in the line memory to write a new line into.
 			dma_run <= layer_en[0];
 			if (dma_ready || (fb_is_8bit==0 && write_vid_addr[3:0]!=0) || (fb_is_8bit==1 && write_vid_addr[2:0]!=0) || layer_en[0]==0) begin
@@ -447,9 +448,6 @@ always @(posedge clk) begin
 					if (layer_en[2]) pixel_hold <= pal_data; //tilemap b
 				end else if (cycle==3) begin
 					if (layer_en[3]) pixel_hold <= pal_data; //sprite
-					if (vid_addr[8:0]==0 || vid_addr[8:0]==479 || vid_addr[19:9]==0 || vid_addr[19:9]==319) begin
-						pixel_hold <= 'hff00ff;
-					end
 					//Move to the next pixel
 					vid_wen <= 1;
 					if (write_vid_addr[8:0]>479) begin

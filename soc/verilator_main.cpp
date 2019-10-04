@@ -53,9 +53,9 @@ int main(int argc, char **argv) {
 //	Uart_emu_gdb uart=Uart_emu_gdb(64);
 //	Uart_emu uart=Uart_emu(416);
 
-	Video_renderer *vid=new Video_renderer(true);
-//	Lcd_renderer *lcd=new Lcd_renderer();
-	Lcd_renderer *lcd=NULL;
+	Video_renderer *vid=new Video_renderer(false);
+	Lcd_renderer *lcd=new Lcd_renderer();
+//	Lcd_renderer *lcd=NULL;
 
 	int oldled=0;
 	int fetch_next=0;
@@ -98,6 +98,7 @@ int main(int argc, char **argv) {
 		tb->psrama_sin = sina;
 		tb->psramb_sin = sinb;
 		if (do_trace) trace->dump(tracepos*21+10);
+		do_trace = tb->trace_en;
 		if (vid && pixel_clk) {
 			vid->next_pixel(tb->vid_red, tb->vid_green, tb->vid_blue, &fetch_next, &next_line, &next_field);
 			tb->vid_fetch_next=fetch_next;

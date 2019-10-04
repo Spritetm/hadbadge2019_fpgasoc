@@ -245,6 +245,7 @@ always @(*) begin
 end
 
 reg flush_delay_prop;
+reg [64:0] cache_state_ascii;
 
 always @(posedge clk) begin
 	if (rst) begin
@@ -270,22 +271,33 @@ always @(posedge clk) begin
 		wen_delayed <= wen;
 		ren_delayed <= ren;
 		if (flush && !flushing) begin
+			cache_state_ascii <= "FLSTART";
 			flushing <= 1;
 			flush_line <= 0;
 			flush_way <= 0;
-		end else if (found_tag && (ren_delayed || wen_delayed!=0) && !doing_cache_refill) begin
+			flush_delay_prop <= 1;
+		end else if (!flushing && found_tag && (ren_delayed || wen_delayed!=0) && !doing_cache_refill) begin
 			//Cache hit
+			cache_state_ascii <= "CACHEHIT";
 			ready <= (wen!=0 || ren); //do not linger because the delayed signals do
+		end else if (flush_delay_prop) begin
+			//We're flushing and we just changed the address. Wait until that has propagated
+			//through the tag/flag memory.
+			cache_state_ascii <= "FLPROP";
+			flush_delay_prop <= 0;
 		end else if (!need_cache_refill && !flushing) begin
+			cache_state_ascii <= "IDLE";
 			//Nothing going on. Idle.
 		end else if (!qpi_do_read && !qpi_do_write && !qpi_is_idle) begin
 			//Done reading/writing, but we have to wait for the qpi iface to get idle again.
+			cache_state_ascii <= "QPIWAIT";
 		end else if (need_cache_refill || flush_line_needs_flush) begin
 			//Tag not found! Grabbing from SPI memory.
 			//Alternatively: flushing cache and this line needs writing back!
 			if (!qpi_do_read && !qpi_do_write) begin
 				//Start. See if we need to do writeback
 				if (!cache_line_lru_clean || flush_line_needs_flush) begin
+					cache_state_ascii <= "QPIWB";
 					qpi_do_write <= 1;
 					//Address is the address that the LRU has
 					if (flushing) begin
@@ -298,6 +310,7 @@ always @(posedge clk) begin
 					cache_refill_offset <= 0;
 					//note: qpi memory always writes what's read from cachedata mem.
 				end else begin
+					cache_state_ascii <= "QPIRD";
 					qpi_do_read <= 1;
 					//Read from the address the user gave
 					qpi_addr[ADDR_WIDTH+1:2+CACHE_OFFSET_BITS] <= {`TAG_FROM_ADDR(caddr), current_set};
@@ -336,10 +349,8 @@ always @(posedge clk) begin
 			//Note: when flushing, flush_line/flush_way are used in a combinatorial
 			//block above to pull the correct tag out of tag memory and send it to
 			//caddr so the flushing mechanism can use it.
-			if (flush_delay_prop) begin
-				//wait until flush_way has propagated through tag mem etc
-				flush_delay_prop <= 0;
-			end else if ((&flush_line) && flush_way) begin
+			cache_state_ascii <= "FLUSH";
+			if ((&flush_line) && flush_way) begin
 				flushing <= 0;
 				ready <= 1;
 			end else begin

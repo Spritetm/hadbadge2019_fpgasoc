@@ -17,6 +17,7 @@ module video_mem (
 	output [23:0] data_out,
 	output reg [19:0] curr_vid_addr,
 	output reg next_field_out,
+	output reg preload,
 
 	//Interface to LCD
 	input lcd_next_pixel,
@@ -65,8 +66,6 @@ ram_dp_24x2048 ram_hdmi (
 	.QB(video_data)
 );
 
-//We could decimate the colors to 18bit rgb here, but ehhh...
-//(Note: We could save a blockram by doing that.)
 ram_dp_24x2048 ram_lcd (
 	.ResetA(reset),
 	.ClockA(clk),
@@ -96,26 +95,32 @@ assign lcd_green = video_data_lcd[15:8];
 assign lcd_blue = video_data_lcd[23:16];
 always @(posedge clk) begin
 	if (reset) begin
-		video_addr_lcd <= 0;
-		lcd_newfield <= 0;
+		video_addr_lcd[19:9] <= 320;
+		video_addr_lcd[8:0] <= 0;
+		lcd_newfield <= 1;
+		lcd_wait <= 1;
 	end else begin
-		if (video_addr_lcd[19:9] == curr_vid_addr[19:9] && video_addr_lcd[8:0]==479) begin
+		if (video_addr_lcd[19:9]==320) begin
+			//wait for frame to start. Note we trigger at 1, not 0, as cur_vid_addr is 0 for the
+			//entire inter-field duration.
+			lcd_newfield <= 1;
+			lcd_wait <= 1;
+			if (curr_vid_addr==1) begin
+				//yay, we can begin reading video memory again.
+				video_addr_lcd <= 0;
+			end
+		end else if (video_addr_lcd[19:9] == curr_vid_addr[19:9] && video_addr_lcd[8:0]==479) begin
 			//We're trying to go past the line that HDMI is processing. Wait until HDMI catches up.
 			lcd_wait <= 1;
 		end else begin
+			//running
 			lcd_wait <= 0;
+			lcd_newfield <= 0;
 			if (lcd_next_pixel) begin
-				lcd_newfield <= 0;
 				if (video_addr_lcd[8:0] == 479) begin //end of the line
-					if (video_addr_lcd[19:9] < 320) begin
-						//next line
-						video_addr_lcd[19:9] <= video_addr_lcd[19:9] + 1;
-						video_addr_lcd[8:0] <= 0;
-					end else begin
-						//new field
-						lcd_newfield <= 1;
-						video_addr_lcd <= 0;
-					end
+					//next line
+					video_addr_lcd[19:9] <= video_addr_lcd[19:9] + 1;
+					video_addr_lcd[8:0] <= 0;
 				end else begin
 					video_addr_lcd <= video_addr_lcd + 1;
 				end
@@ -157,14 +162,16 @@ always @(posedge pixel_clk) begin
 	if (reset) begin
 		video_addr <= 0;
 		skip_lines <= 0;
+		preload <= 0;
 	end else begin
 		if (next_field) begin
+			//Note: this happens at the *end* of visible space
 			x_skip_ctr <= 0;
 			y_skip_ctr <= 0;
 			video_addr <= 0;
 			skip_lines <= 0;
 		end else if (next_line) begin
-			if (skip_lines > 37) begin
+			if (skip_lines > 42) begin
 				y_skip_ctr <= (y_skip_ctr == 2) ? 0 : y_skip_ctr+1;
 				if (y_skip_ctr != 2 && video_addr[19:9] < 320) begin
 					video_addr[19:9] <= video_addr[19:9]+1;
@@ -172,10 +179,14 @@ always @(posedge pixel_clk) begin
 				video_addr[8:0] <= 0;
 			end else begin
 				skip_lines <= skip_lines + 1;
+				if (skip_lines == 42-4) begin
+					preload <= 1;
+				end
 			end
 		end else if (fetch_next) begin
 			x_skip_ctr <= x_skip_ctr + 1;
 			if (x_skip_ctr != 3) begin
+				preload <= 0;
 				video_addr <= video_addr + 1;
 			end
 		end

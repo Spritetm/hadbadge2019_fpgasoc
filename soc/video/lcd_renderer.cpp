@@ -35,20 +35,26 @@ void Lcd_renderer::update(int db, int wr, int rd, int rs) {
 	lastwr=wr;
 	if (rs==0) {
 		//command
-		if (db!=0x2c) printf("LCD: Unknown command 0x%X\n", db);
+		if (db!=0x2c) {
+			printf("LCD: Unknown command 0x%X\n", db);
+		} else {
+			printf("LCD: new frame\n");
+		}
 		xpos=0;
 		ypos=0;
 	} else {
 		SDL_Rect r;
 		if (xpos<480 && ypos<320) {
-			int red=((db>>0)&0x3f)<<2;
-			int green=((db>>6)&0x3f)<<2;
-			int blue=((db>>12)&0x3f)<<2;
+			int red=((db>>0)&0x1f)<<3;
+			int green=((db>>5)&0x3f)<<2;
+			int blue=((db>>10)&0x1f)<<3;
 			r.x=xpos*SCALE;
 			r.y=ypos*SCALE;
 			r.w=SCALE;
 			r.h=SCALE;
 			SDL_FillRect(screen_surf, &r, SDL_MapRGB(screen_surf->format, red, green, blue));
+		} else {
+			printf("LCD: Hmm, got data for %d, %d\n", xpos, ypos);
 		}
 		xpos++;
 		if (xpos==480) {

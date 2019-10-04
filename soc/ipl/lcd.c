@@ -22,9 +22,9 @@ static void Delay(int n) {
 	}
 }
 
-void lcd_init() {
+void lcd_init(int nowait) {
 	LCD_REG(LCD_CONTROL_REG)=1; //enable bl, un-reset, enable cs
-	Delay(10);	
+	if (!nowait) Delay(10);	
 	WriteComm(0xF0);
 	WriteData(0x5A);
 	WriteData(0x5A);
@@ -154,7 +154,7 @@ void lcd_init() {
 	//wired in such a way *this* controller
 	
 	WriteComm(0x11); 
-	Delay(120);
+	if (!nowait) Delay(120);
 	
 	WriteComm(0x29);//Display on
 

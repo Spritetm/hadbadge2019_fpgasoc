@@ -89,7 +89,6 @@ void start_app(char *app) {
 		printf("Loading app %s failed!\n", app);
 		return;
 	}
-	printf("Loaded app %s, entry point is 0x%x, max addr used is 0x%X. Running...\n", app, la, max_app_addr);
 	sbrk_app_set_heap_start(max_app_addr);
 	main_cb maincall=(main_cb)la;
 	printf("Go!\n");
@@ -162,8 +161,15 @@ void main() {
 	load_font();
 	printf("Tiles initialized\n");
 
+	lcd_init(simulated());
 	UG_Init(&ugui, lcd_pset_8bit, 480, 320);
-	if (!simulated) memset(lcdfb, 0, 320*512/2);
+//	if (!simulated) 
+	memset(lcdfb, 0, 320*512);
+	MISC_REG(MISC_SOC_VER)=1;
+	cache_flush(lcdfb, lcdfb+320*512);
+	MISC_REG(MISC_SOC_VER)=0;
+//	while(1);
+
 	UG_FontSelect(&FONT_12X16);
 	UG_SetForecolor(C_WHITE);
 	UG_PutString(0, 0, "Hello world!");
@@ -171,22 +177,10 @@ void main() {
 	if (!simulated()) {
 		UG_SetForecolor(C_GREEN);
 		UG_PutString(0, 16, "This is a test of the framebuffer to HDMI and LCD thingamajig. What you see now is the framebuffer memory.");
-		lcd_init();
 	}
-	cache_flush(lcdfb, lcdfb+320*480);
+	cache_flush(lcdfb, lcdfb+320*512);
 	printf("GFX inited. Yay!!\n");
 
-/*
-	while(1) {
-		for (int i=0; i<4; i++) {
-			GFX_REG(GFX_LAYEREN_REG)=(1<<i)|GFX_TILEA_8x16;
-			printf("i %d\n", i);
-			volatile int m=simulated()?(1<<5):(1<<20);
-			while (m) m--;
-			while ((GFX_REG(GFX_VIDPOS)>>16)<319) ;
-		}
-	}
-*/
 
 	tusb_init();
 	printf("USB inited.\n");
@@ -208,6 +202,8 @@ void main() {
 		}
 		fclose(f);
 	}
+	cache_flush(lcdfb, lcdfb+320*512);
+
 
 
 	//loop
@@ -217,6 +213,8 @@ void main() {
 	UART_REG(UART_IRDA_DIV_REG)=416;
 	int adcdiv=2;
 	MISC_REG(MISC_ADC_CTL_REG)=MISC_ADC_CTL_DIV(adcdiv)|MISC_ADC_CTL_ENA;
+	int cur_layer=0;
+	int old_btn=0;
 	while(1) {
 		p++;
 
@@ -255,12 +253,19 @@ void main() {
 			start_app("autoexec.elf");
 			usb_msc_on();
 		}
-		cache_flush(lcdfb, lcdfb+320*480/2);
+		if ((btn&BUTTON_B) && !(old_btn&BUTTON_B)) {
+			cur_layer=(cur_layer+1)&3;
+			GFX_REG(GFX_LAYEREN_REG)=(1<<cur_layer)|GFX_LAYEREN_TILEA_8x16|GFX_LAYEREN_FB_8BIT;;
+			printf("i %d\n", cur_layer);
+		}
+
+		cache_flush(lcdfb, lcdfb+320*512);
 		for (int i=0; i<500; i++) {
 			usb_poll();
 			cdc_task();
 			tud_task();
 		}
+		old_btn=btn;
 	}
 }
 

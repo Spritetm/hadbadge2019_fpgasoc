@@ -30,8 +30,8 @@ module lcdiface(
 	output wire ready,
 
 	//Video mem interface
-	output reg lcdvm_next_pixel,
-	input lcdvm_newfield,
+	output reg lcdvm_next_pixel, //note: flag, only hi for 1 clock cycle.
+	input lcdvm_newfield, //1 for new field. Make sure to make 0 before lcdvm_wait goes low.
 	input lcdvm_wait,
 	input [7:0] lcdvm_red,
 	input [7:0] lcdvm_green,
@@ -115,7 +115,8 @@ always @(posedge clk) begin
 	end else begin
 		//set lcd_vm_en on start of frame
 		if (lcd_vm_start && lcdvm_newfield) out_ctl[4]<=1;
-
+		
+		//by default, lcdvm_next_pixel should always be 1 if disabled but running, 0 otherwise
 		lcdvm_next_pixel <= (!lcd_vm_ena) && lcd_vm_start;
 		if (state==0) begin
 			if (wen && addr == 'h2) begin //xx08

@@ -33,6 +33,7 @@ wire [23:0] vid_data_out;
 wire vid_wen, vid_ren;
 wire [23:0] vid_data_in;
 wire [19:0] curr_vid_addr;
+wire preload;
 
 vid_linerenderer linerenderer (
 	.clk(clk),
@@ -45,6 +46,7 @@ vid_linerenderer linerenderer (
 	.ready(ready),
 
 	.vid_addr(vid_addr),
+	.preload(preload),
 	.vid_data_out(vid_data_out),
 	.vid_wen(vid_wen),
 	.vid_ren(vid_ren),
@@ -74,6 +76,7 @@ video_mem video_mem (
 	.clk(clk),
 	.reset(reset),
 	.addr(vid_addr),
+	.preload(preload),
 	.data_in(vid_data_out),
 	.data_out(vid_data_in),
 	.wen(vid_wen),
@@ -86,7 +89,9 @@ video_mem video_mem (
 	.next_field(next_field),
 	.red(red),
 	.green(green),
-	.blue(blue)
+	.blue(blue),
+
+	.lcd_next_pixel(1)
 );
 
 endmodule;
