@@ -56,10 +56,10 @@ LIBS += $(addprefix $(BUILD_DIR_SDK)/,$(SDK_LIBS))
 #are generated from. (They're effectively the names of and paths to the source files, but with .c/.S/...
 #changed to .o.) OBJS_BUILDDIR contains the actual locations of the object files so we can depend
 #on them when generating the elf.
-OBJS_BUILDDIR := $(abspath $(addprefix $(BUILD_DIR)/,$(OBJS)) $(addprefix $(BUILD_DIR_SDK)/,$(SDK_OBJS)))
-$(info objs $(OBJS_BUILDDIR))
+OBJS_BUILDDIR := $(abspath $(addprefix $(BUILD_DIR)/,$(OBJS)))
+OBJS_BUILDDIR_SDK := $(abspath $(addprefix $(BUILD_DIR_SDK)/,$(SDK_OBJS)))
 
-DEPFILES := $(OBJS_BUILDDIR:%.o=%.d)
+DEPFILES := $(OBJS_BUILDDIR:%.o=%.d) $(OBJS_BUILDDIR_SDK:%.o=%.d)
 
 $(DEPFILES):
 
@@ -75,7 +75,6 @@ endif
 #Template to generate recipes to compile all files in one dir.
 #Called with $1 being build dir, $2 being source dir
 define build_template
-#$(info build_template called with $(1) $(2))
 $(1)/%.o: $(2)/%.c $(1)/%.d
 	$$(vecho) CC $$(notdir $$<)
 	$$(Q)mkdir -p $(1)
@@ -92,7 +91,6 @@ $(foreach dir,$(sort $(dir $(OBJS))),$(eval $(call build_template,$(abspath $(BU
 
 #Dependency pattern for sdk libs. Called with lib name as $1, list of objs as $2.
 define sdklib_template
-#$$(info sdklib_template $(1) $(2))
 $(1): $(2)
 	$$(vecho) AR $$(notdir $(1))
 	$$(Q)mkdir -p $$(dir $(1))
@@ -106,8 +104,12 @@ $(foreach lib,$(SDK_LIBS),$(eval $(call sdklib_template,$(addprefix $(BUILD_DIR_
 
 #Libs contains things like build/apps-sdk/gloss/libgloss.a
 #These lines convert that into -Lbuild/apps-sdk/gloss/ and -lgloss, respectively
-LIBPATHS=$(addprefix -L,$(dir $(LIBS)))
-LIBREFS=$(patsubst lib%,-l%,$(notdir $(basename $(LIBS))))
+LIBPATHS:=$(addprefix -L,$(dir $(LIBS)))
+LIBREFS:=$(patsubst lib%,-l%,$(notdir $(basename $(LIBS))))
+
+#gloss actually is an exception: seemingly gcc already implicitly links against it, so 
+#adding it a 2nd time leads to duplicate symbols.
+LIBREFS:=$(filter-out -lgloss,$(LIBREFS))
 
 #Main target
 $(TARGET_ELF): $(LIBS) $(OBJS_BUILDDIR) $(LDSCRIPT)
