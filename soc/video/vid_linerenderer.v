@@ -183,7 +183,7 @@ always @(*) begin
 		end else if (addr[5:2]==REG_SEL_TILEB_INC_ROW) begin
 			dout = {tileb_rowinc_x, tileb_rowinc_y};
 		end else if (addr[5:2]==REG_SEL_VIDPOS) begin
-			dout <= {7'h0, vid_ypos, 7'h0, vid_xpos};
+			dout = {7'h0, vid_ypos, 7'h0, vid_xpos};
 		end
 	end else if (addr[16:13]=='h1) begin
 		cpu_sel_palette = 1;
@@ -314,35 +314,17 @@ vid_palettemem palettemem(
 	.QB(pal_data)
 );
 
-wire [35:0] mulr_out_src[0:3];
-wire [35:0] mulr_out_dst[0:3];
-reg [31:0] rgba_old;
-wire [31:0] rgba_out;
-wire [7:0] alpha_src;
-wire [7:0] alpha_dst;
+reg [31:0] alphamixer_in_b;
+reg [7:0] alphamixer_rate;
+wire [31:0] alphamixer_out_cur;
+reg [31:0] alphamixer_out;
 
-
-assign alpha_dst=pal_data[31:24];
-assign alpha_src=255-alpha_dst;
-
-genvar i;
-for (i=0; i<4; i++) begin
-	mul_18x18 mult_s[i] (
-		.clock(clk),
-		.reset(reset),
-		.a({10'h0, pal_data[i*8+:8]}),
-		.b({10'h0, alpha_src}),
-		.dout(mulr_out_src[i])
-	);
-	mul_18x18 mult_d[i] (
-		.clock(clk),
-		.reset(reset),
-		.a({10'h0, rgba_old[i*8+:8]}),
-		.b({10'h0, alpha_dst}),
-		.dout(mulr_out_dst[i])
-	);
-	assign rgba_out[i*8+:8] = mulr_out_src[i][15:8]+mulr_out_dst[i][15:8];
-end
+video_alphamixer mixer(
+	.in_a(pal_data),
+	.in_b(alphamixer_in_b),
+	.rate(alphamixer_rate),
+	.out(alphamixer_out_cur)
+);
 
 
 /*
@@ -358,26 +340,21 @@ We have 4 states per pixel, 0-3 This is what happens in each state:
 0:
 	TileA tilemem pixel -> palette
 	TileB tilemap -> tilemem
-	FB palette data -> pixel hold
+	FB palette data -> alpha mixer
 1:
-	TileA palette data -> pixel hold
+	TileA palette data -> alpha mixer
 	TileB tilemem pixel -> palette
 2:
 	TileA X/Y -> tilemap
-	TileB palette data -> pixel hold
+	TileB palette data -> alpha mixer
 	Sprite linebuf pixel -> palette
 3:
 	TileA tilemap -> tilemem
 	TileB X/Y -> tilemap
-	Sprite palette data -> pixel hold
+	Sprite palette data -> alpha mixer
 	FB data -> palette
 
 */
-
-reg [31:0] rgba_out_prev;
-always @(posedge clk) begin
-	rgba_out_prev <= rgba_out;
-end
 
 reg [7:0] fb_pixel;
 
@@ -387,35 +364,38 @@ always @(*) begin
 	tilemem_no=0;
 	pal_addr=0;
 
-	rgba_old <= rgba_out_prev;
 	if (cycle==0) begin
-		rgba_old <= 'hff00ff;
 		tilepix_x = tileb_data[9] ? (15-tileb_x[9:6]) : tileb_x[9:6];
 		tilepix_y = tileb_data[10] ? (15-tileb_y[9:6]) : tileb_y[9:6];
 		tilemem_no = tileb_data[8:0];
 		pal_addr = tilemem_pixel + {tilea_data[17:11], 2'b0}; //from tilemap a
+		alphamixer_rate = layer_en[0] ? pal_data[31:24] : 0; //fb
+		alphamixer_in_b = 'hff00ff; //background
 	end else if (cycle==1) begin
-		if (layer_en[0]) rgba_old <= rgba_out;
 		tilepix_x = 480-vid_xpos;  //tilemap should not be used; give clear indication if it is.
 		tilepix_y = vid_ypos;
 		tilemem_no = 'h21;
 		pal_addr = tilemem_pixel + {tileb_data[17:11], 2'b0}; //from tilemap b
+		alphamixer_rate = layer_en[1] ? pal_data[31:24] : 0; //tilemap a
+		alphamixer_in_b = alphamixer_out; //bgnd+fb
 	end else if (cycle==2) begin
-		if (layer_en[1]) rgba_old <= rgba_out;
 		tilepix_x = 480-vid_xpos;  //tilemap should not be used; give clear indication if it is.
 		tilepix_y = vid_ypos;
 		tilemem_no = 'h21;
-		pal_addr = 3; //todo: sprite
+		pal_addr = 7; //todo: sprite
+		alphamixer_rate = layer_en[2] ? pal_data[31:24] : 0; //tilemap b
+		alphamixer_in_b = alphamixer_out; //bgnd+fb+tilemap_a
 	end else begin //cycle==3
-		if (layer_en[2]) rgba_old <= rgba_out;
 		tilepix_x = tilea_data[9] ? (15-tilea_x[9:6]) : tilea_x[9:6];
 		tilepix_y = tilea_data[10] ? (15-tilea_y[9:6]) : tilea_y[9:6];
 		tilemem_no = tilea_data[8:0];
 		pal_addr = {5'h0, fb_pixel}; //from fb
+		alphamixer_rate = layer_en[3] ? pal_data[31:24] : 0; //sprite
+		alphamixer_in_b = alphamixer_out; //bgnd+fb+tilemap_a+tilemap_b
 	end
 end
 
-assign vid_data_out = rgba_out;//layer_en[3] ? rgba_out : rgba_old;
+assign vid_data_out = alphamixer_out[23:0];
 reg ready_delayed;
 assign ready = ready_delayed & ((wstrb!=0) || ren);
 
@@ -445,6 +425,7 @@ always @(posedge clk) begin
 		tileb_rowinc_x <= 0;
 		tileb_rowinc_y <= (1<<6);
 		fb_is_8bit <= 0;
+		alphamixer_out <= 0;
 	end else begin
 		/* CPU interface */
 		ready_delayed <= ((wstrb!=0) | ren);
@@ -518,6 +499,7 @@ always @(posedge clk) begin
 					dma_do_read <= 1;
 				end
 
+				alphamixer_out <= alphamixer_out_cur;
 				cycle <= cycle + 1;
 				if (cycle==0) begin
 					if (fb_is_8bit) begin

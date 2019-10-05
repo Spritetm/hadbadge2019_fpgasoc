@@ -136,7 +136,7 @@ int gfx_load_bgnd_mem(uint8_t *fbmem, char *pngstart, int pnglen) {
 		p=st.info_png.color.palette[i*4];
 		p|=st.info_png.color.palette[i*4+1]<<8;
 		p|=st.info_png.color.palette[i*4+2]<<16;
-		p|=(0xff-st.info_png.color.palette[i*4+3])<<24;
+		p|=st.info_png.color.palette[i*4+3]<<24;
 		GFXPAL[i]=p;
 	}
 	for (int y=0; y<h; y++) {
@@ -168,7 +168,7 @@ int gfx_load_tilemem(uint32_t *tilemem, uint32_t *palettemem, char *pngstart, in
 		p=st.info_png.color.palette[i*4];
 		p|=st.info_png.color.palette[i*4+1]<<8;
 		p|=st.info_png.color.palette[i*4+2]<<16;
-		p|=(0xff-st.info_png.color.palette[i*4+3])<<24;
+		p|=st.info_png.color.palette[i*4+3]<<24;
 		palettemem[i]=p;
 	}
 	//Loop over all the tiles and dump the 16x16 pictures in tilemem.
@@ -217,7 +217,7 @@ void main() {
 	GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_LAYEREN_TILEB|GFX_LAYEREN_TILEA|GFX_LAYEREN_FB_8BIT;
 	gfx_load_tilemem(GFXTILES, &GFXPAL[256], &_binary_tileset_default_png_start, (&_binary_tileset_default_png_end-&_binary_tileset_default_png_start));
 	for (int i=0; i<64*64; i++) GFXTILEMAPA[i]=32|(1<<17);
-	for (int i=0; i<64*64; i++) GFXTILEMAPB[i]=33|(1<<17);
+	for (int i=0; i<64*64; i++) GFXTILEMAPB[i]=32|(1<<17);
 	const char *msg="Hello world, from tilemap A!";
 	const char *msg2="This is tilemap B.";
 	for (int i=0; msg[i]!=0; i++) GFXTILEMAPA[i+64]=msg[i]|(1<<17);
