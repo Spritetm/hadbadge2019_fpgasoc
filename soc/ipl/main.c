@@ -8,6 +8,7 @@
 #include <lcd.h>
 #include <sys/types.h>
 #include <dirent.h>
+#include <math.h>
 #include "ugui.h"
 #include <string.h>
 #include "tusb.h"
@@ -16,8 +17,7 @@
 #include "flash.h"
 #include "loadapp.h"
 #include "gloss/newlib_stubs.h"
-#include "font-8x16.h"
-#include "vgapal.h"
+#include "lodepng/lodepng.h"
 
 extern volatile uint32_t UART[];
 #define UART_REG(i) UART[(i)/4]
@@ -27,7 +27,7 @@ extern volatile uint32_t LCD[];
 #define LCD_REG(i) LCD[(i)/4]
 extern volatile uint32_t GFXREG[];
 #define GFX_REG(i) GFXREG[(i)/4]
-extern volatile uint32_t GFXPAL[];
+extern uint32_t GFXPAL[];
 extern uint32_t GFXTILES[];
 extern uint32_t GFXTILEMAPA[];
 extern uint32_t GFXTILEMAPB[];
@@ -96,44 +96,104 @@ void start_app(char *app) {
 	printf("App returned.\n");
 }
 
-void pal_init_vgacolors(int offset) {
-	int j=0;
-	for (int i=0; i<256; i++) {
-		int p=0;
-		p+=vgapal[j++];
-		p+=vgapal[j++]<<8;
-		p+=vgapal[j++]<<16;
-		GFXPAL[offset+i] =p;
+
+static inline uint8_t resolve_pixel(unsigned char *pdat, int x, int y, int w, int h, int bpp) {
+	int adr=x+w*y;
+	if (bpp==8) {
+		return pdat[adr];
+	} else if (bpp==4) {
+		int c=pdat[adr/2];
+		if ((adr&1)==0) return (c>>4)&0xf;
+		if ((adr&1)==1) return (c>>0)&0xf;
+	} else if (bpp==2) {
+		int c=pdat[adr/4];
+		if ((adr&3)==0) return (c>>6)&0x3;
+		if ((adr&3)==1) return (c>>4)&0x3;
+		if ((adr&3)==2) return (c>>2)&0x3;
+		if ((adr&3)==3) return (c>>0)&0x3;
+	} else if (bpp==1) {
+		int c=pdat[adr/8];
+		return c>>(7-(adr&7));
+	} else {
+		return 0;
 	}
 }
 
-void load_font() {
-	int ix=0;
-	int col;
-	for (int ch=0; ch<256; ch++) {
-		for (int y=0; y<16; y++) {
-			uint32_t p;
-			col=0x7;
-			uint8_t c=vga_font[ch*16+y];
-			for (int n=0; n<8; n++) {
-				p<<=4;
-				if (c&1) {
-					p|=col;
-					col=0xf;
-				} else {
-					col=0x7;
-				}
-				c>>=1;
-			}
-			if ((ch&1)==0) {
-				GFXTILES[(ch/2)*32+y*2]=p;
-			} else {
-				GFXTILES[(ch/2)*32+y*2+1]=p;
-			}
-			GFXTILES[(ch+256)*32+y*2]=p;
-			GFXTILES[(ch+256)*32+y*2+1]=0;
+
+int gfx_load_bgnd_mem(uint8_t *fbmem, char *pngstart, int pnglen) {
+	unsigned char *decoded;
+	unsigned int w, h;
+	LodePNGState st={0};
+	st.info_raw.colortype=LCT_PALETTE;
+	st.info_raw.bitdepth=8;
+	st.info_raw.palette=NULL;
+	st.info_raw.palettesize=0;
+	int i=lodepng_decode(&decoded, &w, &h, &st, pngstart, pnglen);
+	printf("lodepng_decode: %d, w=%d, h=%d\n", i, w, h);
+	unsigned char *p=decoded;
+	for (int i=0; i<st.info_png.color.palettesize; i++) {
+		int p=0;
+		p=st.info_png.color.palette[i*4];
+		p|=st.info_png.color.palette[i*4+1]<<8;
+		p|=st.info_png.color.palette[i*4+2]<<16;
+		p|=(0xff-st.info_png.color.palette[i*4+3])<<24;
+		GFXPAL[i]=p;
+	}
+	for (int y=0; y<h; y++) {
+		for (int x=0; x<w; x++) {
+			fbmem[x+y*512]=resolve_pixel(decoded, x,y,w,h,st.info_png.color.bitdepth);
 		}
 	}
+	free(decoded);
+	return 1;
+}
+
+int gfx_load_tilemem(uint32_t *tilemem, uint32_t *palettemem, char *pngstart, int pnglen) {
+	unsigned char *decoded;
+	unsigned int w, h;
+	LodePNGState st={0};
+	st.info_raw.colortype=LCT_PALETTE;
+	st.info_raw.bitdepth=8;
+	st.info_raw.palette=NULL;
+	st.info_raw.palettesize=0;
+	int i=lodepng_decode(&decoded, &w, &h, &st, pngstart, pnglen);
+	printf("lodepng_decode: %d, w=%d, h=%d\n", i, w, h);
+	int palct=st.info_png.color.palettesize;
+	if (palct>16) {
+		printf("Warning: tileset has more than 16 colors (%d) in palette. Only using first 16.\n", st.info_png.color.palettesize);
+		palct=16;
+	}
+	for (int i=0; i<palct; i++) {
+		int p=0;
+		p=st.info_png.color.palette[i*4];
+		p|=st.info_png.color.palette[i*4+1]<<8;
+		p|=st.info_png.color.palette[i*4+2]<<16;
+		p|=(0xff-st.info_png.color.palette[i*4+3])<<24;
+		palettemem[i]=p;
+	}
+	//Loop over all the tiles and dump the 16x16 pictures in tilemem.
+	int tx=0, ty=0;
+	int t=0;
+	while (ty+15<h) {
+		for (int y=0; y<16; y++) {
+			uint64_t tp;
+			for (int x=0; x<16; x++) {
+				int c=resolve_pixel(decoded, x+tx,y+ty,w,h,st.info_png.color.bitdepth);;
+				if (c>15) c=0;
+				tp=(tp>>4)|((uint64_t)c<<60UL);
+			}
+			tilemem[t++]=tp;
+			tilemem[t++]=tp>>32;
+		}
+		tx+=16;
+		if (tx+15>w) {
+			tx=0;
+			ty+=16;
+		}
+	}
+	printf("Loaded %d tiles.\n", t/32);
+	free(decoded);
+	return 1;
 }
 
 int simulated() {
@@ -142,33 +202,39 @@ int simulated() {
 
 void cdc_task();
 
+extern char _binary_bgnd_png_start;
+extern char _binary_bgnd_png_end;
+extern char _binary_tileset_default_png_start;
+extern char _binary_tileset_default_png_end;
+
+
 void main() {
 	MISC_REG(MISC_LED_REG)=0xfffff;
 	syscall_reinit();
 	printf("IPL running.\n");
 	lcdfb=malloc(320*512);
 	GFX_REG(GFX_FBADDR_REG)=((uint32_t)lcdfb)&0xFFFFFF;
-//	GFX_REG(GFX_LAYEREN_REG)=(GFX_LAYEREN_FB&0)|GFX_LAYEREN_TILEA|GFX_TILEA_8x16;
-	GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_LAYEREN_TILEA_8x16|GFX_LAYEREN_FB_8BIT;
-	pal_init_vgacolors(0);
-	pal_init_vgacolors(256);
-	for (int i=0; i<64*64; i++) GFXTILEMAPA[i]=32;
-	for (int i=0; i<64*64; i++) GFXTILEMAPB[i]=32;
+	GFX_REG(GFX_LAYEREN_REG)=(GFX_LAYEREN_FB&0)|GFX_LAYEREN_TILEA|GFX_LAYEREN_FB_8BIT;
+	gfx_load_tilemem(GFXTILES, &GFXPAL[256], &_binary_tileset_default_png_start, (&_binary_tileset_default_png_end-&_binary_tileset_default_png_start));
+	for (int i=0; i<64*64; i++) GFXTILEMAPA[i]=32|(1<<17);
+	for (int i=0; i<64*64; i++) GFXTILEMAPB[i]=33|(1<<17);
 	const char *msg="Hello world, from tilemap A!";
 	const char *msg2="This is tilemap B.";
-	for (int i=0; msg[i]!=0; i++) GFXTILEMAPA[i+64]=msg[i];
-	for (int i=0; msg2[i]!=0; i++) GFXTILEMAPB[i+64]=msg2[i]+256;
-	load_font();
+	for (int i=0; msg[i]!=0; i++) GFXTILEMAPA[i+64]=msg[i]|(1<<17);
+	for (int i=0; msg[i]!=0; i++) GFXTILEMAPA[i+64*32]=msg[i]|(1<<17);
+	for (int i=0; msg2[i]!=0; i++) GFXTILEMAPB[i+64]=msg2[i]|(1<<17);
+	GFX_REG(GFX_TILEA_INC_COL)=(2<<16)+64;
+	GFX_REG(GFX_TILEA_INC_ROW)=(60<<16)+2;
+	GFX_REG(GFX_TILEB_INC_COL)=(2<<16)+64;
+	GFX_REG(GFX_TILEB_INC_ROW)=(60<<16)+2;
 	printf("Tiles initialized\n");
 
 	lcd_init(simulated());
 	UG_Init(&ugui, lcd_pset_8bit, 480, 320);
-//	if (!simulated) 
-	memset(lcdfb, 0, 320*512);
+	if (!simulated) memset(lcdfb, 0, 320*512);
 	MISC_REG(MISC_SOC_VER)=1;
 	cache_flush(lcdfb, lcdfb+320*512);
 	MISC_REG(MISC_SOC_VER)=0;
-//	while(1);
 
 	UG_FontSelect(&FONT_12X16);
 	UG_SetForecolor(C_WHITE);
@@ -185,26 +251,12 @@ void main() {
 	tusb_init();
 	printf("USB inited.\n");
 	
-
-	printf("Your random numbers are:\n");
-	for (int i=0; i<16; i++) {
-		uint32_t r=MISC_REG(MISC_RNG_REG);
-		printf("%d: %08X (%d)\n", i, r, r);
-	}
-
 	fs_init();
 
-
-	FILE *f=fopen("background.raw", "r");
-	if (f) {
-		for (int y=0; y<480; y++) {
-			fread(&lcdfb[y*512], 480, 1, f);
-		}
-		fclose(f);
-	}
+	printf("Loading bgnd...\n");
+	gfx_load_bgnd_mem(lcdfb, &_binary_bgnd_png_start, (&_binary_bgnd_png_end-&_binary_bgnd_png_start));
 	cache_flush(lcdfb, lcdfb+320*512);
-
-
+	printf("bgnd loaded.\n");
 
 	//loop
 	int p;
@@ -215,8 +267,16 @@ void main() {
 	MISC_REG(MISC_ADC_CTL_REG)=MISC_ADC_CTL_DIV(adcdiv)|MISC_ADC_CTL_ENA;
 	int cur_layer=0;
 	int old_btn=0;
+	float rot=0;
 	while(1) {
 		p++;
+
+//		rot+=0.1;
+		int dx=64*cos(rot);
+		int dy=64*sin(rot);
+		GFX_REG(GFX_TILEA_OFF)=(2<<16)+64;
+		GFX_REG(GFX_TILEA_INC_COL)=((dy&0xffff)<<16)|(dx&0xffff);
+		GFX_REG(GFX_TILEA_INC_ROW)=((dx&0xffff)<<16)|((-dy)&0xffff);
 
 		UART_REG(UART_IRDA_DATA_REG)=p;
 		int r=UART_REG(UART_IRDA_DATA_REG);
@@ -255,7 +315,7 @@ void main() {
 		}
 		if ((btn&BUTTON_B) && !(old_btn&BUTTON_B)) {
 			cur_layer=(cur_layer+1)&3;
-			GFX_REG(GFX_LAYEREN_REG)=(1<<cur_layer)|GFX_LAYEREN_TILEA_8x16|GFX_LAYEREN_FB_8BIT;;
+			GFX_REG(GFX_LAYEREN_REG)=(1<<cur_layer)|GFX_LAYEREN_FB_8BIT;;
 			printf("i %d\n", cur_layer);
 		}
 

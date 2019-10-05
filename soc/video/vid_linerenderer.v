@@ -114,8 +114,14 @@ parameter REG_SEL_FB_PITCH = 1;
 parameter REG_SEL_LAYER_EN = 2;
 parameter REG_SEL_TILEA_OFF = 3;
 parameter REG_SEL_TILEB_OFF = 4;
-parameter REG_SEL_VIDPOS = 5;
+parameter REG_SEL_TILEA_INC_COL = 5;
+parameter REG_SEL_TILEA_INC_ROW = 6;
+parameter REG_SEL_TILEB_INC_COL = 7;
+parameter REG_SEL_TILEB_INC_ROW = 8;
+parameter REG_SEL_VIDPOS = 9;
 
+//Reminder: we have 64x64 tiles of 16x16 pixels, so in total a field of 1024x1024 pixels. Say we have one overflow bit, we need 11 bit
+//for everything... that leaves 5 bits for sub-pixel addressing in scaling modes. That sounds OK.
 reg [15:0] tilea_xoff;
 reg [15:0] tilea_yoff;
 reg [15:0] tileb_xoff;
@@ -125,7 +131,6 @@ wire [31:0] dout_tilemapa;
 wire [31:0] dout_tilemapb;
 wire [31:0] dout_palette;
 wire [31:0] dout_tilemem;
-reg tilea_8x16;
 reg fb_is_8bit;
 
 reg [1:0] cycle;
@@ -139,6 +144,15 @@ wire [8:0] vid_ypos_next;
 wire [8:0] vid_xpos_next;
 assign vid_xpos_next = write_vid_addr_next[8:0];
 assign vid_ypos_next = write_vid_addr_next[17:9];
+
+reg [15:0] tilea_colinc_x;
+reg [15:0] tilea_colinc_y;
+reg [15:0] tilea_rowinc_x;
+reg [15:0] tilea_rowinc_y;
+reg [15:0] tileb_colinc_x;
+reg [15:0] tileb_colinc_y;
+reg [15:0] tileb_rowinc_x;
+reg [15:0] tileb_rowinc_y;
 
 always @(*) begin
 	cpu_sel_tilemem = 0;
@@ -155,11 +169,19 @@ always @(*) begin
 		end else if (addr[5:2]==REG_SEL_FB_PITCH) begin
 			dout = {16'h0, pitch};
 		end else if (addr[5:2]==REG_SEL_LAYER_EN) begin
-			dout = {15'h0, fb_is_8bit, 11'h0, tilea_8x16, layer_en};
+			dout = {15'h0, fb_is_8bit, 12'h0,  layer_en};
 		end else if (addr[5:2]==REG_SEL_TILEA_OFF) begin
 			dout = {tilea_yoff, tilea_xoff};
 		end else if (addr[5:2]==REG_SEL_TILEB_OFF) begin
 			dout = {tileb_yoff, tileb_xoff};
+		end else if (addr[5:2]==REG_SEL_TILEA_INC_COL) begin
+			dout = {tilea_colinc_x, tilea_colinc_y};
+		end else if (addr[5:2]==REG_SEL_TILEA_INC_ROW) begin
+			dout = {tilea_rowinc_x, tilea_rowinc_y};
+		end else if (addr[5:2]==REG_SEL_TILEB_INC_COL) begin
+			dout = {tileb_colinc_x, tileb_colinc_y};
+		end else if (addr[5:2]==REG_SEL_TILEB_INC_ROW) begin
+			dout = {tileb_rowinc_x, tileb_rowinc_y};
 		end else if (addr[5:2]==REG_SEL_VIDPOS) begin
 			dout <= {7'h0, vid_ypos, 7'h0, vid_xpos};
 		end
@@ -214,11 +236,17 @@ vid_tilemem tilemem(
 );
 
 
+//Tilemap data:
+// 8:0 - tile
+// 9 - inv x
+// 10 - inv y
+// 17-11 - palette offset *4
+
 reg [16:0] tilea_x;
 reg [16:0] tilea_y;
 wire [17:0] tilea_data;
 wire [11:0] tilemapa_addr;
-assign tilemapa_addr = {tilea_y[5:0], tilea_x[5:0]};
+assign tilemapa_addr = {tilea_y[14:10], tilea_x[14:10]};
 
 vid_tilemapmem tilemapa (
 	.ClockA(clk),
@@ -241,7 +269,7 @@ reg [16:0] tileb_x;
 reg [16:0] tileb_y;
 wire [17:0] tileb_data;
 wire [11:0] tilemapb_addr;
-assign tilemapb_addr = {tileb_y[5:0], tileb_x[5:0]};
+assign tilemapb_addr = {tileb_y[14:10], tileb_x[14:10]};
 
 vid_tilemapmem tilemapb (
 	.ClockA(clk),
@@ -261,6 +289,10 @@ vid_tilemapmem tilemapb (
 );
 
 
+reg [16:0] tilea_linestart_x;
+reg [16:0] tilea_linestart_y;
+reg [16:0] tileb_linestart_x;
+reg [16:0] tileb_linestart_y;
 
 reg [8:0] pal_addr;
 wire [31:0] pal_data;
@@ -319,42 +351,26 @@ always @(*) begin
 	tilepix_y=0;
 	tilemem_no=0;
 	pal_addr=0;
-	tilea_x=0;
-	tilea_y = ({7'h0,vid_ypos_next} + tilea_yoff)/16;
-	tileb_x = ({7'h0,vid_xpos_next} + tileb_xoff)/16;
-	tileb_y = ({7'h0,vid_ypos_next} + tileb_yoff)/16;
-	if (tilea_8x16) begin
-		tilea_x = ({7'h0,vid_xpos_next} + tilea_xoff)/8;
-	end else begin
-		tilea_x = ({7'h0,vid_xpos_next} + tilea_xoff)/16;
-	end
 
 	if (cycle==0) begin
-		tilepix_x = (vid_xpos + tileb_xoff);
-		tilepix_y = (vid_ypos + tileb_yoff);
+		tilepix_x = tileb_data[9] ? (15-tileb_x[9:6]) : tileb_x[9:6];
+		tilepix_y = tileb_data[10] ? (15-tileb_y[9:6]) : tileb_y[9:6];
 		tilemem_no = tileb_data[8:0];
-		pal_addr = {5'h2, tilemem_pixel}; //from tilemap a
+		pal_addr = tilemem_pixel + {tilea_data[17:11], 2'b0}; //from tilemap a
 	end else if (cycle==1) begin
 		tilepix_x = 480-vid_xpos;  //tilemap should not be used; give clear indication if it is.
 		tilepix_y = vid_ypos;
 		tilemem_no = 'h21;
-		pal_addr = {5'h1, tilemem_pixel}; //from tilemap b
+		pal_addr = tilemem_pixel + {tileb_data[17:11], 2'b0}; //from tilemap b
 	end else if (cycle==2) begin
 		tilepix_x = 480-vid_xpos;  //tilemap should not be used; give clear indication if it is.
 		tilepix_y = vid_ypos;
 		tilemem_no = 'h21;
 		pal_addr = 3; //todo: sprite
 	end else begin //cycle==3
-		if (tilea_8x16) begin
-			tilepix_x[2:0] = (vid_xpos + tilea_xoff);
-			tilepix_x[3] = tilea_data[0];
-			tilepix_y = (vid_ypos + tilea_yoff);
-			tilemem_no = {1'h0, tilea_data[8:1]};
-		end else begin
-			tilepix_x = (vid_xpos + tilea_xoff);
-			tilepix_y = (vid_ypos + tilea_yoff);
-			tilemem_no = tilea_data[8:0];
-		end
+		tilepix_x = tilea_data[9] ? (15-tilea_x[9:6]) : tilea_x[9:6];
+		tilepix_y = tilea_data[10] ? (15-tilea_y[9:6]) : tilea_y[9:6];
+		tilemem_no = tilea_data[8:0];
 		pal_addr = {5'h0, fb_pixel}; //from fb
 	end
 end
@@ -377,7 +393,18 @@ always @(posedge clk) begin
 		tileb_xoff <= 0;
 		tilea_xoff <= 0;
 		tileb_xoff <= 0;
-		tilea_8x16 <= 0;
+		tilea_linestart_x <= 0;
+		tilea_linestart_y <= 0;
+		tileb_linestart_x <= 0;
+		tileb_linestart_y <= 0;
+		tilea_colinc_x <= (1<<6);
+		tilea_colinc_y <= 0;
+		tilea_rowinc_x <= 0;
+		tilea_rowinc_y <= (1<<6);
+		tileb_colinc_x <= (1<<6);
+		tileb_colinc_y <= 0;
+		tileb_rowinc_x <= 0;
+		tileb_rowinc_y <= (1<<6);
 		fb_is_8bit <= 0;
 	end else begin
 		/* CPU interface */
@@ -389,7 +416,6 @@ always @(posedge clk) begin
 				pitch <= din[15:0];
 			end else if (addr[5:2]==REG_SEL_LAYER_EN) begin
 				layer_en <= din[3:0];
-				tilea_8x16 <= din[4];
 				fb_is_8bit <= din[16];
 			end else if (addr[5:2]==REG_SEL_TILEA_OFF) begin
 				tilea_xoff <= din[15:0];
@@ -397,6 +423,18 @@ always @(posedge clk) begin
 			end else if (addr[5:2]==REG_SEL_TILEB_OFF) begin
 				tileb_xoff <= din[15:0];
 				tileb_yoff <= din[31:16];
+			end else if (addr[5:2]==REG_SEL_TILEA_INC_COL) begin
+				tilea_colinc_x <= din[15:0];
+				tilea_colinc_y <= din[31:16];
+			end else if (addr[5:2]==REG_SEL_TILEA_INC_ROW) begin
+				tilea_rowinc_x <= din[15:0];
+				tilea_rowinc_y <= din[31:16];
+			end else if (addr[5:2]==REG_SEL_TILEB_INC_COL) begin
+				tileb_colinc_x <= din[15:0];
+				tileb_colinc_y <= din[31:16];
+			end else if (addr[5:2]==REG_SEL_TILEB_INC_ROW) begin
+				tileb_rowinc_x <= din[15:0];
+				tileb_rowinc_y <= din[31:16];
 			end
 		end
 
@@ -416,6 +454,14 @@ always @(posedge clk) begin
 		if (write_vid_addr[19:9]>=320) begin
 			//We're finished with this frame. Wait until the video generator starts drawing the next frame.
 			dma_run <= 0;
+			tilea_linestart_x <= tilea_xoff + tilea_rowinc_x;
+			tilea_linestart_y <= tilea_yoff + tilea_rowinc_y;
+			tilea_x <= tilea_xoff;
+			tilea_y <= tilea_yoff;
+			tileb_linestart_x <= tileb_xoff + tileb_rowinc_x;
+			tileb_linestart_y <= tileb_yoff + tileb_rowinc_y;
+			tileb_x <= tileb_xoff;
+			tileb_y <= tileb_yoff;
 			if (next_field) begin
 				write_vid_addr_next <= 0;
 				dma_start_addr <= fb_addr;
@@ -456,8 +502,20 @@ always @(posedge clk) begin
 						write_vid_addr_next[8:0] <= 0;
 						dma_start_addr <= dma_start_addr + (fb_is_8bit?pitch:pitch/2);
 						dma_run <= 0;
+						tilea_x <= tilea_linestart_x;
+						tilea_y <= tilea_linestart_y;
+						tilea_linestart_x <= tilea_linestart_x + tilea_rowinc_x;
+						tilea_linestart_y <= tilea_linestart_y + tilea_rowinc_y;
+						tileb_x <= tileb_linestart_x;
+						tileb_y <= tileb_linestart_y;
+						tileb_linestart_x <= tileb_linestart_x + tileb_rowinc_x;
+						tileb_linestart_y <= tileb_linestart_y + tileb_rowinc_y;
 					end else begin
 						write_vid_addr_next <= write_vid_addr_next + 'h1;
+						tilea_x <= tilea_x + tilea_colinc_x;
+						tilea_y <= tilea_y + tilea_colinc_y;
+						tileb_x <= tileb_x + tileb_colinc_x;
+						tileb_y <= tileb_y + tileb_colinc_y;
 					end
 				end
 			end else begin

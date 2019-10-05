@@ -155,9 +155,9 @@ int main(int argc, char **argv) {
 
 	load_tilemap(tb, trace, "tileset.png");
 	printf("Buffers inited.\n");
-//	tb_write(tb, trace,REG_OFF+2*4, 0x2); //ena tile map a
+	tb_write(tb, trace,REG_OFF+2*4, 0x2); //ena tile map a
 //	tb_write(tb, trace,REG_OFF+2*4, 0x1); //ena fb
-	tb_write(tb, trace,REG_OFF+2*4, 0x10001); //ena fb, 8bit
+//	tb_write(tb, trace,REG_OFF+2*4, 0x10001); //ena fb, 8bit
 
 	int fetch_next=0;
 	int next_line=0;
