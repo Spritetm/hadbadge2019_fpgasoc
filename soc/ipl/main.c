@@ -214,7 +214,7 @@ void main() {
 	printf("IPL running.\n");
 	lcdfb=malloc(320*512);
 	GFX_REG(GFX_FBADDR_REG)=((uint32_t)lcdfb)&0xFFFFFF;
-	GFX_REG(GFX_LAYEREN_REG)=(GFX_LAYEREN_FB&0)|GFX_LAYEREN_TILEA|GFX_LAYEREN_FB_8BIT;
+	GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_LAYEREN_TILEB|GFX_LAYEREN_TILEA|GFX_LAYEREN_FB_8BIT;
 	gfx_load_tilemem(GFXTILES, &GFXPAL[256], &_binary_tileset_default_png_start, (&_binary_tileset_default_png_end-&_binary_tileset_default_png_start));
 	for (int i=0; i<64*64; i++) GFXTILEMAPA[i]=32|(1<<17);
 	for (int i=0; i<64*64; i++) GFXTILEMAPB[i]=33|(1<<17);
@@ -271,7 +271,7 @@ void main() {
 	while(1) {
 		p++;
 
-//		rot+=0.1;
+		rot+=0.1;
 		int dx=64*cos(rot);
 		int dy=64*sin(rot);
 		GFX_REG(GFX_TILEA_OFF)=(2<<16)+64;
@@ -314,8 +314,8 @@ void main() {
 			usb_msc_on();
 		}
 		if ((btn&BUTTON_B) && !(old_btn&BUTTON_B)) {
-			cur_layer=(cur_layer+1)&3;
-			GFX_REG(GFX_LAYEREN_REG)=(1<<cur_layer)|GFX_LAYEREN_FB_8BIT;;
+			cur_layer=(cur_layer+1)&0xf;
+			GFX_REG(GFX_LAYEREN_REG)=cur_layer|GFX_LAYEREN_FB_8BIT;;
 			printf("i %d\n", cur_layer);
 		}
 

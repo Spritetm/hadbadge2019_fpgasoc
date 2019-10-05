@@ -126,7 +126,7 @@ int main(int argc, char **argv) {
 
 	Video_renderer *vid=new Video_renderer(true);
 
-	FILE *f=fopen("../ipl/background.raw", "r");
+	FILE *f=fopen("background.raw", "r");
 	if (!f) perror("raw fb data");
 	for (int i=0; i<320; i++) {
 		fread(&qpi_mem[512*i], 480, 1, f);
