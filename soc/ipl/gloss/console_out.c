@@ -35,11 +35,11 @@ void console_write_char_raw(char c) {
 	uint32_t *map;
 	if (to_mapb) map=&GFXTILEMAPB[0]; else map=&GFXTILEMAPA[0];
 	if (xpos>=win_x+win_w || c=='\n') {
-		printf("Next line; xpos=%d win_w=%d, c=%d\n", xpos, win_w, c);
+		//printf("Next line; xpos=%d win_w=%d, c=%d\n", xpos, win_w, c);
 		xpos=win_x;
 		ypos++;
 		if (ypos>=win_y+win_h) {
-			printf("Console scrolling because ypos %d >=win_y %d\n", ypos, win_y);
+			//printf("Console scrolling because ypos %d >=win_y %d\n", ypos, win_y);
 			//Scroll up the window
 			for (int y=win_y; y<win_y+win_h-1; y++) {
 				for (int x=win_x; x<win_x+win_w; x++) {
@@ -77,17 +77,17 @@ static void console_write_char(char c) {
 			if (argpos>=ARGMAX) argpos=ARGMAX-1;
 		} else {
 			if (c==CMD_SET_X) {
-				printf("console CMD_SET_X %d\n", arg[0]);
+				//printf("console CMD_SET_X %d\n", arg[0]);
 				xpos=arg[0]+win_x;
 			} else if (c==CMD_SET_Y) {
-				printf("console CMD_SET_Y %d\n", arg[0]);
+				//printf("console CMD_SET_Y %d\n", arg[0]);
 				ypos=arg[0]+win_y;
 			} else if (c==CMD_SET_POS) {
-				printf("console CMD_SET_POS %d,%d\n", arg[0], arg[1]);
+				//printf("console CMD_SET_POS %d,%d\n", arg[0], arg[1]);
 				xpos=arg[0]+win_x;
 				ypos=arg[1]+win_y;
 			} else if (c==CMD_CLEAR) {
-				printf("console CMD_CLEAR\n");
+				//printf("console CMD_CLEAR\n");
 				xpos=win_x;
 				ypos=win_y;
 				for (int i=0; i<win_h*win_w; i++) {

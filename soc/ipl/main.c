@@ -100,7 +100,7 @@ void main() {
 	if (console==NULL) {
 		printf("Error opening console!\n");
 	}
-	fprintf(console, "\033C\0331M\0330A");
+	fprintf(console, "\0331M\033C\0330A"); //Set map to tilemap B, clear tilemap, set attr to 0
 	fprintf(console, "Hello World!\n");
 
 	lcd_init(simulated());
