@@ -26,7 +26,7 @@ OBJS += tinyusb/src/class/cdc/cdc_device.o tinyusb/src/class/hid/hid_device.o
 OBJS += dcd_tntusb.o usb_descriptors.o hexdump.o flash.o
 OBJS += fatfs/source/ff.o fatfs/source/ffunicode.o loadapp.o elfload/elfload.o
 OBJS += elfload/elfreloc_riscv.o lodepng.o bgnd.o tileset-default.o
-OBJS += tjftl/tjftl.o fs.o
+OBJS += tjftl/tjftl.o fs.o gfx_load.o
 LIBS := gloss/libgloss.a -lm
 LDSCRIPT := gloss/ldscript.ld
 

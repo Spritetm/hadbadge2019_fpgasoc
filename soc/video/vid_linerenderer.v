@@ -119,6 +119,7 @@ parameter REG_SEL_TILEA_INC_ROW = 6;
 parameter REG_SEL_TILEB_INC_COL = 7;
 parameter REG_SEL_TILEB_INC_ROW = 8;
 parameter REG_SEL_VIDPOS = 9;
+parameter REG_SEL_BGNDCOL = 10;
 
 //Reminder: we have 64x64 tiles of 16x16 pixels, so in total a field of 1024x1024 pixels. Say we have one overflow bit, we need 11 bit
 //for everything... that leaves 5 bits for sub-pixel addressing in scaling modes. That sounds OK.
@@ -132,6 +133,8 @@ wire [31:0] dout_tilemapb;
 wire [31:0] dout_palette;
 wire [31:0] dout_tilemem;
 reg fb_is_8bit;
+reg [31:0] bgnd_color;
+reg [8:0] fb_pal_offset;
 
 reg [1:0] cycle;
 reg [19:0] write_vid_addr;
@@ -167,7 +170,7 @@ always @(*) begin
 		if (addr[5:2]==REG_SEL_FB_ADDR) begin
 			dout = {8'h4, fb_addr};
 		end else if (addr[5:2]==REG_SEL_FB_PITCH) begin
-			dout = {16'h0, pitch};
+			dout = {7'h0, fb_pal_offset, pitch};
 		end else if (addr[5:2]==REG_SEL_LAYER_EN) begin
 			dout = {15'h0, fb_is_8bit, 12'h0,  layer_en};
 		end else if (addr[5:2]==REG_SEL_TILEA_OFF) begin
@@ -184,6 +187,8 @@ always @(*) begin
 			dout = {tileb_rowinc_x, tileb_rowinc_y};
 		end else if (addr[5:2]==REG_SEL_VIDPOS) begin
 			dout = {7'h0, vid_ypos, 7'h0, vid_xpos};
+		end else if (addr[5:2]==REG_SEL_BGNDCOL) begin
+			dout = bgnd_color;
 		end
 	end else if (addr[16:13]=='h1) begin
 		cpu_sel_palette = 1;
@@ -370,7 +375,7 @@ always @(*) begin
 		tilemem_no = tileb_data[8:0];
 		pal_addr = tilemem_pixel + {tilea_data[17:11], 2'b0}; //from tilemap a
 		alphamixer_rate = layer_en[0] ? pal_data[31:24] : 0; //fb
-		alphamixer_in_b = 'hff00ff; //background
+		alphamixer_in_b = bgnd_color; //background
 	end else if (cycle==1) begin
 		tilepix_x = 480-vid_xpos;  //tilemap should not be used; give clear indication if it is.
 		tilepix_y = vid_ypos;
@@ -389,7 +394,7 @@ always @(*) begin
 		tilepix_x = tilea_data[9] ? (15-tilea_x[9:6]) : tilea_x[9:6];
 		tilepix_y = tilea_data[10] ? (15-tilea_y[9:6]) : tilea_y[9:6];
 		tilemem_no = tilea_data[8:0];
-		pal_addr = {5'h0, fb_pixel}; //from fb
+		pal_addr = {fb_pixel+fb_pal_offset}; //from fb
 		alphamixer_rate = layer_en[3] ? pal_data[31:24] : 0; //sprite
 		alphamixer_in_b = alphamixer_out; //bgnd+fb+tilemap_a+tilemap_b
 	end
@@ -426,6 +431,7 @@ always @(posedge clk) begin
 		tileb_rowinc_y <= (1<<6);
 		fb_is_8bit <= 0;
 		alphamixer_out <= 0;
+		bgnd_color <= 0;
 	end else begin
 		/* CPU interface */
 		ready_delayed <= ((wstrb!=0) | ren);
@@ -434,6 +440,7 @@ always @(posedge clk) begin
 				fb_addr <= din[23:0];
 			end else if (addr[5:2]==REG_SEL_FB_PITCH) begin
 				pitch <= din[15:0];
+				fb_pal_offset=din[24:16];
 			end else if (addr[5:2]==REG_SEL_LAYER_EN) begin
 				layer_en <= din[3:0];
 				fb_is_8bit <= din[16];
@@ -455,6 +462,8 @@ always @(posedge clk) begin
 			end else if (addr[5:2]==REG_SEL_TILEB_INC_ROW) begin
 				tileb_rowinc_x <= din[15:0];
 				tileb_rowinc_y <= din[31:16];
+			end else if (addr[5:2]==REG_SEL_BGNDCOL) begin
+				bgnd_color <= din;
 			end
 		end
 
