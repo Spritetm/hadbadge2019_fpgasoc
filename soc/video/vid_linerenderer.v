@@ -516,6 +516,9 @@ always @(posedge clk) begin
 					end else begin
 						fb_pixel <= {4'h0, dma_data[vid_xpos[3:0]*4+:4]};
 					end
+				end else if (cycle==1) begin
+					tileb_x <= tileb_x + tileb_colinc_x;
+					tileb_y <= tileb_y + tileb_colinc_y;
 				end else if (cycle==3) begin
 					//Move to the next pixel
 					vid_wen <= 1;
@@ -537,8 +540,6 @@ always @(posedge clk) begin
 						write_vid_addr_next <= write_vid_addr_next + 'h1;
 						tilea_x <= tilea_x + tilea_colinc_x;
 						tilea_y <= tilea_y + tilea_colinc_y;
-						tileb_x <= tileb_x + tileb_colinc_x;
-						tileb_y <= tileb_y + tileb_colinc_y;
 					end
 				end
 			end else begin
