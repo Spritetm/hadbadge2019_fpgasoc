@@ -251,7 +251,7 @@ reg [16:0] tilea_x;
 reg [16:0] tilea_y;
 wire [17:0] tilea_data;
 wire [11:0] tilemapa_addr;
-assign tilemapa_addr = {tilea_y[14:10], tilea_x[14:10]};
+assign tilemapa_addr = {tilea_y[15:10], tilea_x[15:10]};
 
 vid_tilemapmem tilemapa (
 	.ClockA(clk),
@@ -274,7 +274,7 @@ reg [16:0] tileb_x;
 reg [16:0] tileb_y;
 wire [17:0] tileb_data;
 wire [11:0] tilemapb_addr;
-assign tilemapb_addr = {tileb_y[14:10], tileb_x[14:10]};
+assign tilemapb_addr = {tileb_y[15:10], tileb_x[15:10]};
 
 vid_tilemapmem tilemapb (
 	.ClockA(clk),
