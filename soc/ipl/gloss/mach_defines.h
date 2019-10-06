@@ -80,7 +80,6 @@
 #define GFX_LAYEREN_TILEB (1<<2)
 #define GFX_LAYEREN_TILEA (1<<1)
 #define GFX_LAYEREN_SPR (1<<3)
-#define GFX_LAYEREN_TILEA_8x16 (1<<4)
 #define GFX_LAYEREN_FB_8BIT (1<<16)
 #define GFX_TILEA_OFF 0x0C
 #define GFX_TILEB_OFF 0x10
@@ -88,7 +87,9 @@
 #define GFX_TILEA_INC_ROW 0x18
 #define GFX_TILEB_INC_COL 0x1C
 #define GFX_TILEB_INC_ROW 0x20
-#define GFX_VIDPOS_REG 0x24
+#define GFX_VIDPOS_REG 0x24 //upper 16 bit is ypos, lower is xpos
+#define GFX_BGNDCOL_REG 0x28
+
 #define GFX_OFFSET_PAL 0x50002000
 #define GFX_OFFSET_TILEMAPA 0x50004000
 #define GFX_OFFSET_TILEMAPB 0x50008000

@@ -33,9 +33,9 @@ int gfx_load_fb_mem(uint8_t *fbmem, uint32_t *palmem, int fbbpp, int pitch,  cha
 		for (int y=0; y<h; y++) {
 			for (int x=0; x<w; x+=2) {
 				int v;
-				v=png_resolve_pixel(decoded, x,y,w,h,st.info_png.color.bitdepth)<<4;
-				v|=png_resolve_pixel(decoded, x+1,y,w,h,st.info_png.color.bitdepth);
-				fbmem[x+y*pitch]=v;
+				v=png_resolve_pixel(decoded, x,y,w,h,st.info_png.color.bitdepth);
+				v|=png_resolve_pixel(decoded, x+1,y,w,h,st.info_png.color.bitdepth)<<4;
+				fbmem[(x+y*pitch)/2]=v;
 			}
 		}
 	}

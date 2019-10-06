@@ -2,6 +2,8 @@
 //Functions here give a way to printf() text to the screen. It uses one of the
 //tile maps (a by default) as a console, and assumes an ASCII charset is loaded into that.
 
+//Use these by opening /dev/console.
+
 #include <stdio.h>
 #include "gloss/mach_defines.h"
 extern uint32_t GFXTILEMAPA[];

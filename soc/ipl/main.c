@@ -39,10 +39,6 @@ void cache_flush(void *addr_start, void *addr_end) {
 	*p=(uint32_t)addr_end-MACH_RAM_START;
 }
 
-
-
-volatile char *dummy;
-
 void usb_poll();
 
 typedef void (*main_cb)(int argc, char **argv);
@@ -75,101 +71,151 @@ extern char _binary_tileset_default_png_end;
 
 #define FB_PAL_OFFSET 256
 
+void gfx_set_xlate_val(int layer, int xcenter, int ycenter, float scale, float rot) {
+	float scale_inv=(1.0/scale);
+	float dx_x=cos(rot)*scale_inv;
+	float dx_y=-sin(rot)*scale_inv;
+	float dy_x=sin(rot)*scale_inv;
+	float dy_y=cos(rot)*scale_inv;
+	float start_x=-xcenter;
+	float start_y=-ycenter;
+	
+	int i_dx_x=64.0*dx_x;
+	int i_dx_y=64.0*dx_y;
+	int i_dy_x=64.0*dy_x;
+	int i_dy_y=64.0*dy_y;
+	int i_start_x=(-start_x+start_x*dx_x-start_y*dx_y)*64.0;
+	int i_start_y=(-start_y+start_y*dy_y-start_x*dy_x)*64.0;
+	
+	GFX_REG(GFX_TILEA_OFF)=(i_start_y<<16)+(i_start_x&0xffff);
+	GFX_REG(GFX_TILEA_INC_COL)=(i_dx_y<<16)+(i_dx_x&0xffff);
+	GFX_REG(GFX_TILEA_INC_ROW)=(i_dy_y<<16)+(i_dy_x&0xffff);
+}
+
 void main() {
 	MISC_REG(MISC_LED_REG)=0xfffff;
 	syscall_reinit();
 	printf("IPL running.\n");
-	lcdfb=malloc(320*512);
+
+	//Allocate fb memory
+	lcdfb=malloc(320*512/2);
+
+	//Set up the framebuffer address.
 	GFX_REG(GFX_FBADDR_REG)=((uint32_t)lcdfb)&0xFFFFFF;
+	//We're going to use a pitch of 512 pixels, and the fb palette will start at 256.
 	GFX_REG(GFX_FBPITCH_REG)=(FB_PAL_OFFSET<<GFX_FBPITCH_PAL_OFF)|(512<<GFX_FBPITCH_PITCH_OFF);
-	GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_LAYEREN_TILEB|GFX_LAYEREN_TILEA|GFX_LAYEREN_FB_8BIT;
+	//Blank out fb while we're loading stuff.
+	GFX_REG(GFX_LAYEREN_REG)=0;
+
+	//Load up the default tileset and font.
 	gfx_load_tiles_mem(GFXTILES, &GFXPAL[0], &_binary_tileset_default_png_start, (&_binary_tileset_default_png_end-&_binary_tileset_default_png_start));
-	for (int i=0; i<64*64; i++) GFXTILEMAPA[i]=32;
-	for (int i=0; i<64*64; i++) GFXTILEMAPB[i]=32;
-	const char *msg="Hello world, from tilemap A!";
-	for (int i=0; msg[i]!=0; i++) GFXTILEMAPA[i+64]=msg[i];
-	for (int i=0; msg[i]!=0; i++) GFXTILEMAPA[i+64*32]=msg[i];
-	GFX_REG(GFX_TILEA_INC_COL)=(2<<16)+64;
-	GFX_REG(GFX_TILEA_INC_ROW)=(60<<16)+2;
-	GFX_REG(GFX_TILEB_INC_COL)=64;
-	GFX_REG(GFX_TILEB_INC_ROW)=(64<<16);
+
 	printf("Tiles initialized\n");
 
+	//Open the console driver for output to screen.
 	FILE *console=fopen("/dev/console", "w");
 	setvbuf(console, NULL, _IOLBF, 1024); //make console line buffered
 	if (console==NULL) {
 		printf("Error opening console!\n");
 	}
-	fprintf(console, "\0331M\033C\0330A"); //Set map to tilemap B, clear tilemap, set attr to 0
-	fprintf(console, "Hello World!\n");
 
+	//Initialize the LCD
 	lcd_init(simulated());
 	printf("GFX inited. Yay!!\n");
 
+	//Initialize USB subsystem
 	tusb_init();
 	printf("USB inited.\n");
 	
+	//Initialize filesystem (fatfs, flash translation layer)
 	fs_init();
 	printf("Filesystem inited.\n");
 
 	printf("Loading bgnd...\n");
-	gfx_load_fb_mem(lcdfb, &GFXPAL[FB_PAL_OFFSET], 8, 512, &_binary_bgnd_png_start, (&_binary_bgnd_png_end-&_binary_bgnd_png_start));
-	cache_flush(lcdfb, lcdfb+320*512);
+	//This is the Hackaday logo background
+	gfx_load_fb_mem(lcdfb, &GFXPAL[FB_PAL_OFFSET], 4, 512, &_binary_bgnd_png_start, (&_binary_bgnd_png_end-&_binary_bgnd_png_start));
+	//Nuke the palette animation indexes to be black.
+	for (int x=0; x<10; x++) GFXPAL[FB_PAL_OFFSET+6+x]=0;
+	//Make sure image is in psram
+	cache_flush(lcdfb, lcdfb+320*512/2);
 	printf("bgnd loaded.\n");
 
+	//Enable layers needed
+	GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_LAYEREN_TILEB|GFX_LAYEREN_TILEA;
+
+
 	//loop
-	int p;
-	char buf[200];
-	usb_msc_on();
-	UART_REG(UART_IRDA_DIV_REG)=416;
-	int adcdiv=2;
-	MISC_REG(MISC_ADC_CTL_REG)=MISC_ADC_CTL_DIV(adcdiv)|MISC_ADC_CTL_ENA;
-	int cur_layer=0;
+	int p=0;
 	int old_btn=0;
-	float rot=0;
+	int old_usbstate=-1; //trigger change of usb state whatever state was
+	int bgnd_pal_state=10;
+	int selected=-1;
+	char selected_name[129];
 	while(1) {
 		p++;
 
-		rot+=0.1;
-		int dx=64*cos(rot);
-		int dy=64*sin(rot);
-		GFX_REG(GFX_TILEA_OFF)=(2<<16)+64;
-		GFX_REG(GFX_TILEA_INC_COL)=((dy&0xffff)<<16)|(dx&0xffff);
-		GFX_REG(GFX_TILEA_INC_ROW)=((dx&0xffff)<<16)|((-dy)&0xffff);
-
-		UART_REG(UART_IRDA_DATA_REG)=p;
-		int r=UART_REG(UART_IRDA_DATA_REG);
-		if (r!=-1) {
-			fprintf(console, "\0333Y%d: IR %d   \n", p, r);
+		bgnd_pal_state++;
+		if (bgnd_pal_state==200) bgnd_pal_state=0;
+		for (int x=0; x<10; x++) {
+			GFXPAL[FB_PAL_OFFSET+6+x] = (x==bgnd_pal_state)?GFXPAL[FB_PAL_OFFSET+5]:GFXPAL[FB_PAL_OFFSET+0];
 		}
+
+		gfx_set_xlate_val(0, 240,24, 1+sin(p*0.2)*0.1, sin(p*0.11)*0.1);
+
+		int usbstate=MISC_REG(MISC_GPEXT_IN_REG)&(1<<31);
+		if (usbstate!=old_usbstate) {
+			if (usbstate) {
+				usb_msc_on();
+				fprintf(console, "\0330M\033C\0330A"); //Set map to tilemap A, clear tilemap, set attr to 0
+				fprintf(console, "\0338;1PUSB CONNECTED"); //Menu header.
+				fprintf(console, "\0331M\033C\n"); //clear menu
+			} else {
+				usb_msc_off();
+				fprintf(console, "\0330M\033C\0330A"); //Set map to tilemap A, clear tilemap, set attr to 0
+				fprintf(console, "\0338;1PSELECT AN APP\n\n"); //Menu header.
+				fprintf(console, "\0331M\033C\n"); //clear menu
+				selected=-1;
+			}
+		}
+		old_usbstate=usbstate;
 
 		int btn=MISC_REG(MISC_BTN_REG);
-		fprintf(console, "\0334Ybtn: %d  \n", btn);
-
-		int id_int=flash_get_id(FLASH_SEL_INT);
-		int id_ext=flash_get_id(FLASH_SEL_CART);
-		fprintf(console, "flashid: %x / %x    \n", id_int, id_ext);
-
-		r=MISC_REG(MISC_ADC_VAL_REG);
-		//ADC measures BAT/2 with a ref of 3.3V (or whatever Vio is) corresponding to 1023
-		//int bat=((r/1023)*3.3)*2;
-		int bat=(r*3300*2)/(65535);
-		fprintf(console, "%x BAT %d mV (%d)   \n", MISC_REG(MISC_ADC_CTL_REG), bat, r);
-
-
+		int need_redraw=0;
+		if (selected==-1) {
+			need_redraw=1;
+			selected=0;
+			selected_name[0]=0;
+		}
 		if (btn&BUTTON_A) {
-			usb_msc_off();
-			start_app("autoexec.elf");
-			usb_msc_on();
-		}
-		if ((btn&BUTTON_B) && !(old_btn&BUTTON_B)) {
-			cur_layer=(cur_layer+1)&0xf;
-			GFX_REG(GFX_LAYEREN_REG)=cur_layer|GFX_LAYEREN_FB_8BIT;;
-			printf("i %d\n", cur_layer);
+			start_app(selected_name);
+		} else if (btn & BUTTON_UP) {
+			selected=selected-1;
+			if (selected==-1) selected=0;
+			need_redraw=1;
+		} else if (btn & BUTTON_DOWN) {
+			selected=selected+1;
+			need_redraw=1;
 		}
 
-		cache_flush(lcdfb, lcdfb+320*512);
-		for (int i=0; i<500; i++) {
+		while (need_redraw) {
+			fprintf(console, "\033C");
+			DIR *d=opendir("/");
+			struct dirent *ed;
+			int n=0;
+			while (ed=readdir(d)) {
+				fprintf(console, "\0338;%dP %c %s\n", n+4, n==selected?16:32, ed->d_name);
+				if (n==selected) strcpy(selected_name, ed->d_name);
+				n++;
+			}
+			closedir(d);
+			if (n<=selected) {
+				selected=n-1;
+			} else {
+				need_redraw=0;
+			}
+		}
+
+		while ((GFX_REG(GFX_VIDPOS_REG)>>16)<318) {
 			usb_poll();
 			cdc_task();
 			tud_task();
@@ -178,25 +224,18 @@ void main() {
 	}
 }
 
-void cdc_task(void)
-{
-	if ( tud_cdc_connected() )
-	{
+void cdc_task(void) {
+	if (tud_cdc_connected()) {
 		tud_cdc_write_flush();
 	}
 }
 
-// Invoked when cdc when line state changed e.g connected/disconnected
-void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts)
-{
-  (void) itf;
+//Invoked when cdc when line state changed e.g connected/disconnected
+void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts) {
+	(void) itf;
 
-  // connected
-	if ( dtr )
-	{
-		// print initial message when connected
-		tud_cdc_write_str("TinyUSB CDC MSC HID device example\r\n");
-
+	// connected
+	if (dtr) {
 		// switch stdout/stdin/stderr
 		for (int i=0;i<3;i++) {
 			close(i);
@@ -206,7 +245,7 @@ void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts)
 
 	if (!dtr) {
 		// switch back to serial
-		for (int i=0;i<3;i++) {
+		for (int i=0; i<3; i++) {
 			close(i);
 			open("/dev/ttyserial", O_RDWR);
 		}
@@ -214,7 +253,6 @@ void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts)
 }
 
 // Invoked when CDC interface received data from host
-void tud_cdc_rx_cb(uint8_t itf)
-{
-	(void) itf;
+void tud_cdc_rx_cb(uint8_t itf) {
+	(void)itf;
 }
