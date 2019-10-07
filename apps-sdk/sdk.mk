@@ -52,6 +52,8 @@ SDK_LIBS := gloss/libgloss.a
 
 LIBS += $(addprefix $(BUILD_DIR_SDK)/,$(SDK_LIBS))
 
+OBJS += $(addsuffix .o,$(BINFILES))
+
 #Note that OBJS are 'virtual' objects that live in the source directory next to the source files they
 #are generated from. (They're effectively the names of and paths to the source files, but with .c/.S/...
 #changed to .o.) OBJS_BUILDDIR contains the actual locations of the object files so we can depend
@@ -88,6 +90,18 @@ endef
 
 #Generate patterns to compile all app objects.
 $(foreach dir,$(sort $(dir $(OBJS))),$(eval $(call build_template,$(abspath $(BUILD_DIR)/$(dir)),$(abspath $(dir)))))
+
+
+define build_binrecipe
+#Recipe uses cp/rm because objcopy embeds the full path given into the symbol name...
+$(2): $(1)
+	$$(vecho) OBJCOPY $$(notdir $(1))
+	$$(Q)cp $(1) $$(basename $(2))
+	$$(Q)cd $(dir $(2)) && $$(OBJCOPY) -I binary -O elf32-littleriscv -B riscv $$(notdir $$(basename $(2))) $$(notdir $(2))
+	$$(Q)rm $$(basename $(2))
+endef
+
+$(foreach bin,$(BINFILES),$(eval $(call build_binrecipe,$(bin),$(abspath $(addprefix $(BUILD_DIR)/,$(addsuffix .o,$(bin)))))))
 
 #Dependency pattern for sdk libs. Called with lib name as $1, list of objs as $2.
 define sdklib_template
