@@ -98,6 +98,8 @@ PROVIDE ( opendir		= 0x40002084 );
 PROVIDE ( readdir		= 0x40002088 );
 PROVIDE ( closedir		= 0x4000208C );
 PROVIDE ( _sbrk			= 0x40002090 );
+PROVIDE ( gfx_load_fb_mem = 0x40002094 );
+PROVIDE ( gfx_load_tiles_mem = 0x40002094 );
 
 PROVIDE ( UART = 0x10000000 );
 PROVIDE ( MISC  = 0x20000000 );
