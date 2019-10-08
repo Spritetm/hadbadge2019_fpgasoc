@@ -114,8 +114,15 @@ parameter REG_SEL_FB_PITCH = 1;
 parameter REG_SEL_LAYER_EN = 2;
 parameter REG_SEL_TILEA_OFF = 3;
 parameter REG_SEL_TILEB_OFF = 4;
-parameter REG_SEL_VIDPOS = 5;
+parameter REG_SEL_TILEA_INC_COL = 5;
+parameter REG_SEL_TILEA_INC_ROW = 6;
+parameter REG_SEL_TILEB_INC_COL = 7;
+parameter REG_SEL_TILEB_INC_ROW = 8;
+parameter REG_SEL_VIDPOS = 9;
+parameter REG_SEL_BGNDCOL = 10;
 
+//Reminder: we have 64x64 tiles of 16x16 pixels, so in total a field of 1024x1024 pixels. Say we have one overflow bit, we need 11 bit
+//for everything... that leaves 5 bits for sub-pixel addressing in scaling modes. That sounds OK.
 reg [15:0] tilea_xoff;
 reg [15:0] tilea_yoff;
 reg [15:0] tileb_xoff;
@@ -125,8 +132,9 @@ wire [31:0] dout_tilemapa;
 wire [31:0] dout_tilemapb;
 wire [31:0] dout_palette;
 wire [31:0] dout_tilemem;
-reg tilea_8x16;
 reg fb_is_8bit;
+reg [31:0] bgnd_color;
+reg [8:0] fb_pal_offset;
 
 reg [1:0] cycle;
 reg [19:0] write_vid_addr;
@@ -139,6 +147,15 @@ wire [8:0] vid_ypos_next;
 wire [8:0] vid_xpos_next;
 assign vid_xpos_next = write_vid_addr_next[8:0];
 assign vid_ypos_next = write_vid_addr_next[17:9];
+
+reg [15:0] tilea_colinc_x;
+reg [15:0] tilea_colinc_y;
+reg [15:0] tilea_rowinc_x;
+reg [15:0] tilea_rowinc_y;
+reg [15:0] tileb_colinc_x;
+reg [15:0] tileb_colinc_y;
+reg [15:0] tileb_rowinc_x;
+reg [15:0] tileb_rowinc_y;
 
 always @(*) begin
 	cpu_sel_tilemem = 0;
@@ -153,15 +170,25 @@ always @(*) begin
 		if (addr[5:2]==REG_SEL_FB_ADDR) begin
 			dout = {8'h4, fb_addr};
 		end else if (addr[5:2]==REG_SEL_FB_PITCH) begin
-			dout = {16'h0, pitch};
+			dout = {7'h0, fb_pal_offset, pitch};
 		end else if (addr[5:2]==REG_SEL_LAYER_EN) begin
-			dout = {15'h0, fb_is_8bit, 11'h0, tilea_8x16, layer_en};
+			dout = {15'h0, fb_is_8bit, 12'h0,  layer_en};
 		end else if (addr[5:2]==REG_SEL_TILEA_OFF) begin
 			dout = {tilea_yoff, tilea_xoff};
 		end else if (addr[5:2]==REG_SEL_TILEB_OFF) begin
 			dout = {tileb_yoff, tileb_xoff};
+		end else if (addr[5:2]==REG_SEL_TILEA_INC_COL) begin
+			dout = {tilea_colinc_x, tilea_colinc_y};
+		end else if (addr[5:2]==REG_SEL_TILEA_INC_ROW) begin
+			dout = {tilea_rowinc_x, tilea_rowinc_y};
+		end else if (addr[5:2]==REG_SEL_TILEB_INC_COL) begin
+			dout = {tileb_colinc_x, tileb_colinc_y};
+		end else if (addr[5:2]==REG_SEL_TILEB_INC_ROW) begin
+			dout = {tileb_rowinc_x, tileb_rowinc_y};
 		end else if (addr[5:2]==REG_SEL_VIDPOS) begin
-			dout <= {7'h0, vid_ypos, 7'h0, vid_xpos};
+			dout = {7'h0, vid_ypos, 7'h0, vid_xpos};
+		end else if (addr[5:2]==REG_SEL_BGNDCOL) begin
+			dout = bgnd_color;
 		end
 	end else if (addr[16:13]=='h1) begin
 		cpu_sel_palette = 1;
@@ -214,11 +241,17 @@ vid_tilemem tilemem(
 );
 
 
+//Tilemap data:
+// 8:0 - tile
+// 9 - inv x
+// 10 - inv y
+// 17-11 - palette offset *4
+
 reg [16:0] tilea_x;
 reg [16:0] tilea_y;
 wire [17:0] tilea_data;
 wire [11:0] tilemapa_addr;
-assign tilemapa_addr = {tilea_y[5:0], tilea_x[5:0]};
+assign tilemapa_addr = {tilea_y[15:10], tilea_x[15:10]};
 
 vid_tilemapmem tilemapa (
 	.ClockA(clk),
@@ -241,7 +274,7 @@ reg [16:0] tileb_x;
 reg [16:0] tileb_y;
 wire [17:0] tileb_data;
 wire [11:0] tilemapb_addr;
-assign tilemapb_addr = {tileb_y[5:0], tileb_x[5:0]};
+assign tilemapb_addr = {tileb_y[15:10], tileb_x[15:10]};
 
 vid_tilemapmem tilemapb (
 	.ClockA(clk),
@@ -261,6 +294,10 @@ vid_tilemapmem tilemapb (
 );
 
 
+reg [16:0] tilea_linestart_x;
+reg [16:0] tilea_linestart_y;
+reg [16:0] tileb_linestart_x;
+reg [16:0] tileb_linestart_y;
 
 reg [8:0] pal_addr;
 wire [31:0] pal_data;
@@ -282,6 +319,19 @@ vid_palettemem palettemem(
 	.QB(pal_data)
 );
 
+reg [31:0] alphamixer_in_b;
+reg [7:0] alphamixer_rate;
+wire [31:0] alphamixer_out_cur;
+reg [31:0] alphamixer_out;
+
+video_alphamixer mixer(
+	.in_a(pal_data),
+	.in_b(alphamixer_in_b),
+	.rate(alphamixer_rate),
+	.out(alphamixer_out_cur)
+);
+
+
 /*
 Note we have slightly more than 4 clock cycles per pixel here. This means we can have 4 layers.
 
@@ -295,22 +345,21 @@ We have 4 states per pixel, 0-3 This is what happens in each state:
 0:
 	TileA tilemem pixel -> palette
 	TileB tilemap -> tilemem
-	FB palette data -> pixel hold
+	FB palette data -> alpha mixer
 1:
-	TileA palette data -> pixel hold
+	TileA palette data -> alpha mixer
 	TileB tilemem pixel -> palette
 2:
 	TileA X/Y -> tilemap
-	TileB palette data -> pixel hold
+	TileB palette data -> alpha mixer
 	Sprite linebuf pixel -> palette
 3:
 	TileA tilemap -> tilemem
 	TileB X/Y -> tilemap
-	Sprite palette data -> pixel hold
+	Sprite palette data -> alpha mixer
 	FB data -> palette
 
 */
-
 
 reg [7:0] fb_pixel;
 
@@ -319,48 +368,39 @@ always @(*) begin
 	tilepix_y=0;
 	tilemem_no=0;
 	pal_addr=0;
-	tilea_x=0;
-	tilea_y = ({7'h0,vid_ypos_next} + tilea_yoff)/16;
-	tileb_x = ({7'h0,vid_xpos_next} + tileb_xoff)/16;
-	tileb_y = ({7'h0,vid_ypos_next} + tileb_yoff)/16;
-	if (tilea_8x16) begin
-		tilea_x = ({7'h0,vid_xpos_next} + tilea_xoff)/8;
-	end else begin
-		tilea_x = ({7'h0,vid_xpos_next} + tilea_xoff)/16;
-	end
 
 	if (cycle==0) begin
-		tilepix_x = (vid_xpos + tileb_xoff);
-		tilepix_y = (vid_ypos + tileb_yoff);
+		tilepix_x = tileb_data[9] ? (15-tileb_x[9:6]) : tileb_x[9:6];
+		tilepix_y = tileb_data[10] ? (15-tileb_y[9:6]) : tileb_y[9:6];
 		tilemem_no = tileb_data[8:0];
-		pal_addr = {5'h2, tilemem_pixel}; //from tilemap a
+		pal_addr = tilemem_pixel + {tilea_data[17:11], 2'b0}; //from tilemap a
+		alphamixer_rate = layer_en[0] ? pal_data[31:24] : 0; //fb
+		alphamixer_in_b = bgnd_color; //background
 	end else if (cycle==1) begin
 		tilepix_x = 480-vid_xpos;  //tilemap should not be used; give clear indication if it is.
 		tilepix_y = vid_ypos;
 		tilemem_no = 'h21;
-		pal_addr = {5'h1, tilemem_pixel}; //from tilemap b
+		pal_addr = tilemem_pixel + {tileb_data[17:11], 2'b0}; //from tilemap b
+		alphamixer_rate = layer_en[1] ? pal_data[31:24] : 0; //tilemap a
+		alphamixer_in_b = alphamixer_out; //bgnd+fb
 	end else if (cycle==2) begin
 		tilepix_x = 480-vid_xpos;  //tilemap should not be used; give clear indication if it is.
 		tilepix_y = vid_ypos;
 		tilemem_no = 'h21;
-		pal_addr = 3; //todo: sprite
+		pal_addr = 7; //todo: sprite
+		alphamixer_rate = layer_en[2] ? pal_data[31:24] : 0; //tilemap b
+		alphamixer_in_b = alphamixer_out; //bgnd+fb+tilemap_a
 	end else begin //cycle==3
-		if (tilea_8x16) begin
-			tilepix_x[2:0] = (vid_xpos + tilea_xoff);
-			tilepix_x[3] = tilea_data[0];
-			tilepix_y = (vid_ypos + tilea_yoff);
-			tilemem_no = {1'h0, tilea_data[8:1]};
-		end else begin
-			tilepix_x = (vid_xpos + tilea_xoff);
-			tilepix_y = (vid_ypos + tilea_yoff);
-			tilemem_no = tilea_data[8:0];
-		end
-		pal_addr = {5'h0, fb_pixel}; //from fb
+		tilepix_x = tilea_data[9] ? (15-tilea_x[9:6]) : tilea_x[9:6];
+		tilepix_y = tilea_data[10] ? (15-tilea_y[9:6]) : tilea_y[9:6];
+		tilemem_no = tilea_data[8:0];
+		pal_addr = {fb_pixel+fb_pal_offset}; //from fb
+		alphamixer_rate = layer_en[3] ? pal_data[31:24] : 0; //sprite
+		alphamixer_in_b = alphamixer_out; //bgnd+fb+tilemap_a+tilemap_b
 	end
 end
 
-reg [31:0] pixel_hold;
-assign vid_data_out = pixel_hold[23:0];
+assign vid_data_out = alphamixer_out[23:0];
 reg ready_delayed;
 assign ready = ready_delayed & ((wstrb!=0) || ren);
 
@@ -377,8 +417,21 @@ always @(posedge clk) begin
 		tileb_xoff <= 0;
 		tilea_xoff <= 0;
 		tileb_xoff <= 0;
-		tilea_8x16 <= 0;
+		tilea_linestart_x <= 0;
+		tilea_linestart_y <= 0;
+		tileb_linestart_x <= 0;
+		tileb_linestart_y <= 0;
+		tilea_colinc_x <= (1<<6);
+		tilea_colinc_y <= 0;
+		tilea_rowinc_x <= 0;
+		tilea_rowinc_y <= (1<<6);
+		tileb_colinc_x <= (1<<6);
+		tileb_colinc_y <= 0;
+		tileb_rowinc_x <= 0;
+		tileb_rowinc_y <= (1<<6);
 		fb_is_8bit <= 0;
+		alphamixer_out <= 0;
+		bgnd_color <= 0;
 	end else begin
 		/* CPU interface */
 		ready_delayed <= ((wstrb!=0) | ren);
@@ -387,9 +440,9 @@ always @(posedge clk) begin
 				fb_addr <= din[23:0];
 			end else if (addr[5:2]==REG_SEL_FB_PITCH) begin
 				pitch <= din[15:0];
+				fb_pal_offset=din[24:16];
 			end else if (addr[5:2]==REG_SEL_LAYER_EN) begin
 				layer_en <= din[3:0];
-				tilea_8x16 <= din[4];
 				fb_is_8bit <= din[16];
 			end else if (addr[5:2]==REG_SEL_TILEA_OFF) begin
 				tilea_xoff <= din[15:0];
@@ -397,6 +450,20 @@ always @(posedge clk) begin
 			end else if (addr[5:2]==REG_SEL_TILEB_OFF) begin
 				tileb_xoff <= din[15:0];
 				tileb_yoff <= din[31:16];
+			end else if (addr[5:2]==REG_SEL_TILEA_INC_COL) begin
+				tilea_colinc_x <= din[15:0];
+				tilea_colinc_y <= din[31:16];
+			end else if (addr[5:2]==REG_SEL_TILEA_INC_ROW) begin
+				tilea_rowinc_x <= din[15:0];
+				tilea_rowinc_y <= din[31:16];
+			end else if (addr[5:2]==REG_SEL_TILEB_INC_COL) begin
+				tileb_colinc_x <= din[15:0];
+				tileb_colinc_y <= din[31:16];
+			end else if (addr[5:2]==REG_SEL_TILEB_INC_ROW) begin
+				tileb_rowinc_x <= din[15:0];
+				tileb_rowinc_y <= din[31:16];
+			end else if (addr[5:2]==REG_SEL_BGNDCOL) begin
+				bgnd_color <= din;
 			end
 		end
 
@@ -416,6 +483,14 @@ always @(posedge clk) begin
 		if (write_vid_addr[19:9]>=320) begin
 			//We're finished with this frame. Wait until the video generator starts drawing the next frame.
 			dma_run <= 0;
+			tilea_linestart_x <= tilea_xoff + tilea_rowinc_x;
+			tilea_linestart_y <= tilea_yoff + tilea_rowinc_y;
+			tilea_x <= tilea_xoff;
+			tilea_y <= tilea_yoff;
+			tileb_linestart_x <= tileb_xoff + tileb_rowinc_x;
+			tileb_linestart_y <= tileb_yoff + tileb_rowinc_y;
+			tileb_x <= tileb_xoff;
+			tileb_y <= tileb_yoff;
 			if (next_field) begin
 				write_vid_addr_next <= 0;
 				dma_start_addr <= fb_addr;
@@ -433,6 +508,7 @@ always @(posedge clk) begin
 					dma_do_read <= 1;
 				end
 
+				alphamixer_out <= alphamixer_out_cur;
 				cycle <= cycle + 1;
 				if (cycle==0) begin
 					if (fb_is_8bit) begin
@@ -440,14 +516,10 @@ always @(posedge clk) begin
 					end else begin
 						fb_pixel <= {4'h0, dma_data[vid_xpos[3:0]*4+:4]};
 					end
-					pixel_hold <= 0;
-					if (layer_en[0]) pixel_hold <= pal_data; //fb data
 				end else if (cycle==1) begin
-					if (layer_en[1]) pixel_hold <= pal_data; //tilemap a
-				end else if (cycle==2) begin
-					if (layer_en[2]) pixel_hold <= pal_data; //tilemap b
+					tileb_x <= tileb_x + tileb_colinc_x;
+					tileb_y <= tileb_y + tileb_colinc_y;
 				end else if (cycle==3) begin
-					if (layer_en[3]) pixel_hold <= pal_data; //sprite
 					//Move to the next pixel
 					vid_wen <= 1;
 					if (write_vid_addr[8:0]>479) begin
@@ -456,8 +528,18 @@ always @(posedge clk) begin
 						write_vid_addr_next[8:0] <= 0;
 						dma_start_addr <= dma_start_addr + (fb_is_8bit?pitch:pitch/2);
 						dma_run <= 0;
+						tilea_x <= tilea_linestart_x;
+						tilea_y <= tilea_linestart_y;
+						tilea_linestart_x <= tilea_linestart_x + tilea_rowinc_x;
+						tilea_linestart_y <= tilea_linestart_y + tilea_rowinc_y;
+						tileb_x <= tileb_linestart_x;
+						tileb_y <= tileb_linestart_y;
+						tileb_linestart_x <= tileb_linestart_x + tileb_rowinc_x;
+						tileb_linestart_y <= tileb_linestart_y + tileb_rowinc_y;
 					end else begin
 						write_vid_addr_next <= write_vid_addr_next + 'h1;
+						tilea_x <= tilea_x + tilea_colinc_x;
+						tilea_y <= tilea_y + tilea_colinc_y;
 					end
 				end
 			end else begin

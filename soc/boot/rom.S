@@ -121,6 +121,8 @@ memtestrloop:
 
 	//LEDS: 5 for OK
 	li a2, 0x05
+	li a1, MISC_OFFSET
+	sw a2, MISC_LED_REG(a1)
 	j memtestok
 
 memtesterr:
@@ -131,8 +133,6 @@ memtesterr:
 	j memtesterr
 
 memtestok:
-	li a1, MISC_OFFSET
-	sw a2, MISC_LED_REG(a1)
 
 	//un-reset 2nd cpu
 //	li a2, 2

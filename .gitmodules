@@ -16,3 +16,6 @@
 [submodule "app-basic/my_basic"]
 	path = app-basic/my_basic
 	url = https://github.com/paladin-t/my_basic.git
+[submodule "soc/ipl/lodepng"]
+	path = soc/ipl/lodepng
+	url = https://github.com/lvandeve/lodepng.git

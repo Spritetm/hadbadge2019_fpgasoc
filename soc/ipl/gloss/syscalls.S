@@ -83,4 +83,8 @@ _start:
 	j closedir
 .global sbrk_app //maps to _sbrk in app code
 	j sbrk_app
+.global gfx_load_fb_mem
+	j gfx_load_fb_mem
+.global gfx_load_tiles_mem
+	j gfx_load_tiles_mem
 

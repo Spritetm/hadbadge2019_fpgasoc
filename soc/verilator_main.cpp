@@ -37,7 +37,7 @@ int main(int argc, char **argv) {
 	trace->open("soctrace.vcd");
 
 	tb->btn=0xff; //no buttons pressed
-	int do_trace=0;
+	int do_trace=1;
 
 	Psram_emu psrama=Psram_emu(8*1024*1024);
 	Psram_emu psramb=Psram_emu(8*1024*1024);

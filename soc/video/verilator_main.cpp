@@ -5,7 +5,7 @@
 #include "video_renderer.hpp"
 #include <gd.h>
 #include <stdint.h>
-#include "../ipl/vgapal.h"
+#include "vgapal.h"
 
 uint64_t ts=0;
 double sc_time_stamp() {
@@ -18,6 +18,7 @@ void tb_write(Vvid *tb, VerilatedVcdC *trace, int addr, int data) {
 	tb->din=data;
 	tb->wstrb=0xf;
 	do {
+		tb->eval();
 		tb->clk=1;
 		tb->eval();
 		if (trace) trace->dump(ts++);
@@ -126,7 +127,7 @@ int main(int argc, char **argv) {
 
 	Video_renderer *vid=new Video_renderer(true);
 
-	FILE *f=fopen("../ipl/background.raw", "r");
+	FILE *f=fopen("background.raw", "r");
 	if (!f) perror("raw fb data");
 	for (int i=0; i<320; i++) {
 		fread(&qpi_mem[512*i], 480, 1, f);
@@ -135,29 +136,31 @@ int main(int argc, char **argv) {
 
 	tb->reset=1;
 	tb->ren=0;
-	for (int i=0; i<8; i++) {
+	for (int i=0; i<16; i++) {
 		tb->clk = 1;
 		tb->eval();
 		trace->dump(ts++);
 		tb->clk = 0;
 		tb->eval();
 		trace->dump(ts++);
+		if (i==8) tb->reset=0;
 	}
-	tb->reset=0;
 	
-	for (int i=0; i<255; i++) {
+	for (int i=0; i<256; i++) {
 		int p;
 		p=vgapal[i*3];
 		p|=vgapal[i*3+1]<<8;
 		p|=vgapal[i*3+2]<<16;
+		p|=(0x7F)<<24;
 		tb_write(tb, trace, PAL_OFF+(i*4), p);
+		tb_write(tb, trace, PAL_OFF+((i+256)*4), p);
 	}
 
 	load_tilemap(tb, trace, "tileset.png");
 	printf("Buffers inited.\n");
-//	tb_write(tb, trace,REG_OFF+2*4, 0x2); //ena tile map a
+	tb_write(tb, trace,REG_OFF+2*4, 0x2); //ena tile map a
 //	tb_write(tb, trace,REG_OFF+2*4, 0x1); //ena fb
-	tb_write(tb, trace,REG_OFF+2*4, 0x10001); //ena fb, 8bit
+//	tb_write(tb, trace,REG_OFF+2*4, 0x10001); //ena fb, 8bit
 
 	int fetch_next=0;
 	int next_line=0;
@@ -165,6 +168,7 @@ int main(int argc, char **argv) {
 	float pixelclk_pos=0;
 	int qpi_is_idle=0, qpi_next_word=0;
 	uint32_t qpi_rdata=0;
+	int layer=0;
 	while(1) {
 		tb->pixelclk = (pixelclk_pos>0.5)?1:0;
 		tb->clk = !tb->clk;
@@ -173,6 +177,8 @@ int main(int argc, char **argv) {
 		tb->qpi_is_idle=qpi_is_idle;
 		tb->qpi_next_word=qpi_next_word;
 		tb->eval();
+		tb->clk = !tb->clk;
+		tb->eval();
 		trace->dump(ts++);
 
 		pixelclk_pos=pixelclk_pos+0.26;
@@ -180,8 +186,13 @@ int main(int argc, char **argv) {
 			pixelclk_pos-=1.0;
 			vid->next_pixel(tb->red, tb->green, tb->blue, &fetch_next, &next_line, &next_field);
 			tb->fetch_next=fetch_next;
-			tb->next_line=next_line;
+			if (tb->next_field==0 && next_field==1) {
+				layer=(layer+1)&0xf;
+				tb_write(tb, trace,REG_OFF+2*4, 0x10000|layer);
+				printf("Layer: %x\n", layer);
+			}
 			tb->next_field=next_field;
+			tb->next_line=next_line;
 		}
 	}
 	trace->flush();

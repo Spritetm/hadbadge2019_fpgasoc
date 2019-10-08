@@ -1,5 +1,6 @@
+//Combinatorial signed 18x18 multiplier.
+
 module mul_18x18(
-	input clock, reset,
 	input [17:0] a,
 	input [17:0] b,
 	output [35:0] dout
@@ -133,11 +134,10 @@ dsp_mult_0(
 		 .CE1			(1'b1),
 		 .CE2			(1'b1),
 		 .CE3			(1'b1),
-		 .CLK0			(clock),
+		 .CLK0			(1'b0),
 		 .CLK1			(1'b0),
 		 .CLK2			(1'b0),
 		 .CLK3			(1'b0),
-//		 .RST0			(reset),
 		 .RST0			(1'b0),
 		 .RST1			(1'b0),
 		 .RST2			(1'b0),
@@ -178,6 +178,4 @@ dsp_mult_0(
 		 .SRIB2			(),
 		 .SRIB1			(),
 	   .SRIB0			());
-
-
-endmodule // mult9x9
+endmodule

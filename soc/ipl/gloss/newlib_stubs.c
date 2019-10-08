@@ -15,6 +15,7 @@
 #include "uart.h"
 #include "../fatfs/source/ff.h"
 #include "../loadapp.h"
+#include "console_out.h"
 
 #include "tusb.h"
 
@@ -40,7 +41,8 @@ int remap_fatfs_errors(FRESULT f) {
 
 #define FD_TYPE_DBGUART 0
 #define FD_TYPE_USBUART 1
-#define FD_TYPE_FATFS 2
+#define FD_TYPE_CONSOLE 2
+#define FD_TYPE_FATFS 3
 
 #define FD_FLAG_OPEN (1<<0)
 #define FD_FLAG_WRITABLE (1<<1)
@@ -102,7 +104,7 @@ int _open(const char *name, int flags, int mode) {
 		errno=ENFILE;
 		return -1;
 	}
-	// Special cases for USB-UART
+	// Special cases for device files
 	if (!strcmp(name, "/dev/ttyUSB")) {
 		fd_entry[i].type=FD_TYPE_USBUART;
 		fd_entry[i].flags=FD_FLAG_OPEN;
@@ -111,6 +113,9 @@ int _open(const char *name, int flags, int mode) {
 		fd_entry[i].type=FD_TYPE_DBGUART;
 		fd_entry[i].flags=FD_FLAG_OPEN;
 		if ((flags+1) & (O_WRONLY+1)) fd_entry[i].flags|=FD_FLAG_WRITABLE;
+	} else if (!strcmp(name, "/dev/console")){
+		fd_entry[i].type=FD_TYPE_CONSOLE;
+		fd_entry[i].flags=FD_FLAG_OPEN;
 	} else {
 		int fmode=0;
 		if (flags & O_APPEND) fmode|=FA_OPEN_APPEND;
@@ -173,6 +178,8 @@ ssize_t _write(int file, const void *ptr, size_t len) {
 		return len;
 	} else if (fd_entry[file].type==FD_TYPE_USBUART) {
 		return tud_cdc_write(ptr, len);
+	} else if (fd_entry[file].type=FD_TYPE_CONSOLE) {
+		return console_write(ptr, len);
 	} else if (fd_entry[file].type==FD_TYPE_FATFS) {
 		UINT rlen;
 		FRESULT r=f_write(fd_entry[file].fatfcb, ptr, len, &rlen);
@@ -269,6 +276,8 @@ int _gettimeofday(struct timeval *tp, void *tzp) {
 int _isatty(int file) {
 	CHECK_IF_VALID_FD(file);
 	if (fd_entry[file].type==FD_TYPE_DBGUART) return 1;
+	if (fd_entry[file].type==FD_TYPE_USBUART) return 1;
+	if (fd_entry[file].type==FD_TYPE_CONSOLE) return 1;
 	return 0;
 }
 

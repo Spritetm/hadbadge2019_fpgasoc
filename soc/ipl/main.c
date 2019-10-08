@@ -8,7 +8,7 @@
 #include <lcd.h>
 #include <sys/types.h>
 #include <dirent.h>
-#include "ugui.h"
+#include <math.h>
 #include <string.h>
 #include "tusb.h"
 #include "hexdump.h"
@@ -16,8 +16,8 @@
 #include "flash.h"
 #include "loadapp.h"
 #include "gloss/newlib_stubs.h"
-#include "font-8x16.h"
-#include "vgapal.h"
+#include "lodepng/lodepng.h"
+#include "gfx_load.h"
 
 extern volatile uint32_t UART[];
 #define UART_REG(i) UART[(i)/4]
@@ -27,56 +27,17 @@ extern volatile uint32_t LCD[];
 #define LCD_REG(i) LCD[(i)/4]
 extern volatile uint32_t GFXREG[];
 #define GFX_REG(i) GFXREG[(i)/4]
-extern volatile uint32_t GFXPAL[];
+extern uint32_t GFXPAL[];
 extern uint32_t GFXTILES[];
 extern uint32_t GFXTILEMAPA[];
 extern uint32_t GFXTILEMAPB[];
 
 uint8_t *lcdfb;
-UG_GUI ugui;
 
 void cache_flush(void *addr_start, void *addr_end) {
 	volatile uint32_t *p = (volatile uint32_t*)(((uint32_t)addr_start & ~3) - MACH_RAM_START + MACH_FLUSH_REGION);
 	*p=(uint32_t)addr_end-MACH_RAM_START;
 }
-
-
-static void lcd_pset_4bit(UG_S16 x, UG_S16 y, UG_COLOR c) {
-	if (lcdfb==NULL) return;
-	if (x<0 || x>480) return;
-	if (y<0 || y>320) return;
-	int n=0;
-	if (c&(1<<7)) n|=4;
-	if (c&(1<<15)) n|=2;
-	if (c&(1<<23)) n|=1;
-	if (c&(1<<6)) n|=8;
-	if (c&(1<<14)) n|=8;
-	if (c&(1<<22)) n|=8;
-	uint8_t o=lcdfb[(x+y*512)/2];
-	if (x&1) {
-		o=(o&0xf)|(n<<4);
-	} else {
-		o=(o&0xf0)|(n);
-	}
-	lcdfb[(x+y*512)/2]=o;
-}
-
-static void lcd_pset_8bit(UG_S16 x, UG_S16 y, UG_COLOR c) {
-	if (lcdfb==NULL) return;
-	if (x<0 || x>480) return;
-	if (y<0 || y>320) return;
-	int n=0;
-	if (c&(1<<7)) n|=4;
-	if (c&(1<<15)) n|=2;
-	if (c&(1<<23)) n|=1;
-	if (c&(1<<6)) n|=8;
-	if (c&(1<<14)) n|=8;
-	if (c&(1<<22)) n|=8;
-	lcdfb[x+y*512]=n;
-}
-
-
-volatile char *dummy;
 
 void usb_poll();
 
@@ -96,45 +57,6 @@ void start_app(char *app) {
 	printf("App returned.\n");
 }
 
-void pal_init_vgacolors(int offset) {
-	int j=0;
-	for (int i=0; i<256; i++) {
-		int p=0;
-		p+=vgapal[j++];
-		p+=vgapal[j++]<<8;
-		p+=vgapal[j++]<<16;
-		GFXPAL[offset+i] =p;
-	}
-}
-
-void load_font() {
-	int ix=0;
-	int col;
-	for (int ch=0; ch<256; ch++) {
-		for (int y=0; y<16; y++) {
-			uint32_t p;
-			col=0x7;
-			uint8_t c=vga_font[ch*16+y];
-			for (int n=0; n<8; n++) {
-				p<<=4;
-				if (c&1) {
-					p|=col;
-					col=0xf;
-				} else {
-					col=0x7;
-				}
-				c>>=1;
-			}
-			if ((ch&1)==0) {
-				GFXTILES[(ch/2)*32+y*2]=p;
-			} else {
-				GFXTILES[(ch/2)*32+y*2+1]=p;
-			}
-			GFXTILES[(ch+256)*32+y*2]=p;
-			GFXTILES[(ch+256)*32+y*2+1]=0;
-		}
-	}
-}
 
 int simulated() {
 	return MISC_REG(MISC_SOC_VER)&0x8000;
@@ -142,125 +64,158 @@ int simulated() {
 
 void cdc_task();
 
+extern char _binary_bgnd_png_start;
+extern char _binary_bgnd_png_end;
+extern char _binary_tileset_default_png_start;
+extern char _binary_tileset_default_png_end;
+
+#define FB_PAL_OFFSET 256
+
+void gfx_set_xlate_val(int layer, int xcenter, int ycenter, float scale, float rot) {
+	float scale_inv=(1.0/scale);
+	float dx_x=cos(rot)*scale_inv;
+	float dx_y=-sin(rot)*scale_inv;
+	float dy_x=sin(rot)*scale_inv;
+	float dy_y=cos(rot)*scale_inv;
+	float start_x=-xcenter;
+	float start_y=-ycenter;
+	
+	int i_dx_x=64.0*dx_x;
+	int i_dx_y=64.0*dx_y;
+	int i_dy_x=64.0*dy_x;
+	int i_dy_y=64.0*dy_y;
+	int i_start_x=(-start_x+start_x*dx_x-start_y*dx_y)*64.0;
+	int i_start_y=(-start_y+start_y*dy_y-start_x*dy_x)*64.0;
+	
+	GFX_REG(GFX_TILEA_OFF)=(i_start_y<<16)+(i_start_x&0xffff);
+	GFX_REG(GFX_TILEA_INC_COL)=(i_dx_y<<16)+(i_dx_x&0xffff);
+	GFX_REG(GFX_TILEA_INC_ROW)=(i_dy_y<<16)+(i_dy_x&0xffff);
+}
+
 void main() {
 	MISC_REG(MISC_LED_REG)=0xfffff;
 	syscall_reinit();
 	printf("IPL running.\n");
-	lcdfb=malloc(320*512);
+
+	//Allocate fb memory
+	lcdfb=malloc(320*512/2);
+
+	//Set up the framebuffer address.
 	GFX_REG(GFX_FBADDR_REG)=((uint32_t)lcdfb)&0xFFFFFF;
-//	GFX_REG(GFX_LAYEREN_REG)=(GFX_LAYEREN_FB&0)|GFX_LAYEREN_TILEA|GFX_TILEA_8x16;
-	GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_LAYEREN_TILEA_8x16|GFX_LAYEREN_FB_8BIT;
-	pal_init_vgacolors(0);
-	pal_init_vgacolors(256);
-	for (int i=0; i<64*64; i++) GFXTILEMAPA[i]=32;
-	for (int i=0; i<64*64; i++) GFXTILEMAPB[i]=32;
-	const char *msg="Hello world, from tilemap A!";
-	const char *msg2="This is tilemap B.";
-	for (int i=0; msg[i]!=0; i++) GFXTILEMAPA[i+64]=msg[i];
-	for (int i=0; msg2[i]!=0; i++) GFXTILEMAPB[i+64]=msg2[i]+256;
-	load_font();
+	//We're going to use a pitch of 512 pixels, and the fb palette will start at 256.
+	GFX_REG(GFX_FBPITCH_REG)=(FB_PAL_OFFSET<<GFX_FBPITCH_PAL_OFF)|(512<<GFX_FBPITCH_PITCH_OFF);
+	//Blank out fb while we're loading stuff.
+	GFX_REG(GFX_LAYEREN_REG)=0;
+
+	//Load up the default tileset and font.
+	gfx_load_tiles_mem(GFXTILES, &GFXPAL[0], &_binary_tileset_default_png_start, (&_binary_tileset_default_png_end-&_binary_tileset_default_png_start));
+
 	printf("Tiles initialized\n");
 
-	lcd_init(simulated());
-	UG_Init(&ugui, lcd_pset_8bit, 480, 320);
-//	if (!simulated) 
-	memset(lcdfb, 0, 320*512);
-	MISC_REG(MISC_SOC_VER)=1;
-	cache_flush(lcdfb, lcdfb+320*512);
-	MISC_REG(MISC_SOC_VER)=0;
-//	while(1);
-
-	UG_FontSelect(&FONT_12X16);
-	UG_SetForecolor(C_WHITE);
-	UG_PutString(0, 0, "Hello world!");
-	UG_PutString(0, 320-20, "Narf.");
-	if (!simulated()) {
-		UG_SetForecolor(C_GREEN);
-		UG_PutString(0, 16, "This is a test of the framebuffer to HDMI and LCD thingamajig. What you see now is the framebuffer memory.");
+	//Open the console driver for output to screen.
+	FILE *console=fopen("/dev/console", "w");
+	setvbuf(console, NULL, _IOLBF, 1024); //make console line buffered
+	if (console==NULL) {
+		printf("Error opening console!\n");
 	}
-	cache_flush(lcdfb, lcdfb+320*512);
+
+	//Initialize the LCD
+	lcd_init(simulated());
 	printf("GFX inited. Yay!!\n");
 
-
+	//Initialize USB subsystem
 	tusb_init();
 	printf("USB inited.\n");
 	
-
-	printf("Your random numbers are:\n");
-	for (int i=0; i<16; i++) {
-		uint32_t r=MISC_REG(MISC_RNG_REG);
-		printf("%d: %08X (%d)\n", i, r, r);
-	}
-
+	//Initialize filesystem (fatfs, flash translation layer)
 	fs_init();
+	printf("Filesystem inited.\n");
 
+	printf("Loading bgnd...\n");
+	//This is the Hackaday logo background
+	gfx_load_fb_mem(lcdfb, &GFXPAL[FB_PAL_OFFSET], 4, 512, &_binary_bgnd_png_start, (&_binary_bgnd_png_end-&_binary_bgnd_png_start));
+	//Nuke the palette animation indexes to be black.
+	for (int x=0; x<10; x++) GFXPAL[FB_PAL_OFFSET+6+x]=0;
+	//Make sure image is in psram
+	cache_flush(lcdfb, lcdfb+320*512/2);
+	printf("bgnd loaded.\n");
 
-	FILE *f=fopen("background.raw", "r");
-	if (f) {
-		for (int y=0; y<480; y++) {
-			fread(&lcdfb[y*512], 480, 1, f);
-		}
-		fclose(f);
-	}
-	cache_flush(lcdfb, lcdfb+320*512);
-
+	//Enable layers needed
+	GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_LAYEREN_TILEB|GFX_LAYEREN_TILEA;
 
 
 	//loop
-	int p;
-	char buf[200];
-	usb_msc_on();
-	UART_REG(UART_IRDA_DIV_REG)=416;
-	int adcdiv=2;
-	MISC_REG(MISC_ADC_CTL_REG)=MISC_ADC_CTL_DIV(adcdiv)|MISC_ADC_CTL_ENA;
-	int cur_layer=0;
+	int p=0;
 	int old_btn=0;
+	int old_usbstate=-1; //trigger change of usb state whatever state was
+	int bgnd_pal_state=10;
+	int selected=-1;
+	char selected_name[129];
 	while(1) {
 		p++;
 
-		UART_REG(UART_IRDA_DATA_REG)=p;
-		int r=UART_REG(UART_IRDA_DATA_REG);
-		if (r!=-1) {
-			sprintf(buf, "%d: IR %d   ", p, r);
-			UG_SetForecolor(C_RED);
-			UG_PutString(48, 148, buf);
+		bgnd_pal_state++;
+		if (bgnd_pal_state==200) bgnd_pal_state=0;
+		for (int x=0; x<10; x++) {
+			GFXPAL[FB_PAL_OFFSET+6+x] = (x==bgnd_pal_state)?GFXPAL[FB_PAL_OFFSET+5]:GFXPAL[FB_PAL_OFFSET+0];
 		}
 
-//		MISC_REG(MISC_LED_REG)=p;
-		sprintf(buf, "%d", p);
-		UG_SetForecolor(C_RED);
-		UG_PutString(48, 64, buf);
+		gfx_set_xlate_val(0, 240,24, 1+sin(p*0.2)*0.1, sin(p*0.11)*0.1);
+
+		int usbstate=MISC_REG(MISC_GPEXT_IN_REG)&(1<<31);
+		if (usbstate!=old_usbstate) {
+			if (usbstate) {
+				usb_msc_on();
+				fprintf(console, "\0330M\033C\0330A"); //Set map to tilemap A, clear tilemap, set attr to 0
+				fprintf(console, "\0338;1PUSB CONNECTED"); //Menu header.
+				fprintf(console, "\0331M\033C\n"); //clear menu
+			} else {
+				usb_msc_off();
+				fprintf(console, "\0330M\033C\0330A"); //Set map to tilemap A, clear tilemap, set attr to 0
+				fprintf(console, "\0338;1PSELECT AN APP\n\n"); //Menu header.
+				fprintf(console, "\0331M\033C\n"); //clear menu
+				selected=-1;
+			}
+		}
+		old_usbstate=usbstate;
+
 		int btn=MISC_REG(MISC_BTN_REG);
-		sprintf(buf, "%d   ", btn);
-		UG_PutString(48, 96, buf);
-
-		int id_int=flash_get_id(FLASH_SEL_INT);
-		int id_ext=flash_get_id(FLASH_SEL_CART);
-		sprintf(buf, "flashid: %x / %x      ", id_int, id_ext);
-		UG_PutString(48, 128, buf);
-
-		r=MISC_REG(MISC_ADC_VAL_REG);
-		//ADC measures BAT/2 with a ref of 3.3V (or whatever Vio is) corresponding to 1023
-		//int bat=((r/1023)*3.3)*2;
-		int bat=(r*3300*2)/(65535);
-		sprintf(buf, "%x BAT %d mV (%d)   ", MISC_REG(MISC_ADC_CTL_REG), bat, r);
-		UG_SetForecolor(C_BLUE);
-		UG_PutString(0, 170, buf);
-
-
+		int need_redraw=0;
+		if (selected==-1) {
+			need_redraw=1;
+			selected=0;
+			selected_name[0]=0;
+		}
 		if (btn&BUTTON_A) {
-			usb_msc_off();
-			start_app("autoexec.elf");
-			usb_msc_on();
-		}
-		if ((btn&BUTTON_B) && !(old_btn&BUTTON_B)) {
-			cur_layer=(cur_layer+1)&3;
-			GFX_REG(GFX_LAYEREN_REG)=(1<<cur_layer)|GFX_LAYEREN_TILEA_8x16|GFX_LAYEREN_FB_8BIT;;
-			printf("i %d\n", cur_layer);
+			start_app(selected_name);
+		} else if (btn & BUTTON_UP) {
+			selected=selected-1;
+			if (selected==-1) selected=0;
+			need_redraw=1;
+		} else if (btn & BUTTON_DOWN) {
+			selected=selected+1;
+			need_redraw=1;
 		}
 
-		cache_flush(lcdfb, lcdfb+320*512);
-		for (int i=0; i<500; i++) {
+		while (need_redraw) {
+			fprintf(console, "\033C");
+			DIR *d=opendir("/");
+			struct dirent *ed;
+			int n=0;
+			while (ed=readdir(d)) {
+				fprintf(console, "\0338;%dP %c %s\n", n+4, n==selected?16:32, ed->d_name);
+				if (n==selected) strcpy(selected_name, ed->d_name);
+				n++;
+			}
+			closedir(d);
+			if (n<=selected) {
+				selected=n-1;
+			} else {
+				need_redraw=0;
+			}
+		}
+
+		while ((GFX_REG(GFX_VIDPOS_REG)>>16)<318) {
 			usb_poll();
 			cdc_task();
 			tud_task();
@@ -269,25 +224,18 @@ void main() {
 	}
 }
 
-void cdc_task(void)
-{
-	if ( tud_cdc_connected() )
-	{
+void cdc_task(void) {
+	if (tud_cdc_connected()) {
 		tud_cdc_write_flush();
 	}
 }
 
-// Invoked when cdc when line state changed e.g connected/disconnected
-void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts)
-{
-  (void) itf;
+//Invoked when cdc when line state changed e.g connected/disconnected
+void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts) {
+	(void) itf;
 
-  // connected
-	if ( dtr )
-	{
-		// print initial message when connected
-		tud_cdc_write_str("TinyUSB CDC MSC HID device example\r\n");
-
+	// connected
+	if (dtr) {
 		// switch stdout/stdin/stderr
 		for (int i=0;i<3;i++) {
 			close(i);
@@ -297,7 +245,7 @@ void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts)
 
 	if (!dtr) {
 		// switch back to serial
-		for (int i=0;i<3;i++) {
+		for (int i=0; i<3; i++) {
 			close(i);
 			open("/dev/ttyserial", O_RDWR);
 		}
@@ -305,7 +253,6 @@ void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts)
 }
 
 // Invoked when CDC interface received data from host
-void tud_cdc_rx_cb(uint8_t itf)
-{
-	(void) itf;
+void tud_cdc_rx_cb(uint8_t itf) {
+	(void)itf;
 }

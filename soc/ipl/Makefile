@@ -25,16 +25,23 @@ OBJS += tinyusb/src/class/msc/msc_device.o tinyusb/src/class/midi/midi_device.o
 OBJS += tinyusb/src/class/cdc/cdc_device.o tinyusb/src/class/hid/hid_device.o
 OBJS += dcd_tntusb.o usb_descriptors.o hexdump.o flash.o
 OBJS += fatfs/source/ff.o fatfs/source/ffunicode.o loadapp.o elfload/elfload.o
-OBJS += elfload/elfreloc_riscv.o font-8x16.o vgapal.o
-OBJS += tjftl/tjftl.o fs.o
-LIBS := gloss/libgloss.a
+OBJS += elfload/elfreloc_riscv.o lodepng.o bgnd.o tileset-default.o
+OBJS += tjftl/tjftl.o fs.o gfx_load.o
+LIBS := gloss/libgloss.a -lm
 LDSCRIPT := gloss/ldscript.ld
 
-CFLAGS := -Os -ggdb -I. -IUGUI -Iusb -Igloss -Itinyusb/src -Ifatfs/source -I../tinyusb/src -I../
-LDFLAGS := -Wl,-Bstatic -Wl,--gc-sections  -Wl,-T,$(LDSCRIPT) -Wl,-Map,$(TARGET_MAP) -lgcc -nostartfiles -Lgloss 
+CFLAGS := -Os -ggdb -I. -Ilodepng -IUGUI -Iusb -Igloss -Itinyusb/src -Ifatfs/source -I../tinyusb/src -I../
+LDFLAGS := -Wl,-Bstatic -Wl,--gc-sections  -Wl,-T,$(LDSCRIPT) -Wl,-Map,$(TARGET_MAP) -lgcc -lm -nostartfiles -Lgloss 
 export PREFIX CC AR LD OBJCOPY CFLAGS LDFLAGS APPNAME
 
 default: $(TARGET_BIN)
+
+bgnd.o: bgnd.png
+	$(OBJCOPY) -I binary -O elf32-littleriscv -B riscv $< $@
+
+tileset-default.o: tileset-default.png
+	$(OBJCOPY) -I binary -O elf32-littleriscv -B riscv $< $@
+
 
 DEPDIR := .deps
 DEPFLAGS = -MT $@ -MMD -MP -MF $(patsubst %.o,%.d,$(dir $@)$(DEPDIR)/$(notdir $@))
@@ -58,7 +65,7 @@ $(TARGET_BIN): $(TARGET_ELF)
 	$(OBJDUMP) -S $^ > $(APPNAME).disasm
 
 $(TARGET_ELF): $(LIBS) $(OBJS) $(LDSCRIPT)
-	$(CC) $(LDFLAGS) -o $@ $(LIBS) -lm $(OBJS) 
+	$(CC) -o $@ $(LDFLAGS) $(OBJS) $(LIBS)
 
 .PHONY: clean
 clean:

@@ -67,29 +67,21 @@ module pcpi_fastmul_dsp (
 	end
 
 	mul_18x18 mulhh (
-		.clock(clk),
-		.reset(reset),
 		.a(rs1_hi),
 		.b(rs2_hi),
 		.dout(res_hh)
 	);
 	mul_18x18 mulhl (
-		.clock(clk),
-		.reset(reset),
 		.a(rs1_hi),
 		.b(rs2_lo),
 		.dout(res_hl)
 	);
 	mul_18x18 mullh (
-		.clock(clk),
-		.reset(reset),
 		.a(rs1_lo),
 		.b(rs2_hi),
 		.dout(res_lh)
 	);
 	mul_18x18 mulll (
-		.clock(clk),
-		.reset(reset),
 		.a(rs1_lo),
 		.b(rs2_lo),
 		.dout(res_ll)
