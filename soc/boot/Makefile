@@ -13,7 +13,7 @@ OBJDUMP := $(PREFIX)objdump
 SIZE := $(PREFIX)size
 CHMOD := chmod
 
-CFLAGS=-Os -ggdb -I../ipl -march=rv32i -mabi=ilp32
+CFLAGS=-Os -ggdb -I../ipl -march=rv32im -mabi=ilp32
 OBJS:=rom.o irq.o gdbstub.o loadipl.o ipl_flash.o
 
 DEPDIR := .deps
@@ -38,7 +38,7 @@ $(DEPTREE):
 
 
 rom.elf: $(OBJS) sections.lds
-	$(CC)  $(CFLAGS) -ffreestanding -nostdlib -o $@ \
+	$(CC)  $(CFLAGS) -Wl,-melf32lriscv -ffreestanding -nostdlib -o $@ \
 		-Wl,-Bstatic,-T,sections.lds,-Map,rom.map,--strip-debug \
 		$(OBJS) -lgcc
 
