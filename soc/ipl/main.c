@@ -18,6 +18,7 @@
 #include "gloss/newlib_stubs.h"
 #include "lodepng/lodepng.h"
 #include "gfx_load.h"
+#include "cache.h"
 
 extern volatile uint32_t UART[];
 #define UART_REG(i) UART[(i)/4]
