@@ -16,7 +16,7 @@
 
 /** (Not specifically SoC-related) Start of RAM that contains the IPL. */
 #define MEM_IPL_START		0x40002000
-/** (Not specifically SoC-related) Start of RAM containing the application *.
+/** (Not specifically SoC-related) Start of RAM containing the application */
 #define MEM_APP_START		0x40100000
 
 /** Start of memory range for the UART peripheral */

@@ -16,6 +16,7 @@
 #include "../fatfs/source/ff.h"
 #include "../loadapp.h"
 #include "console_out.h"
+#include "mach_defines.h"
 
 #include "tusb.h"
 
@@ -242,10 +243,11 @@ int _execve(const char *name, char *const argv[], char *const env[]) {
 	return -1;
 }
 
-//ToDo: unload app, if we put a menu in ipl return to that?
+//Unload app, return to IPL... we can fake it by jumping to a secondary IPL entry point 
+//in memory, like the primary one the bootloader does.
+void exit_to_ipl(int exit_status); //defined in crt0.S
 void _exit(int exit_status) {
-	asm("ebreak");
-	while(1);
+	exit_to_ipl(exit_status);
 }
 
 //Nein.
@@ -312,7 +314,6 @@ int _wait(int *status) {
 }
 
 //Note! This sbrk implementation is only used in the IPL itself.
-//ToDo: limit memory use to 
 
 static char *heap_ptr=0;
 extern char _stack_end;
@@ -326,7 +327,7 @@ char * _sbrk (int nbytes) {
 	base = heap_ptr;
 	heap_ptr += nbytes;
 	if (heap_ptr > &_stack_end) {
-		printf("ERROR: Malloc is out of memory! (heap_start=%p heap_ptr=%p stack_end=%p\n", &_end, heap_ptr, &_stack_end);
+		printf("ERROR: _sbrk (IPL): Malloc is out of memory! (heap_start=%p heap_ptr=%p stack_end=%p\n", &_end, heap_ptr, &_stack_end);
 		abort();
 	}
 	return base;

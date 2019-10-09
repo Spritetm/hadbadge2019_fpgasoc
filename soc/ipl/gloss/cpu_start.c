@@ -5,8 +5,10 @@
 extern int main(int argc, char **argv);
 
 void cpu_start() {
-//	printf("CPU started!\n");
 	main(0, NULL);
-//	printf("Main exited, all done.\n");
-//	abort();
+}
+
+void exited_to_ipl(int errorcode) {
+	printf("App exited with error code %d\n", errorcode);
+	main(0, NULL);
 }

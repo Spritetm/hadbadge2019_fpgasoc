@@ -25,7 +25,7 @@ SoC
 ---
 At the moment, the SOC is a dual-core RiscV processor that uses the external
 PSRAM as it's main memory through an internal cache. There's a simple uart
-for debugging, as well as a framebuffer-based graphics subsystem for the
+for debugging, as well as a framebuffer- and tile-based graphics subsystem for the
 LCD and HDMI interfaces.
 
 
@@ -38,9 +38,11 @@ the flash of the badge over USB. (Used to upload new config without JTAG.)
 - blink contains a trivial blinker project, useful to make sure your setup 
 works. 
 
-- app contains a bare-bones test application that the IPL is able to load and execute. This should
-be separated into a SDK and an example app; all standard C-based user apps should be compiled
-like this.
+- apps-sdk contains the SDK you can use to build apps that can be loaded by the IPL.
+
+- app-hello contains a bare-bones test application that the IPL is able to load and execute. 
+
+- app-basic contains a Basic interpreter that can be used to run .bas files.
 
 - soc contains the actual SoC that is the main FPGA load.
 
@@ -104,25 +106,53 @@ FT2232H-based works well.
 
 - 2xAA battery, or a 3V'ish power supply. If you want to apply an external power supply, you
   can apply it on J1, between VBAT and GND. Note the badge cannot be powered from USB alone.
+  (And yeah, the badge is a battery drainer... need to work on that.)
 
 The current workflow to get a badge running 'from scratch' is documented below. Note that your
 badge probably already has TinyFPGA-Boot, the SoC, IPL and/or apps flashed to that. You can skip the
-sections you don't need 
+sections you don't need. (Specifically, the red Proto2 badges have an usable TinyFPGA-Boot flashed,
+so you can skip that section, but need updating for everything else. The final badges will/should
+be entirely up-to-date... I hope.
+
+Software setup
+--------------
+
+First, clone this repository and grab the submodules, if you haven't already:
+``
+git clone https://github.com/Spritetm/hadbadge2019_fpgasoc
+cd hadbadge2019_fpgasoc
+git submodule update --init --recursive
+``
+
+Now you need a toolchain for the FPGA and the RiscV stuff.Compile Yosys, nextpnr, 
+prjtrellis and a RiscV toolchain according to their instructions. (ToDo: how 
+to build toolchain?)
+Alternatively, get precompiled versions for your OS here: 
+https://github.com/xobs/ecp5-toolchain/releases
+You probably want to make sure nextpnr/yosys binaries are in your $PATH if you need to do 
+anything with FPGA image building.
+
+Install TinyFPGA-Bootloader if you think you'll need to overwrite the SoC bitstream
+or IPL:
+```
+cd hadbadge2019_fpgasoc/TinyFPGA-Bootloader/programmer
+sudo python setup.py install
+```
 
 Flash tinyfpga-boot to the badge
 --------------------------------
-Note that this also overwrites any SoC you have in flash with an ancient version. You may want to
-flash the up-to-date SoC immediately after. Also note that your badge probably also comes with a
+Note that this also overwrites any SoC you have in flash with an ancient version; you probably want 
+to flash the up-to-date SoC immediately after. Also note that your badge probably also comes with a
 viable TinyFPGA-Boot version in flash, so in all likelyhood there's no need to dig out the JTAG
-adapter. If you still want to do this, here's how:
+adapter. If you still want to do this, for example if you managed to nule your flash, here's how:
 
 - Make sure the openocd.conf in this directory reflects your JTAG hardware.
 
 - Make sure the badge is connected both over JTAG as well as USB
 
-- Run 'make flash' in the TinyFPGA-Bootloader/boards/HackadayBadge2019 directory
+- Run `make flash` in the `TinyFPGA-Bootloader/boards/HackadayBadge2019` directory
 
-- Answer 'yes' on the prompt
+- Answer `yes` on the prompt
 
 - Wait until flashing is complete.
 
@@ -150,12 +180,12 @@ Compile and upload the IPL
 
 - You may need to answer 'yes' to the 'overwrite bootloader' prompt
 
-Upload an app
--------------
+Compile and upload an app
+-------------------------
 
 - Turn on the badge. Make sure the SoC and IPL are flashed and recent.
 
-- Go to the app subdirectory
+- Go to the subdirectory containing the app you want to compile and upload
 
 - Run `make`
 
@@ -165,6 +195,9 @@ Upload an app
 
 - Copy the generated *.elf file to the USB drive
 
+- Make sure the USB drive is ejected and disconnect the badge from USB.
+
+- The app should show up in the IPL menu now.
 
 Flash partitions
 ================
@@ -192,7 +225,29 @@ What do they do?
   memory address 0 changes to 0xdeadbeef, and then run the IPL anyway. (This allows for a JTAG upload
   of IPL+app)
 
-- The IPL will initialize the LCD and framebuffer and load the initial app from the FAT16 partition 
-  on flash. If it cannot load it, it will switch the device to USB MSC upload mode. (Or will it show
-  the main menu already? Don't quite know...)
+- The IPL will initialize the LCD and framebuffer and show the main menu that can be used to select
+  an app.
+
+SDK usage (or: how do I create an app?)
+=======================================
+
+The main SDK is C-based (uses gcc as a compiler) and uses Newlib as the C library of choice. Newlib
+is hooked up fatfs, so it can access the files on the flash (the ones that the IPL allows you to
+mess with over USB) using standard fopen()/fclose() etc calls. It also has support for the dbguart
+(see J1 on the back of the badge) as well as the CDC-ACM device and a 'console' device that allows
+you to fprintf() to the screen. There's also a dynamic memory allocator that gives you access to
+most of the 16MiB of RAM the badge has. In general: if you can do it in 'normal' C, you can probably
+do it on the badge.
+
+The SDK build system of choice is Make. It is modeled on the ESP32 esp-idf SDK, as in, a project 
+only needs a small Makefile identifying the source code, and the SDK will track of dependencies
+building in a separate build dir, and linking correctly.
+The easiest way to get an app to compile is to copy the app-helloworld and modify it to your needs.
+The Makefile and code are more-or-less self-documenting (and, if any, more in sync with the
+actual badge and SDK than this document.)
+
+Aside from the standard C stuff you can use, there are a few routines in the IPL that are exported
+for you to use, as well as some headers that define useful stuff.
+
+
 

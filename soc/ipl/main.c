@@ -34,28 +34,10 @@ extern uint32_t GFXTILEMAPB[];
 
 uint8_t *lcdfb;
 
-void cache_flush(void *addr_start, void *addr_end) {
-	volatile uint32_t *p = (volatile uint32_t*)(((uint32_t)addr_start & ~3) - MACH_RAM_START + MACH_FLUSH_REGION);
-	*p=(uint32_t)addr_end-MACH_RAM_START;
-}
 
 void usb_poll();
 
 typedef void (*main_cb)(int argc, char **argv);
-
-void start_app(char *app) {
-	uintptr_t max_app_addr=0;
-	uintptr_t la=load_new_app(app, &max_app_addr);
-	if (la==0) {
-		printf("Loading app %s failed!\n", app);
-		return;
-	}
-	sbrk_app_set_heap_start(max_app_addr);
-	main_cb maincall=(main_cb)la;
-	printf("Go!\n");
-	maincall(0, NULL);
-	printf("App returned.\n");
-}
 
 
 int simulated() {
@@ -92,11 +74,8 @@ void gfx_set_xlate_val(int layer, int xcenter, int ycenter, float scale, float r
 	GFX_REG(GFX_TILEA_INC_ROW)=(i_dy_y<<16)+(i_dy_x&0xffff);
 }
 
-void main() {
-	MISC_REG(MISC_LED_REG)=0xfffff;
-	syscall_reinit();
-	printf("IPL running.\n");
 
+int show_main_menu(char *app_name) {
 	//Allocate fb memory
 	lcdfb=malloc(320*512/2);
 
@@ -108,8 +87,9 @@ void main() {
 	GFX_REG(GFX_LAYEREN_REG)=0;
 
 	//Load up the default tileset and font.
+	//ToDo: loading pngs takes a long time... move over to pcx instead.
+	printf("Loading tiles...\n");
 	gfx_load_tiles_mem(GFXTILES, &GFXPAL[0], &_binary_tileset_default_png_start, (&_binary_tileset_default_png_end-&_binary_tileset_default_png_start));
-
 	printf("Tiles initialized\n");
 
 	//Open the console driver for output to screen.
@@ -123,13 +103,6 @@ void main() {
 	lcd_init(simulated());
 	printf("GFX inited. Yay!!\n");
 
-	//Initialize USB subsystem
-	tusb_init();
-	printf("USB inited.\n");
-	
-	//Initialize filesystem (fatfs, flash translation layer)
-	fs_init();
-	printf("Filesystem inited.\n");
 
 	printf("Loading bgnd...\n");
 	//This is the Hackaday logo background
@@ -146,12 +119,12 @@ void main() {
 
 	//loop
 	int p=0;
-	int old_btn=0;
+	int old_btn=0xfffff; //assume all buttons are pressed, so we need to see a release first before reacting.
 	int old_usbstate=-1; //trigger change of usb state whatever state was
 	int bgnd_pal_state=10;
 	int selected=-1;
-	char selected_name[129];
-	while(1) {
+	int done=0;
+	while(!done) {
 		p++;
 
 		bgnd_pal_state++;
@@ -180,38 +153,43 @@ void main() {
 		old_usbstate=usbstate;
 
 		int btn=MISC_REG(MISC_BTN_REG);
-		int need_redraw=0;
-		if (selected==-1) {
-			need_redraw=1;
-			selected=0;
-			selected_name[0]=0;
-		}
-		if (btn&BUTTON_A) {
-			start_app(selected_name);
-		} else if (btn & BUTTON_UP) {
-			selected=selected-1;
-			if (selected==-1) selected=0;
-			need_redraw=1;
-		} else if (btn & BUTTON_DOWN) {
-			selected=selected+1;
-			need_redraw=1;
-		}
-
-		while (need_redraw) {
-			fprintf(console, "\033C");
-			DIR *d=opendir("/");
-			struct dirent *ed;
-			int n=0;
-			while (ed=readdir(d)) {
-				fprintf(console, "\0338;%dP %c %s\n", n+4, n==selected?16:32, ed->d_name);
-				if (n==selected) strcpy(selected_name, ed->d_name);
-				n++;
+		//ToDo: we possibly want to store the list of files, so we can select an app even when USB is connected. This will 
+		//help for apps which e.g. use the usb cdc-acm
+		if (!usbstate) {
+			int need_redraw=0;
+			if (selected==-1) {
+				need_redraw=1;
+				selected=0;
+				app_name[0]=0;
 			}
-			closedir(d);
-			if (n<=selected) {
-				selected=n-1;
-			} else {
-				need_redraw=0;
+			if (btn&BUTTON_A && !(old_btn&BUTTON_A)) {
+				//start up app
+				done=1;
+			} else if (btn & BUTTON_UP && !(old_btn&BUTTON_UP)) {
+				selected=selected-1;
+				if (selected==-1) selected=0;
+				need_redraw=1;
+			} else if (btn & BUTTON_DOWN && !(old_btn&BUTTON_DOWN)) {
+				selected=selected+1;
+				need_redraw=1;
+			}
+
+			while (need_redraw) {
+				fprintf(console, "\033C");
+				DIR *d=opendir("/");
+				struct dirent *ed;
+				int n=0;
+				while (ed=readdir(d)) {
+					fprintf(console, "\0338;%dP %c %s\n", n+4, n==selected?16:32, ed->d_name);
+					if (n==selected) strcpy(app_name, ed->d_name);
+					n++;
+				}
+				closedir(d);
+				if (n<=selected) {
+					selected=n-1;
+				} else {
+					need_redraw=0;
+				}
 			}
 		}
 
@@ -222,7 +200,57 @@ void main() {
 		}
 		old_btn=btn;
 	}
+
+	//Set tilemaps to default 1-to-1 mapping
+	GFX_REG(GFX_TILEA_OFF)=(0<<16)+(0&0xffff);
+	GFX_REG(GFX_TILEA_INC_COL)=(0<<16)+(64&0xffff);
+	GFX_REG(GFX_TILEA_INC_ROW)=(64<<16)+(0&0xffff);
+	GFX_REG(GFX_TILEB_OFF)=(0<<16)+(0&0xffff);
+	GFX_REG(GFX_TILEB_INC_COL)=(0<<16)+(64&0xffff);
+	GFX_REG(GFX_TILEB_INC_ROW)=(64<<16)+(0&0xffff);
+
+	//Clear console
+	fprintf(console, "\0330M\033C\0330A"); //Set map to tilemap A, clear tilemap, set attr to 0
+
+	//..and close it.
+	fclose(console);
+	free(lcdfb);
 }
+
+void start_app(char *app) {
+	uintptr_t max_app_addr=0;
+	uintptr_t la=load_new_app(app, &max_app_addr);
+	if (la==0) {
+		printf("Loading app %s failed!\n", app);
+		return;
+	}
+	sbrk_app_set_heap_start(max_app_addr);
+	main_cb maincall=(main_cb)la;
+	maincall(0, NULL);
+}
+
+void main() {
+	//Initialize USB subsystem
+	tusb_init();
+	printf("USB inited.\n");
+	
+	//Initialize filesystem (fatfs, flash translation layer)
+	fs_init();
+	printf("Filesystem inited.\n");
+	while(1) {
+		MISC_REG(MISC_LED_REG)=0xfffff;
+		syscall_reinit();
+		printf("IPL running.\n");
+		char app_name[256];
+		show_main_menu(app_name);
+		printf("IPL: starting app %s\n", app_name);
+		usb_msc_off();
+		syscall_reinit();
+		start_app(app_name);
+		printf("IPL: App %s returned.\n", app_name);
+	}
+}
+
 
 void cdc_task(void) {
 	if (tud_cdc_connected()) {
