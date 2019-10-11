@@ -1,9 +1,9 @@
 -include ../../local-settings.mk
 
 ifeq ("$(RISCV_TOOLCHAIN_PATH)", "")
-PREFIX := riscv32-unknown-elf-
+PREFIX := riscv64-unknown-elf-
 else
-PREFIX := $(RISCV_TOOLCHAIN_PATH)/riscv32-unknown-elf-
+PREFIX := $(RISCV_TOOLCHAIN_PATH)/riscv64-unknown-elf-
 endif
 CC := $(PREFIX)gcc
 AR := $(PREFIX)ar

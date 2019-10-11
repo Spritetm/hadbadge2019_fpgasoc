@@ -1,9 +1,9 @@
 -include ../../local-settings.mk
 
 ifeq ("$(RISCV_TOOLCHAIN_PATH)", "")
-PREFIX := riscv32-unknown-elf-
+PREFIX := riscv64-unknown-elf-
 else
-PREFIX := $(RISCV_TOOLCHAIN_PATH)/riscv32-unknown-elf-
+PREFIX := $(RISCV_TOOLCHAIN_PATH)/riscv64-unknown-elf-
 endif
 CC := $(PREFIX)gcc
 AR := $(PREFIX)ar
@@ -32,7 +32,7 @@ LDSCRIPT := gloss/ldscript.ld
 
 CFLAGS := -Os -ggdb -I. -Isyscallable -Ilodepng -IUGUI -Iusb -Igloss -Itinyusb/src -Ifatfs/source -I../tinyusb/src -I../ -march=rv32im -mabi=ilp32
 ASFLAGS := -march=rv32i -mabi=ilp32
-LDFLAGS := -Wl,-Bstatic -Wl,--gc-sections  -Wl,-T,$(LDSCRIPT) -Wl,-Map,$(TARGET_MAP) -lgcc -lm -nostartfiles -Lgloss -Wl,-melf32lriscv
+LDFLAGS := -Wl,-Bstatic -Wl,--gc-sections  -Wl,-T,$(LDSCRIPT) -Wl,-Map,$(TARGET_MAP) -lgcc -lm -nostartfiles -Lgloss -Wl,-melf32lriscv -march=rv32im -mabi=ilp32
 export PREFIX CC AR LD OBJCOPY CFLAGS ASFLAGS LDFLAGS APPNAME
 
 default: $(TARGET_BIN)
