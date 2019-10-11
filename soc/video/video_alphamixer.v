@@ -13,11 +13,11 @@ reg [8:0] alpha_b;
 always @(*) begin
 	if (rate=='hff) begin
 		//Hack because otherwise we can never get 100% dst
-		alpha_a <= 'h100;
-		alpha_b <= 0;
+		alpha_a = 'h100;
+		alpha_b = 0;
 	end else begin
-		alpha_a <= rate;
-		alpha_b <= ('h100 - rate);
+		alpha_a = rate;
+		alpha_b = ('h100 - rate);
 	end
 end
 

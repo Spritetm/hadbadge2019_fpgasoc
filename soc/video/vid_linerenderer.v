@@ -128,10 +128,11 @@ reg [15:0] tilea_yoff;
 reg [15:0] tileb_xoff;
 reg [15:0] tileb_yoff;
 
-wire [31:0] dout_tilemapa;
-wire [31:0] dout_tilemapb;
+wire [17:0] dout_tilemapa;
+wire [17:0] dout_tilemapb;
 wire [31:0] dout_palette;
 wire [31:0] dout_tilemem;
+wire [31:0] dout_sprites;
 reg fb_is_8bit;
 reg [31:0] bgnd_color;
 reg [8:0] fb_pal_offset;
@@ -156,6 +157,7 @@ reg [15:0] tileb_colinc_x;
 reg [15:0] tileb_colinc_y;
 reg [15:0] tileb_rowinc_x;
 reg [15:0] tileb_rowinc_y;
+wire [8:0] sprite_pix;
 
 always @(*) begin
 	cpu_sel_tilemem = 0;
@@ -195,13 +197,13 @@ always @(*) begin
 		dout = dout_palette;
 	end else if (addr[16:14]=='h1) begin //2,3
 		cpu_sel_tilemap_a = 1;
-		dout = dout_tilemapa;
+		dout = {14'h0, dout_tilemapa};
 	end else if (addr[16:14]=='h2) begin //4,5
 		cpu_sel_tilemap_b = 1;
-		dout = dout_tilemapb;
+		dout = {14'h0, dout_tilemapb};
 	end else if (addr[16:13]=='h6) begin
 		cpu_sel_sprites = 1;
-		dout = 0;//dout_sprites;
+		dout = dout_sprites;
 	end else if (addr[16]==1) begin
 		cpu_sel_tilemem = 1;
 		dout = dout_tilemem;
@@ -217,7 +219,7 @@ wire [31:0] tilemem_word;
 
 wire [13:0] tilemem_addr;
 assign tilemem_addr = {tilemem_no, tilepix_y, tilepix_x[3]};
-reg [3:0] tilenib_sel;
+reg [2:0] tilenib_sel;
 always @(posedge clk) begin
 	tilenib_sel <= tilepix_x[2:0];
 end
@@ -291,6 +293,21 @@ vid_tilemapmem tilemapb (
 	.AddressB(tilemapb_addr),
 	.QA(dout_tilemapb),
 	.QB(tileb_data)
+);
+
+reg sprite_pix_done;
+
+vid_spriteeng spriteeng (
+	.clk(clk),
+	.reset(reset),
+	.cpu_addr(addr[8:0]),
+	.cpu_din(din),
+	.cpu_dout(dout_sprites),
+	.cpu_wstrb(cpu_sel_sprites ? wstrb : 0),
+	.vid_xpos(vid_xpos),
+	.vid_ypos(vid_ypos),
+	.sprite_pix(sprite_pix),
+	.pix_done(sprite_pix_done)
 );
 
 
@@ -368,6 +385,7 @@ always @(*) begin
 	tilepix_y=0;
 	tilemem_no=0;
 	pal_addr=0;
+	sprite_pix_done=0;
 
 	if (cycle==0) begin
 		tilepix_x = tileb_data[9] ? (15-tileb_x[9:6]) : tileb_x[9:6];
@@ -387,7 +405,8 @@ always @(*) begin
 		tilepix_x = 480-vid_xpos;  //tilemap should not be used; give clear indication if it is.
 		tilepix_y = vid_ypos;
 		tilemem_no = 'h21;
-		pal_addr = 7; //todo: sprite
+		pal_addr = sprite_pix;
+		sprite_pix_done = 1;
 		alphamixer_rate = layer_en[2] ? pal_data[31:24] : 0; //tilemap b
 		alphamixer_in_b = alphamixer_out; //bgnd+fb+tilemap_a
 	end else begin //cycle==3

@@ -151,14 +151,14 @@ int main(int argc, char **argv) {
 		p=vgapal[i*3];
 		p|=vgapal[i*3+1]<<8;
 		p|=vgapal[i*3+2]<<16;
-		p|=(0x7F)<<24;
+		p|=(i!=255)?((0xFF)<<24):0;
 		tb_write(tb, trace, PAL_OFF+(i*4), p);
 		tb_write(tb, trace, PAL_OFF+((i+256)*4), p);
 	}
 
 	load_tilemap(tb, trace, "tileset.png");
 	printf("Buffers inited.\n");
-	tb_write(tb, trace,REG_OFF+2*4, 0x2); //ena tile map a
+	tb_write(tb, trace,REG_OFF+2*4, 0x2|0x8); //ena tile map a, sprites
 //	tb_write(tb, trace,REG_OFF+2*4, 0x1); //ena fb
 //	tb_write(tb, trace,REG_OFF+2*4, 0x10001); //ena fb, 8bit
 
@@ -177,6 +177,7 @@ int main(int argc, char **argv) {
 		tb->qpi_is_idle=qpi_is_idle;
 		tb->qpi_next_word=qpi_next_word;
 		tb->eval();
+		trace->dump(ts++);
 		tb->clk = !tb->clk;
 		tb->eval();
 		trace->dump(ts++);
@@ -186,11 +187,11 @@ int main(int argc, char **argv) {
 			pixelclk_pos-=1.0;
 			vid->next_pixel(tb->red, tb->green, tb->blue, &fetch_next, &next_line, &next_field);
 			tb->fetch_next=fetch_next;
-			if (tb->next_field==0 && next_field==1) {
-				layer=(layer+1)&0xf;
-				tb_write(tb, trace,REG_OFF+2*4, 0x10000|layer);
-				printf("Layer: %x\n", layer);
-			}
+//			if (tb->next_field==0 && next_field==1) {
+//				layer=(layer+1)&0xf;
+//				tb_write(tb, trace,REG_OFF+2*4, 0x10000|layer);
+//				printf("Layer: %x\n", layer);
+//			}
 			tb->next_field=next_field;
 			tb->next_line=next_line;
 		}

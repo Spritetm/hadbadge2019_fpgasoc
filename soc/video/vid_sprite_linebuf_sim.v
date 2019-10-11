@@ -1,12 +1,9 @@
-
-`timescale 1 ns / 1 ps
-module vid_tilemapmem (DataInA, DataInB,
-    AddressA, AddressB, ClockA, ClockB, ClockEnA, ClockEnB, WrA, WrB, 
-    ResetA, ResetB, QA, QB)/* synthesis NGD_DRC_MASK=1 */;
-    input wire [17:0] DataInA;
-    input wire [17:0] DataInB;
-    input wire [11:0] AddressA;
-    input wire [11:0] AddressB;
+module vid_sprite_linebuf (DataInA, DataInB, AddressA, AddressB, 
+    ClockA, ClockB, ClockEnA, ClockEnB, WrA, WrB, ResetA, ResetB, QA, QB)/* synthesis NGD_DRC_MASK=1 */;
+    input wire [8:0] DataInA;
+    input wire [8:0] DataInB;
+    input wire [10:0] AddressA;
+    input wire [10:0] AddressB;
     input wire ClockA;
     input wire ClockB;
     input wire ClockEnA;
@@ -15,10 +12,10 @@ module vid_tilemapmem (DataInA, DataInB,
     input wire WrB;
     input wire ResetA;
     input wire ResetB;
-    output reg [17:0] QA;
-    output reg [17:0] QB;
+    output reg [8:0] QA;
+    output reg [8:0] QB;
 
-	reg [17:0] mem[0:4095];
+	reg [8:0] mem[0:2047];
 
 	always @(posedge ClockA) begin
 		if (ResetA) begin
@@ -37,5 +34,4 @@ module vid_tilemapmem (DataInA, DataInB,
 			if (WrB) mem[AddressB]<=DataInB;
 		end
 	end
-
 endmodule
