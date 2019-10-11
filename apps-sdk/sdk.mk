@@ -17,6 +17,7 @@ SIZE := $(PREFIX)size
 #Name of what we're trying to build.
 TARGET_ELF := $(APPNAME).elf
 TARGET_MAP := $(APPNAME).map
+TARGET_SYM := $(APPNAME).sym
 
 #Linker script path
 LDSCRIPT := $(APPSSDK_DIR)/gloss/ldscript.ld
@@ -27,9 +28,9 @@ BUILD_DIR := build/
 BUILD_DIR_SDK := $(BUILD_DIR)/apps-sdk
 
 #Ipl gloss is in include path because mach_defines.h
-INCLUDEDIRS += $(APPSSDK_DIR) $(APPSSDK_DIR)/gloss $(APPSSDK_DIR)/../soc/ipl/gloss
-CFLAGS += -Os -ggdb $(addprefix -I,$(INCLUDEDIRS))
-LDFLAGS += -Wl,-Bstatic -Wl,--gc-sections -Wl,-T,$(LDSCRIPT) -Wl,-Map,$(TARGET_MAP) -lgcc -lm -nostartfiles
+INCLUDEDIRS += $(APPSSDK_DIR) $(APPSSDK_DIR)/gloss $(APPSSDK_DIR)/../soc/ipl/gloss $(APPSSDK_DIR)/../soc/ipl/syscallable/
+CFLAGS += -Os -ggdb $(addprefix -I,$(INCLUDEDIRS)) -march=rv32im -mabi=ilp32
+LDFLAGS += -Wl,-Bstatic -Wl,--gc-sections -Wl,-T,$(LDSCRIPT) -Wl,-Map,$(TARGET_MAP) -lgcc -lm -nostartfiles -Wl,-melf32lriscv
 DEPFLAGS := -MMD -MP 
 
 export PREFIX CC AR LD OBJCOPY CFLAGS LDFLAGS APPNAME
@@ -129,8 +130,11 @@ LIBREFS:=$(filter-out -lgloss,$(LIBREFS))
 $(TARGET_ELF): $(LIBS) $(OBJS_BUILDDIR) $(LDSCRIPT)
 	$(vecho) LD $@
 	$(Q)$(CC) -o $@ $(LIBPATHS) $(OBJS_BUILDDIR) $(LIBREFS) $(LDFLAGS) 
+	$(vecho) SYM $@
+	$(Q)$(PREFIX)objcopy --only-keep-debug $@ $(TARGET_SYM)
 	$(vecho) STRIP $@
-	$(Q)$(PREFIX)strip $@
+	$(Q)$(PREFIX)strip --strip-debug --strip-unneeded $@
+	$(Q)$(PREFIX)objcopy --add-gnu-debuglink=$(TARGET_SYM) $@
 
 #Clean all targets. Should leave an empty build dir tree.
 .PHONY: clean
@@ -140,6 +144,13 @@ clean:
 	$(Q)rm -rf $(addprefix $(BUILD_DIR)/,$(OBJS)) $(addprefix $(BUILD_DIR)/,$(OBJS:%.o=%.d)) 
 	$(Q)rm -rf $(addprefix $(BUILD_DIR_SDK)/,$(SDK_OBJS)) $(addprefix $(BUILD_DIR_SDK)/,$(SDK_OBJS:%.o=%.d))
 	$(Q)rm -rf $(addprefix $(BUILD_DIR_SDK),/$(SDK_LIBS)) $(TARGET_MAP)
+
+
+gdb:
+	$(RISCV_TOOLCHAIN_PATH)riscv32-unknown-elf-gdb -b 115200 -ex "set debug remote 1" -ex "target remote /dev/ttyUSB0" \
+			-ex "set confirm off" -ex "add-symbol-file $(APPSSDK_DIR)/../soc/ipl/ipl.elf 0x40002000" \
+			-ex "add-symbol-file $(APPSSDK_DIR)/../soc/boot/rom.elf 0x40000000" -ex "set confirm on" $(APPNAME).elf
+
 
 #Include auto-generated dependencies, if exist.
 include $(wildcard $(OBJS_BUILDDIR:%.o=%.d))

@@ -151,7 +151,7 @@ void lcd_init(int nowait) {
 	WriteComm(0x3A);//SET 16bit Color
 	WriteData(0x55); //55=16bit, 66=18bit, 77=24bit
 	//Note: The display is wired for 18-bit mode wrt data lines, however, the IM lines are
-	//wired in such a way *this* controller
+	//wired in such a way *this* controller only accepts 16-bit writes.
 	
 	WriteComm(0x11); 
 	if (!nowait) Delay(120);

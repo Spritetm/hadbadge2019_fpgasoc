@@ -30,9 +30,10 @@ OBJS += tjftl/tjftl.o fs.o gfx_load.o
 LIBS := gloss/libgloss.a -lm
 LDSCRIPT := gloss/ldscript.ld
 
-CFLAGS := -Os -ggdb -I. -Ilodepng -IUGUI -Iusb -Igloss -Itinyusb/src -Ifatfs/source -I../tinyusb/src -I../
-LDFLAGS := -Wl,-Bstatic -Wl,--gc-sections  -Wl,-T,$(LDSCRIPT) -Wl,-Map,$(TARGET_MAP) -lgcc -lm -nostartfiles -Lgloss 
-export PREFIX CC AR LD OBJCOPY CFLAGS LDFLAGS APPNAME
+CFLAGS := -Os -ggdb -I. -Isyscallable -Ilodepng -IUGUI -Iusb -Igloss -Itinyusb/src -Ifatfs/source -I../tinyusb/src -I../ -march=rv32im -mabi=ilp32
+ASFLAGS := -march=rv32i -mabi=ilp32
+LDFLAGS := -Wl,-Bstatic -Wl,--gc-sections  -Wl,-T,$(LDSCRIPT) -Wl,-Map,$(TARGET_MAP) -lgcc -lm -nostartfiles -Lgloss -Wl,-melf32lriscv
+export PREFIX CC AR LD OBJCOPY CFLAGS ASFLAGS LDFLAGS APPNAME
 
 default: $(TARGET_BIN)
 

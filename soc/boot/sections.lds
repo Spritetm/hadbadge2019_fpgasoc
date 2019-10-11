@@ -12,14 +12,40 @@ MEMORY {
 }
 
 SECTIONS {
-	.ram : {
-/*		. = 0; */
+	.text : {
 		start*(.text);
 		*(.text);
+		*(.text.*);
+	} > ram
+	.data : {
+		. = ALIGN(4);
 		*(.rodata);
-		end = .;
+		*(.rodata.*);
+		*(.srodata)
+		*(.srodata.*);
 		*(.data);
+		*(.data.*);
+		*(.gnu.linkonce.d.*)
+		*(.data1)
+		*(.sdata);
+		*(.sdata.*);
+		*(.sdata2)
+		*(.sdata2.*)
+	} > ram
+	.bss : {
+		/* Note BSS is NOT noload. We have space in the cache to store the entire binary
+		including this anyway, and this saves us from having a clear-bss routine. */
+		. = ALIGN(4);
+		_bin_end = .;
+		_bss_start = .;
 		*(.bss);
+		*(.bss.*);
+		*(.sbss);
+		*(.sbss.*);
+		*(COMMON);
+		*(COMMON.*);
+		. = ALIGN(4);
+		_bss_end = .;
 	} > ram
 }
 

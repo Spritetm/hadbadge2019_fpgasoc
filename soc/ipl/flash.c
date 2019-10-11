@@ -1,6 +1,7 @@
 //Flash reading and programming routines.
 //Note: Hard-assumes a 256-byte page and a 4K minimal erase size.
 
+#include "stdio.h"
 #include "flash.h"
 #include "gloss/mach_defines.h"
 
@@ -170,7 +171,7 @@ bool flash_erase_range(int flash_sel, int addr, int len) {
 			cmd=CMD_ERASE4K;
 			erasesize=4*1024;
 		} else {
-			printf("flash_erase_range: no matching block for addr 0x%X len 0x%X\n", addr, len);
+			fprintf(stderr, "flash_erase_range: no matching block for addr 0x%X len 0x%X\n", addr, len);
 			//can't erase this
 			return false;
 		}
