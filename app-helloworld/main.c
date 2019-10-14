@@ -3,19 +3,9 @@
 #include <stdio.h>
 
 #include "mach_defines.h"
+#include "sdk.h"
 #include "gfx_load.h"
 #include "cache.h"
-
-//hardware addresses I really need to dump into an include or something...
-extern volatile uint32_t MISC[];
-#define MISC_REG(i) MISC[(i)/4]
-extern volatile uint32_t GFXREG[];
-#define GFX_REG(i) GFXREG[(i)/4]
-extern uint32_t GFXPAL[];
-extern uint32_t GFXTILES[];
-extern uint32_t GFXTILEMAPA[];
-extern uint32_t GFXTILEMAPB[];
-
 
 //The bgnd.png image got linked into the binary of this app, and these two chars are the first
 //and one past the last byte of it.
