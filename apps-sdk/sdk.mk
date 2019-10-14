@@ -3,9 +3,9 @@
 
 #Set prefixes and paths to all tools.
 ifeq ("$(RISCV_TOOLCHAIN_PATH)", "")
-PREFIX := riscv32-unknown-elf-
+PREFIX := riscv64-unknown-elf-
 else
-PREFIX := $(RISCV_TOOLCHAIN_PATH)/riscv32-unknown-elf-
+PREFIX := $(RISCV_TOOLCHAIN_PATH)/riscv64-unknown-elf-
 endif
 CC := $(PREFIX)gcc
 AR := $(PREFIX)ar
@@ -30,7 +30,7 @@ BUILD_DIR_SDK := $(BUILD_DIR)/apps-sdk
 #Ipl gloss is in include path because mach_defines.h
 INCLUDEDIRS += $(APPSSDK_DIR) $(APPSSDK_DIR)/gloss $(APPSSDK_DIR)/../soc/ipl/gloss $(APPSSDK_DIR)/../soc/ipl/syscallable/
 CFLAGS += -Os -ggdb $(addprefix -I,$(INCLUDEDIRS)) -march=rv32im -mabi=ilp32
-LDFLAGS += -Wl,-Bstatic -Wl,--gc-sections -Wl,-T,$(LDSCRIPT) -Wl,-Map,$(TARGET_MAP) -lgcc -lm -nostartfiles -Wl,-melf32lriscv
+LDFLAGS += -Wl,-Bstatic -Wl,--gc-sections -Wl,-T,$(LDSCRIPT) -Wl,-Map,$(TARGET_MAP) -lgcc -lm -nostartfiles -Wl,-melf32lriscv -march=rv32im -mabi=ilp32
 DEPFLAGS := -MMD -MP 
 
 export PREFIX CC AR LD OBJCOPY CFLAGS LDFLAGS APPNAME
