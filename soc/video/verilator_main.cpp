@@ -26,14 +26,24 @@ void tb_write(Vvid *tb, VerilatedVcdC *trace, int addr, int data) {
 		tb->eval();
 		if (trace) trace->dump(ts++);
 	} while (tb->ready==0);
+	tb->wstrb=0x0;
 }
 
 #define REG_OFF 0x0000
 #define PAL_OFF 0x2000
 #define TILEMAPA_OFF 0x4000
 #define TILEMAPB_OFF 0x8000
+#define SPRITE_OFF 0xC000
 #define TILEMEM_OFF 0x10000
 
+void set_sprite(Vvid *tb, VerilatedVcdC *trace, int no, int x, int y, int sx, int sy, int tileno) {
+	uint32_t sa, sb;
+	sa=(y<<16)|x;
+	sb=sx|(sy<<8)|(tileno<<16);
+	printf("Sprite %d: %08X %08X\n", no, sa, sb);
+	tb_write(tb, trace, SPRITE_OFF+no*8, sa);
+	tb_write(tb, trace, SPRITE_OFF+no*8+4, sb);
+}
 
 void load_tilemap(Vvid *tb, VerilatedVcdC *trace, char *file) {
 	FILE *f=fopen(file, "r");
@@ -50,6 +60,7 @@ void load_tilemap(Vvid *tb, VerilatedVcdC *trace, char *file) {
 			for (int x=0; x<16; x++) {
 				p>>=4;
 				int c=gdImageGetPixel(im, tx+x, ty+y);
+//				c=x; //HACK
 				p|=((uint64_t)c)<<60ULL;
 			}
 			tb_write(tb, tile<3?trace:NULL, TILEMEM_OFF+(tile*32+y*2+0)*4, p&0xFFFFFFFF);
@@ -69,7 +80,7 @@ void load_tilemap(Vvid *tb, VerilatedVcdC *trace, char *file) {
 	for (int y=0; y<64; y++) {
 		tile=y*(gdImageSX(im)/16);
 		for (int x=0; x<64; x+=2) {
-			tb_write(tb, trace, TILEMAPA_OFF+pos*4, ((tile+1)<<16)|tile);
+//			tb_write(tb, trace, TILEMAPA_OFF+pos*4, ((tile+1)<<16)|tile);
 			pos++;
 			tile+=2;
 		}
@@ -151,16 +162,22 @@ int main(int argc, char **argv) {
 		p=vgapal[i*3];
 		p|=vgapal[i*3+1]<<8;
 		p|=vgapal[i*3+2]<<16;
-		p|=(i!=255)?((0xFF)<<24):0;
+		p|=(0xff<<24);
 		tb_write(tb, trace, PAL_OFF+(i*4), p);
 		tb_write(tb, trace, PAL_OFF+((i+256)*4), p);
 	}
 
+//	tb_write(tb, trace, PAL_OFF+(0x100*4), 0xffff00ff);
+	tb_write(tb, trace, PAL_OFF+((0x1ff)*4), 0x10ff00ff);
+
+
 	load_tilemap(tb, trace, "tileset.png");
 	printf("Buffers inited.\n");
-	tb_write(tb, trace,REG_OFF+2*4, 0x2|0x8); //ena tile map a, sprites
-//	tb_write(tb, trace,REG_OFF+2*4, 0x1); //ena fb
-//	tb_write(tb, trace,REG_OFF+2*4, 0x10001); //ena fb, 8bit
+	tb_write(tb, trace,REG_OFF+2*4, 0x8); //ena sprites
+	for (int i=0; i<28; i++) {
+		set_sprite(tb, trace, i, i*16, 144, 16, 16, 0);
+	}
+//	set_sprite(tb, trace, 2, 64, 64, 32, 32, 8);
 
 	int fetch_next=0;
 	int next_line=0;

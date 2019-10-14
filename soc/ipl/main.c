@@ -32,6 +32,7 @@ extern uint32_t GFXPAL[];
 extern uint32_t GFXTILES[];
 extern uint32_t GFXTILEMAPA[];
 extern uint32_t GFXTILEMAPB[];
+extern uint32_t GFXSPRITES[];
 
 uint8_t *lcdfb;
 
@@ -75,6 +76,12 @@ void gfx_set_xlate_val(int layer, int xcenter, int ycenter, float scale, float r
 	GFX_REG(GFX_TILEA_INC_ROW)=(i_dy_y<<16)+(i_dy_x&0xffff);
 }
 
+void set_sprite(int no, int x, int y, int sx, int sy, int tileno, int palstart) {
+	GFXSPRITES[no*2]=(y<<16)|x;
+	GFXSPRITES[no*2+1]=sx|(sy<<8)|(tileno<<16)|((palstart/4)<<25);
+}
+
+
 
 int show_main_menu(char *app_name) {
 	//Allocate fb memory
@@ -115,8 +122,9 @@ int show_main_menu(char *app_name) {
 	printf("bgnd loaded.\n");
 
 	//Enable layers needed
-	GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_LAYEREN_TILEB|GFX_LAYEREN_TILEA;
-
+	GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_LAYEREN_TILEB|GFX_LAYEREN_TILEA|GFX_LAYEREN_SPR;
+	GFXPAL[FB_PAL_OFFSET+0x100]=0x40ff00ff;
+	GFXPAL[FB_PAL_OFFSET+0x1ff]=0x00ff00ff;
 
 	//loop
 	int p=0;
@@ -125,6 +133,7 @@ int show_main_menu(char *app_name) {
 	int bgnd_pal_state=10;
 	int selected=-1;
 	int done=0;
+	const char bubtxt[]="H\200\201\201 WOR helloworld.e";
 	while(!done) {
 		p++;
 
@@ -135,6 +144,15 @@ int show_main_menu(char *app_name) {
 		}
 
 		gfx_set_xlate_val(0, 240,24, 1+sin(p*0.2)*0.1, sin(p*0.11)*0.1);
+
+		int i=0;
+		while (bubtxt[i]!=0) {
+			set_sprite(i, i*16+32, 84, 16, 16, bubtxt[i], 0);
+			set_sprite(i+64, i*16+32, 100, 16, 16, 132, 0);
+			i++;
+		}
+
+		set_sprite(63, 128, 200, 32+sin(p*0.1)*16, 32+sin(p*0.1)*16, 132, 0);
 
 		int usbstate=MISC_REG(MISC_GPEXT_IN_REG)&(1<<31);
 		if (usbstate!=old_usbstate) {

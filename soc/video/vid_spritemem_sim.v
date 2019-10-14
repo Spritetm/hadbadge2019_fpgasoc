@@ -24,7 +24,7 @@ module vid_spritemem (DataInA, DataInB, ByteEnA, ByteEnB, AddressA, AddressB,
 		if (ResetA) begin
 			QA <= 0;
 		end else if (ClockEnA) begin
-			if (AddressA[0]==1) begin
+			if (AddressA[0]==0) begin
 				QA <= mem[AddressA[8:1]][31:0];
 				if (WrA && ByteEnA[0]) mem[AddressA[8:1]][7:0]<=DataInA[7:0];
 				if (WrA && ByteEnA[1]) mem[AddressA[8:1]][15:8]<=DataInA[15:8];

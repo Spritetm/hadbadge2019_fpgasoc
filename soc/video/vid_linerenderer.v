@@ -297,19 +297,31 @@ vid_tilemapmem tilemapb (
 
 reg sprite_pix_done;
 
+
+wire [3:0] sprite_tilemem_x;
+wire [3:0] sprite_tilemem_y;
+wire [8:0] sprite_tilemem_no;
+reg sprite_tilemem_ack;
+
+
 vid_spriteeng spriteeng (
 	.clk(clk),
 	.reset(reset),
-	.cpu_addr(addr[8:0]),
+	.cpu_addr(addr[10:2]),
 	.cpu_din(din),
 	.cpu_dout(dout_sprites),
 	.cpu_wstrb(cpu_sel_sprites ? wstrb : 0),
 	.vid_xpos(vid_xpos),
 	.vid_ypos(vid_ypos),
 	.sprite_pix(sprite_pix),
-	.pix_done(sprite_pix_done)
-);
+	.pix_done(sprite_pix_done),
 
+	.tilemem_x(sprite_tilemem_x),
+	.tilemem_y(sprite_tilemem_y),
+	.tilemem_no(sprite_tilemem_no),
+	.tilemem_data(tilemem_pixel),
+	.tilemem_ack(sprite_tilemem_ack)
+);
 
 reg [16:0] tilea_linestart_x;
 reg [16:0] tilea_linestart_y;
@@ -386,6 +398,7 @@ always @(*) begin
 	tilemem_no=0;
 	pal_addr=0;
 	sprite_pix_done=0;
+	sprite_tilemem_ack=0;
 
 	if (cycle==0) begin
 		tilepix_x = tileb_data[9] ? (15-tileb_x[9:6]) : tileb_x[9:6];
@@ -395,16 +408,18 @@ always @(*) begin
 		alphamixer_rate = layer_en[0] ? pal_data[31:24] : 0; //fb
 		alphamixer_in_b = bgnd_color; //background
 	end else if (cycle==1) begin
-		tilepix_x = 480-vid_xpos;  //tilemap should not be used; give clear indication if it is.
-		tilepix_y = vid_ypos;
-		tilemem_no = 'h21;
+		tilepix_x = sprite_tilemem_x;
+		tilepix_y = sprite_tilemem_y;
+		tilemem_no = sprite_tilemem_no;
+		sprite_tilemem_ack = 0; //HACK
 		pal_addr = tilemem_pixel + {tileb_data[17:11], 2'b0}; //from tilemap b
 		alphamixer_rate = layer_en[1] ? pal_data[31:24] : 0; //tilemap a
 		alphamixer_in_b = alphamixer_out; //bgnd+fb
 	end else if (cycle==2) begin
-		tilepix_x = 480-vid_xpos;  //tilemap should not be used; give clear indication if it is.
-		tilepix_y = vid_ypos;
-		tilemem_no = 'h21;
+		tilepix_x = sprite_tilemem_x;
+		tilepix_y = sprite_tilemem_y;
+		tilemem_no = sprite_tilemem_no;
+		sprite_tilemem_ack = 1;
 		pal_addr = sprite_pix;
 		sprite_pix_done = 1;
 		alphamixer_rate = layer_en[2] ? pal_data[31:24] : 0; //tilemap b

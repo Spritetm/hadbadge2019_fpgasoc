@@ -8,6 +8,7 @@ SNES: 128 sprites, 8x8-64x64, 32/scanline max
 Genesis: 80 sprites, 8x8-32x32, 20/scanline max
 Amiga: 8 sprites, 16x? wide
 Atari ST: no hw sprites
+This: 512 sprites, 16x16, max 58'ish per scanline when unscaled
 
 The logic here is: we have 1920 cycles (480*4) to generate a line of sprites. This means walking
 the OAM memory, inspecting which sprites need to be drawn, and squirting them to a line buffer. We
@@ -62,22 +63,6 @@ w2:
 25-26: sizesel
 27-31: pal_sel
 
-
-
-EBR is 512x18. Say we store:
-
-- Ypos / Ysize
-
-
-
-
-
-- Ypos/Ysize/flag_b
-- Tile/Flags
-- ?/?
-
-
-
 Output memory... we need to compose a line at a time, then send it to the line renderer.
 
 */
@@ -94,7 +79,15 @@ module vid_spriteeng (
 	input [8:0] vid_xpos,
 	input [8:0] vid_ypos,
 	output [8:0] sprite_pix,
-	input pix_done //set to 1 if done with the current pixel
+	input pix_done, //set to 1 if done with the current pixel
+	
+	output [3:0] tilemem_x,
+	output [3:0] tilemem_y,
+	output [8:0] tilemem_no,
+	input [3:0] tilemem_data,
+	//Note: this being high means 'I have processed your input, feel free to change your output,
+	//you will get your data the next cycle.
+	input tilemem_ack 
 );
 
 reg [7:0] spritemem_addr;
@@ -110,21 +103,20 @@ vid_spritemem spritemem (
 	.ByteEnA(cpu_wstrb),
 	.ByteEnB(0),
 	.AddressA(cpu_addr),
-	.AddressB(spritemem_addr),
-	.WrA(cpu_wstrb!=0),
-	.WrB(0),
 	.DataInA(cpu_din),
-	.DataInB(0),
+	.WrA(cpu_wstrb!=0),
 	.QA(cpu_dout),
+	.AddressB(spritemem_addr),
+	.DataInB(0),
+	.WrB(0),
 	.QB(spritemem_out)
 );
 
 wire [10:0] linebuf_out_addr;
 assign linebuf_out_addr = {1'b0, vid_ypos[0], vid_xpos};
 
-reg [8:0] lb_xpos;
-wire [10:0] linebuf_w_addr;
-assign linebuf_w_addr = {1'b0, ~vid_ypos[0], lb_xpos};
+wire [8:0] lb_xpos;
+reg [10:0] linebuf_w_addr;
 reg [8:0] lb_din;
 reg lb_wr;
 wire [8:0] lb_dout;
@@ -137,7 +129,7 @@ vid_sprite_linebuf linebuf(
 	.ResetA(reset),
 	.ResetB(reset),
 	.AddressA(linebuf_out_addr),
-	.DataInA(9'h1ff),
+	.DataInA(9'h1FF),
 	.WrA(pix_done),
 	.QA(sprite_pix),
 	.AddressB(linebuf_w_addr),
@@ -146,10 +138,237 @@ vid_sprite_linebuf linebuf(
 	.QB(lb_dout)
 );
 
+/*
+ Because we have very few cycles here, the loop through the sprite memory is
+ pipelined:
+ - Stage 1: Dump spritemem_addr into sprite mem. Mem takes 1 clock cycle to resolve this. 
+            Also increase spritemem_addr
+ - Stage 2: Memory is slow - dump into the pipeline registers
+ - Stage 3: Fetch sprite data. Feed size_y into LUT ROM to get dy.
+ - Stage 4: Feed DY into multiplier to get tile_ypos.
+ - Stage 5: Check if sprite needs to be drawn. If so, send entire set of data we retrieved to
+            sprite draw logic.
+ - Stage 6: pipeline hangs here if sprite drawing hw is busy
+
+Data format is 64 bit:
+[13:0] xpos
+[14] xchain
+[15] xflip
+[29:16] ypos
+[30] ychain
+[31] yflip
+[39:32] xsize
+[47:40] ysize
+[56:48] tile
+[63:57] pal_sel 
+*/
+
+//This contains the sprite ram data for stages 2-6
+reg [63:0] spritemem_data [0:4];
+
+wire [7:0] reciproc_y_in;
+assign reciproc_y_in = spritemem_data[0][47:40]; //stage 3
+wire [15:0] reciproc_y_out;
+
+//For each address a, this returns (65536/a).
+size_to_d_lookup_rom reciproc_rom_y (
+	.clk(clk),
+	.reset(reset),
+	.a_in(reciproc_y_in),
+	.d_out(reciproc_y_out)
+);
+
+wire [17:0] gfx_ypos; //ypos within the scaled output tile
+assign gfx_ypos = {10'h0, vid_ypos} - {4'h0, spritemem_data[2][29:16]}; //stage 4
+wire [35:0] tile_ypos_multiplied;
+reg [15:0] reciproc_y_out_reg; //for stage 4
+
+//This calculates the Ypos in the tile graphic from the real-life Ypos and the scale factor.
+//Input is anywhere 0-255 on gfx_ypos, 65536-0 on tile_ypos_multiplied.
+//Multiplied, this gives a number from 0 to 16K.
+mul_18x18 mul_ypos(
+	.a(reciproc_y_out_reg),
+	.b(gfx_ypos),
+	.dout(tile_ypos_multiplied)
+);
+
+wire [3:0] tile_ypos;	//actual ypos in tile mem corresponding to current vid_ypos and current sprite
+wire tile_ypos_ovf;		//1 if ypos is outside tile
+//stage 5
+assign tile_ypos = tile_ypos_multiplied[15:12];
+assign tile_ypos_ovf = (tile_ypos_multiplied[35:16]!=0);
+
+reg [3:0] tile_ypos_reg; //tile_ypos, stage 6
+
+reg last_y_lsb;			//to see if we flipped to the next line
+reg [7:0] curr_sprite;	//index in sprite mem
+reg drawable_ready;
+wire spritedrawer_busy;
+
+//This is the logic that walks the sprite table and tries to find out if a sprite is drawable
+//(and possibly chains it in the future as well).
 always @(posedge clk) begin
-	lb_xpos <= vid_ypos;
-	lb_din <= 'h123;
-	lb_wr <= 1;
+	if (reset) begin
+		spritemem_addr <= 0;
+		last_y_lsb <= 0;
+		reciproc_y_out_reg <= 0;
+		drawable_ready <= 0;
+	end else begin
+		last_y_lsb <= vid_ypos[0];
+		if (last_y_lsb != vid_ypos[0]) begin
+			//Line changed. Restart on new line.
+			spritemem_addr <= 0;
+		end
+		
+		if (drawable_ready && spritedrawer_busy) begin
+			//need to wait until spritedrawer is done with the current sprite and can move on to
+			//the next one we already found is drawable
+		end else begin
+			drawable_ready <= 0;
+			if (spritemem_addr != 255) begin
+				spritemem_addr <= spritemem_addr + 1; //stage 1
+			end
+			spritemem_data[0] <= spritemem_out; //stage 2
+			spritemem_data[1] <= spritemem_data[0]; //stage 3
+			spritemem_data[2] <= spritemem_data[1]; //stage 4
+			spritemem_data[3] <= spritemem_data[2]; //stage 5
+			spritemem_data[4] <= spritemem_data[3]; //stage 6
+			reciproc_y_out_reg <= reciproc_y_out; //stage 4
+			tile_ypos_reg <= tile_ypos;
+			if (spritemem_data[2][29:16]<=vid_ypos && !tile_ypos_ovf && spritemem_data[2][39:32]!=0 && spritemem_data[2][47:40]!=0) begin
+				drawable_ready <= 1;
+			end
+		end
+	end
+end
+
+//This is the logic that actually draws a sprite.
+reg [13:0] dspr_xpos; //actual xpos of sprite on screen
+reg [13:0] dspr_xoff;//current offset from dspr_xpos
+reg [3:0] dspr_tile_ypos;
+reg [7:0] dspr_xsize;
+reg [8:0] dspr_tile;
+reg [6:0] dspr_pal_sel;
+reg [3:0] dspr_state;
+
+assign lb_xpos = dspr_xpos + dspr_xoff;
+
+parameter DSPR_STATE_IDLE = 0;
+parameter DSPR_STATE_PREP1 = 1;
+parameter DSPR_STATE_DRAW = 2;
+
+assign spritedrawer_busy = (dspr_state != DSPR_STATE_IDLE);
+
+wire [15:0] reciproc_x_out;
+reg [15:0] reciproc_x_out_reg;
+
+//For each address a, this returns (65536/a).
+size_to_d_lookup_rom reciproc_rom_x (
+	.clk(clk),
+	.reset(reset),
+	.a_in(dspr_xsize),
+	.d_out(reciproc_x_out)
+);
+
+wire [35:0] tile_xpos_multiplied;
+
+//This calculates the Ypos in the tile graphic from the real-life Ypos and the scale factor.
+//Input is anywhere 0-255 on gfx_ypos, 65536-0 on tile_ypos_multiplied.
+//Multiplied, this gives a number from 0 to 16K.
+mul_18x18 mul_xpos(
+	.a(reciproc_x_out_reg),
+	.b(dspr_xoff),
+	.dout(tile_xpos_multiplied)
+);
+wire [3:0] tile_xpos;
+wire tile_xpos_ovf;
+assign tile_xpos = tile_xpos_multiplied[15:12];
+assign tile_xpos_ovf = (tile_xpos_multiplied[35:16] != 0);
+
+assign tilemem_x = tile_xpos;
+assign tilemem_y = dspr_tile_ypos;
+assign tilemem_no = dspr_tile;
+reg tilemem_has_data; //goes high 1 cycle after tilemem_ack
+
+always @(posedge clk) begin
+	if (reset) begin
+		dspr_state <= DSPR_STATE_IDLE;
+		lb_wr <= 0;
+		dspr_xpos <= 0;
+		dspr_xsize <= 0;
+		dspr_xoff <= 0;
+		dspr_pal_sel <= 0;
+		dspr_tile <= 0;
+		dspr_tile_ypos <= 0;
+		lb_din <= 0;
+		linebuf_w_addr <= 0;
+	end else 
+		lb_wr <= 0;
+		if (dspr_state==DSPR_STATE_IDLE) begin
+			if (drawable_ready) begin
+				//Latch input data as the sprite iterator will move on.
+				dspr_state <= DSPR_STATE_PREP1;
+				dspr_xpos <= spritemem_data[3][13:0];
+				dspr_xsize <= spritemem_data[3][39:32];
+				dspr_xoff <= 0;
+				dspr_pal_sel <= spritemem_data[3][63:57];
+				dspr_tile <= spritemem_data[3][56:48];
+				dspr_tile_ypos <= tile_ypos_reg;
+			end
+		end else if (dspr_state==DSPR_STATE_PREP1) begin
+			//LUT should have data now, will spit out correct dx next clock cycle.
+				dspr_state <= DSPR_STATE_DRAW;
+		end else if (dspr_state==DSPR_STATE_DRAW) begin
+			//LUT has a result, feed into the multiplier.
+			//Note that for the first cycle, the output of the multiplier is always 0, which is correct,
+			//even if it doesn't have the correct value from reciproc_x yet.
+			reciproc_x_out_reg <= reciproc_x_out;
+			tilemem_has_data <= tilemem_ack;
+			if (tilemem_ack) begin
+				//Set up write address; we'll write it next cycle
+				linebuf_w_addr <= {1'b0, ~vid_ypos[0], lb_xpos};
+				if (tile_xpos_ovf) begin
+					dspr_state <= DSPR_STATE_IDLE;
+				end else begin
+					dspr_xoff <= dspr_xoff + 1;
+				end
+			end
+			if (tilemem_has_data) begin
+				if (tilemem_data != 0) begin
+					lb_din <= tilemem_data + dspr_pal_sel*4;
+					lb_wr <= 1;
+				end
+			end
+		end
+	end
+endmodule
+
+
+//This is a ROM that contains a lookup table. For an address a, it will spit out (65536/a) a clock
+//cycle later.
+module size_to_d_lookup_rom (
+	input clk,
+	input reset,
+	input [7:0] a_in,
+	output [15:0] d_out
+);
+
+reg [15:0] lut[0:255];
+
+initial begin
+	$readmemh("reciproc_lut.hex", lut);
+end
+
+reg [7:0] a_latch;
+assign d_out = lut[a_latch];
+
+always @(posedge clk) begin
+	if (reset) begin
+		a_latch <= 0;
+	end else begin
+		a_latch <= a_in;
+	end
 end
 
 endmodule
+

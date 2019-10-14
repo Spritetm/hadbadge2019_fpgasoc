@@ -306,6 +306,33 @@ fill the palette memory), the fields are
     (i*4). */
 #define GFX_TILEMAP_ENT_PAL_OFF 11
 
+/** Memory address of the sprites. This is contains 256 2x32-bit
+    words containing the sprite data for 256 sprites.
+#define GFX_OFFSET_SPRITE 0x5000C000
+/** Word 0, bits [13:0]: X position of top left corner of sprite
+#define GFX_SPRITE_ENT_XPOS_OFF 0
+/** Word 0, bit [14]: X chain. Unused for now.
+#define GFX_SPRITE_ENT_XCHAIN (1<<14)
+/** Word 0, bit [15]: X flip of tile.
+#define GFX_SPRITE_ENT_XFLIP (1<<15)
+/** Word 0, bits [29:16]: X position of top left corner of sprite
+#define GFX_SPRITE_ENT_YPOS_OFF 16
+/** Word 0, bit [30]: X chain. Unused for now.
+#define GFX_SPRITE_ENT_YCHAIN (1<<30)
+/** Word 0, bit [31]: X flip of tile.
+#define GFX_SPRITE_ENT_YFLIP (1<<31)
+/** Word 1, bit [7:0]: X size. The tile for this sprite will be scaled horizontally
+    to this size, in pixels. 16 for no scale.*/
+#define GFX_SPRITE_ENT_XSIZE_OFF 0
+/** Word 1, bit [15:8]: Y size. The tile for this sprite will be scaled vertically
+    to this size, in pixels. 16 for no scale. */
+#define GFX_SPRITE_ENT_YSIZE_OFF 8
+/** Word 1, bit [24:16]: Tile number that this sprite uses. */
+#define GFX_SPRITE_ENT_TILE_OFF 16
+/** Word 1, bit [31:25]: Palette selection. */
+#define GFX_SPRITE_ENT_PALSEL_OFF 25
+
+
 
 /* Offset to tile memory. This contains the pixel data of all 512 tiles
 as 32 32-bit words. The pixel data is stored little-endian, so e.g:
