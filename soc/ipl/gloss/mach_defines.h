@@ -24,9 +24,12 @@
 /** Offset of the data register for the debug UART. A write here will send the
     data out of the UART. A write when a send is going on will halt the processor
     until the send is completed. A read will receive any byte that was received by
-    the UART since the last read, or 0xFFFFFFFF when none was. */
+    the UART since the last read, or 0xFFFFFFFF when none was. There is no receive
+    buffer, so it's possible to miss data if you don't poll frequently enough.
+    The debug UART is always configured as 8N1. */
 #define UART_DATA_REG	0x0
-/** UART divisor register. Baud rate used by the UART is 48MHz/UART_DIV_REG. */
+/** UART divisor register. Baud rate used by the UART is 48MHz/UART_DIV_REG.
+    Common rates: 115200 -> 416, 38400 -> 1250, 19200 -> 2500, 9600 -> 5000 */
 #define UART_DIV_REG	0x4
 /** Data register for IrDA UART. Works similar to UART_DATA_REG. */
 #define UART_IRDA_DATA_REG	0x8
