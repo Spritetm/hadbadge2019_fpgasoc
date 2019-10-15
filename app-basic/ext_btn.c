@@ -1,11 +1,8 @@
 #include "ext_btn.h"
 #include <assert.h>
 #include "mach_defines.h"
+#include "sdk.h"
 #include <stdint.h>
-
-extern volatile uint32_t MISC[];
-#define MISC_REG(i) MISC[(i)/4]
-
 
 static int _buttons(struct mb_interpreter_t* s, void** l) {
 	int result = MB_FUNC_OK;
