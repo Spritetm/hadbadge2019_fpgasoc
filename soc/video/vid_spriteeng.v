@@ -90,7 +90,7 @@ module vid_spriteeng (
 	input tilemem_ack 
 );
 
-reg [7:0] spritemem_addr;
+wire [7:0] spritemem_addr;
 wire [63:0] spritemem_out;
 
 vid_spritemem spritemem (
@@ -115,7 +115,7 @@ vid_spritemem spritemem (
 wire [10:0] linebuf_out_addr;
 assign linebuf_out_addr = {1'b0, vid_ypos[0], vid_xpos};
 
-wire [8:0] lb_xpos;
+wire [13:0] lb_xpos;
 reg [10:0] linebuf_w_addr;
 reg [8:0] lb_din;
 reg lb_wr;
@@ -167,7 +167,6 @@ Data format is 64 bit:
 reg [63:0] spritemem_data [0:4];
 
 wire [7:0] reciproc_y_in;
-assign reciproc_y_in = spritemem_data[0][47:40]; //stage 3
 wire [15:0] reciproc_y_out;
 
 //For each address a, this returns (65536/a).
@@ -205,29 +204,40 @@ reg [7:0] curr_sprite;	//index in sprite mem
 reg drawable_ready;
 wire spritedrawer_busy;
 
+reg [7:0] spritemem_addr_cur;
+wire pipeline_stall;
+assign pipeline_stall = (drawable_ready && spritedrawer_busy) || vid_xpos==0;
+assign spritemem_addr = pipeline_stall ? spritemem_addr_cur : spritemem_addr_cur + 1;
+assign reciproc_y_in = pipeline_stall ? spritemem_data[1][47:40] : spritemem_data[0][47:40]; //stage 3
+reg line_done;
+
 //This is the logic that walks the sprite table and tries to find out if a sprite is drawable
 //(and possibly chains it in the future as well).
 always @(posedge clk) begin
 	if (reset) begin
-		spritemem_addr <= 0;
+		spritemem_addr_cur <= ~0;
 		last_y_lsb <= 0;
 		reciproc_y_out_reg <= 0;
 		drawable_ready <= 0;
+		line_done <= 0;
 	end else begin
 		last_y_lsb <= vid_ypos[0];
 		if (last_y_lsb != vid_ypos[0]) begin
 			//Line changed. Restart on new line.
-			spritemem_addr <= 0;
+			spritemem_addr_cur <= ~0;
+			line_done <= 0;
+		end else begin
+			spritemem_addr_cur <= spritemem_addr;
+			if (spritemem_addr_cur==254 && spritemem_addr == 255) begin
+				line_done <= 1;
+			end
 		end
-		
-		if (drawable_ready && spritedrawer_busy) begin
+
+		if (pipeline_stall) begin
 			//need to wait until spritedrawer is done with the current sprite and can move on to
 			//the next one we already found is drawable
 		end else begin
 			drawable_ready <= 0;
-			if (spritemem_addr != 255) begin
-				spritemem_addr <= spritemem_addr + 1; //stage 1
-			end
 			spritemem_data[0] <= spritemem_out; //stage 2
 			spritemem_data[1] <= spritemem_data[0]; //stage 3
 			spritemem_data[2] <= spritemem_data[1]; //stage 4
@@ -236,7 +246,7 @@ always @(posedge clk) begin
 			reciproc_y_out_reg <= reciproc_y_out; //stage 4
 			tile_ypos_reg <= tile_ypos;
 			if (spritemem_data[2][29:16]<=vid_ypos && !tile_ypos_ovf && spritemem_data[2][39:32]!=0 && spritemem_data[2][47:40]!=0) begin
-				drawable_ready <= 1;
+				drawable_ready <= !line_done;
 			end
 		end
 	end
@@ -324,14 +334,17 @@ always @(posedge clk) begin
 			//even if it doesn't have the correct value from reciproc_x yet.
 			reciproc_x_out_reg <= reciproc_x_out;
 			tilemem_has_data <= tilemem_ack;
-			if (tilemem_ack) begin
+			//See if we're done.
+			if (tile_xpos_ovf) begin
+				dspr_state <= DSPR_STATE_IDLE;
+			end
+			if (lb_xpos[13:9]!=0) begin
+				//Can't draw this: out of bounds. Proceed to next pixel.
+				dspr_xoff <= dspr_xoff + 1;
+			end else if (tilemem_ack) begin
 				//Set up write address; we'll write it next cycle
-				linebuf_w_addr <= {1'b0, ~vid_ypos[0], lb_xpos};
-				if (tile_xpos_ovf) begin
-					dspr_state <= DSPR_STATE_IDLE;
-				end else begin
-					dspr_xoff <= dspr_xoff + 1;
-				end
+				linebuf_w_addr <= {1'b0, ~vid_ypos[0], lb_xpos[8:0]};
+				dspr_xoff <= dspr_xoff + 1;
 			end
 			if (tilemem_has_data) begin
 				if (tilemem_data != 0) begin
