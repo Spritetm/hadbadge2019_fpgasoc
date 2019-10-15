@@ -75,6 +75,8 @@ module vid_spriteeng (
 	input [31:0] cpu_din,
 	output [31:0] cpu_dout,
 	input [3:0] cpu_wstrb,
+	input [12:0] offx,
+	input [12:0] offy,
 
 	input [8:0] vid_xpos,
 	input [8:0] vid_ypos,
@@ -151,10 +153,10 @@ vid_sprite_linebuf linebuf(
  - Stage 6: pipeline hangs here if sprite drawing hw is busy
 
 Data format is 64 bit:
-[13:0] xpos
+[12:0] xpos
 [14] xchain
 [15] xflip
-[29:16] ypos
+[28:16] ypos
 [30] ychain
 [31] yflip
 [39:32] xsize
@@ -177,8 +179,13 @@ size_to_d_lookup_rom reciproc_rom_y (
 	.d_out(reciproc_y_out)
 );
 
+wire [12:0] virt_ypos;
+wire [12:0] virt_xpos;
+assign virt_ypos = vid_ypos + offy;
+assign virt_xpos = vid_xpos + offx;
+
 wire [17:0] gfx_ypos; //ypos within the scaled output tile
-assign gfx_ypos = {10'h0, vid_ypos} - {4'h0, spritemem_data[2][29:16]}; //stage 4
+assign gfx_ypos = {7'h0, virt_ypos} - {4'h0, spritemem_data[2][29:16]}; //stage 4
 wire [35:0] tile_ypos_multiplied;
 reg [15:0] reciproc_y_out_reg; //for stage 4
 
@@ -191,7 +198,7 @@ mul_18x18 mul_ypos(
 	.dout(tile_ypos_multiplied)
 );
 
-wire [3:0] tile_ypos;	//actual ypos in tile mem corresponding to current vid_ypos and current sprite
+wire [3:0] tile_ypos;	//actual ypos in tile mem corresponding to current virt_ypos and current sprite
 wire tile_ypos_ovf;		//1 if ypos is outside tile
 //stage 5
 assign tile_ypos = tile_ypos_multiplied[15:12];
@@ -245,7 +252,7 @@ always @(posedge clk) begin
 			spritemem_data[4] <= spritemem_data[3]; //stage 6
 			reciproc_y_out_reg <= reciproc_y_out; //stage 4
 			tile_ypos_reg <= tile_ypos;
-			if (spritemem_data[2][29:16]<=vid_ypos && !tile_ypos_ovf && spritemem_data[2][39:32]!=0 && spritemem_data[2][47:40]!=0) begin
+			if (spritemem_data[2][29:16]<=virt_ypos && !tile_ypos_ovf && spritemem_data[2][39:32]!=0 && spritemem_data[2][47:40]!=0) begin
 				drawable_ready <= !line_done;
 			end
 		end
@@ -261,7 +268,7 @@ reg [8:0] dspr_tile;
 reg [6:0] dspr_pal_sel;
 reg [3:0] dspr_state;
 
-assign lb_xpos = dspr_xpos + dspr_xoff;
+assign lb_xpos = dspr_xpos + dspr_xoff - offx;
 
 parameter DSPR_STATE_IDLE = 0;
 parameter DSPR_STATE_PREP1 = 1;

@@ -77,11 +77,13 @@ void gfx_set_xlate_val(int layer, int xcenter, int ycenter, float scale, float r
 }
 
 void set_sprite(int no, int x, int y, int sx, int sy, int tileno, int palstart) {
+	x+=64;
+	y+=64;
 	GFXSPRITES[no*2]=(y<<16)|x;
 	GFXSPRITES[no*2+1]=sx|(sy<<8)|(tileno<<16)|((palstart/4)<<25);
 }
 
-
+#define SCR_PITCH 20
 
 int show_main_menu(char *app_name) {
 	//Allocate fb memory
@@ -123,8 +125,8 @@ int show_main_menu(char *app_name) {
 
 	//Enable layers needed
 	GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_LAYEREN_TILEB|GFX_LAYEREN_TILEA|GFX_LAYEREN_SPR;
-	GFXPAL[FB_PAL_OFFSET+0x100]=0x40ff00ff;
-	GFXPAL[FB_PAL_OFFSET+0x1ff]=0x00ff00ff;
+	GFXPAL[FB_PAL_OFFSET+0x100]=0x00ff00ff; //Note: For some reason, the sprites use this as default bgnd. ToDo: fix this...
+	GFXPAL[FB_PAL_OFFSET+0x1ff]=0x00ff00ff; //so it becomes this instead.
 
 	//loop
 	int p=0;
@@ -133,7 +135,11 @@ int show_main_menu(char *app_name) {
 	int bgnd_pal_state=10;
 	int selected=-1;
 	int done=0;
-	const char bubtxt[]="H\200\201\201 WOR helloworld.e";
+	const char scrtxt[]="                       "
+						"Welcome to the Hackaday Supercon 2019 IPL menu thingy! Select an app "
+						"or insert an USB cable to modify the files on the flash. Have fun!"
+						"                       ";
+	int scrpos=0;
 	while(!done) {
 		p++;
 
@@ -145,14 +151,13 @@ int show_main_menu(char *app_name) {
 
 		gfx_set_xlate_val(0, 240,24, 1+sin(p*0.2)*0.1, sin(p*0.11)*0.1);
 
-		int i=0;
-		while (bubtxt[i]!=0) {
-			set_sprite(i, i*16+32, 84, 16, 16, bubtxt[i], 0);
-			set_sprite(i+64, i*16+32, 100, 16, 16, 132, 0);
-			i++;
+		int sprno=0;
+		for (int x=SCR_PITCH-(scrpos%SCR_PITCH); x<480; x+=SCR_PITCH) {
+			float a=x*0.02+scrpos*0.1;
+			set_sprite(sprno++, x, 280+sin(a)*20, 16+cos(a)*4, 16+cos(a)*4, scrtxt[scrpos/SCR_PITCH+sprno], 0);
 		}
-
-		set_sprite(63, 128, 200, 32+sin(p*0.1)*16, 32+sin(p*0.1)*16, 132, 0);
+		if (scrtxt[scrpos/SCR_PITCH+sprno]==0) scrpos=0;
+		scrpos+=2;
 
 		int usbstate=MISC_REG(MISC_GPEXT_IN_REG)&(1<<31);
 		if (usbstate!=old_usbstate) {

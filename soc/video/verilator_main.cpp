@@ -174,8 +174,8 @@ int main(int argc, char **argv) {
 	load_tilemap(tb, trace, "tileset.png");
 	printf("Buffers inited.\n");
 	tb_write(tb, trace,REG_OFF+2*4, 0x8); //ena sprites
-	for (int i=4; i<10; i++) {
-		set_sprite(tb, trace, i*2, i*32, 144+i, i*2+1, i*2+1, 0);
+	for (int i=0; i<10; i++) {
+		set_sprite(tb, trace, i*2, i*32+64, 64, i*2+1, i*2+1, 0);
 	}
 //	set_sprite(tb, trace, 2, 64, 64, 32, 32, 8);
 

@@ -278,6 +278,15 @@ fill the palette memory), the fields are
     color 'shines through'. This is a RGBA color, but the alpha
     probably isn't that useful.*/
 #define GFX_BGNDCOL_REG 0x28
+/** Offset of all the sprites. Defaults to (64, 64) meaning that
+    a sprite placed on x=64, y=64 will appear in the top left
+    corner.
+#define GFX_SPRITE_OFF_REG 0x28
+/** [12:0]: Sprite X position that maps to left of screen */
+#define GFX_SPRITE_OFF_X_OFF 0
+/** [28:16]: Sprite Y position that maps to top of screen */
+#define GFX_SPRITE_Y_OFF 16
+
 
 /** Memory address of the palette memory. This is a 512-entry
     memory containing 32-bit RGBA values. */
@@ -307,19 +316,23 @@ fill the palette memory), the fields are
 #define GFX_TILEMAP_ENT_PAL_OFF 11
 
 /** Memory address of the sprites. This is contains 256 2x32-bit
-    words containing the sprite data for 256 sprites.
+    words containing the sprite data for 256 sprites. Note that 
+    sprite addresses are offset by GFX_SPRITE_OFF register contents
+    defaulting to (64, 64); in other words placing a sprite at 
+    (64,64) makes it appear in the top right corner. Also note negative
+    sprite positions won't work, hence the need for an offset.*/
 #define GFX_OFFSET_SPRITE 0x5000C000
-/** Word 0, bits [13:0]: X position of top left corner of sprite
+/** Word 0, bits [13:0]: X position of top left corner of sprite */
 #define GFX_SPRITE_ENT_XPOS_OFF 0
-/** Word 0, bit [14]: X chain. Unused for now.
+/** Word 0, bit [14]: X chain. Unused for now. */
 #define GFX_SPRITE_ENT_XCHAIN (1<<14)
-/** Word 0, bit [15]: X flip of tile.
+/** Word 0, bit [15]: X flip of tile. */
 #define GFX_SPRITE_ENT_XFLIP (1<<15)
-/** Word 0, bits [29:16]: X position of top left corner of sprite
+/** Word 0, bits [29:16]: X position of top left corner of sprite */
 #define GFX_SPRITE_ENT_YPOS_OFF 16
-/** Word 0, bit [30]: X chain. Unused for now.
+/** Word 0, bit [30]: X chain. Unused for now. */
 #define GFX_SPRITE_ENT_YCHAIN (1<<30)
-/** Word 0, bit [31]: X flip of tile.
+/** Word 0, bit [31]: X flip of tile. */
 #define GFX_SPRITE_ENT_YFLIP (1<<31)
 /** Word 1, bit [7:0]: X size. The tile for this sprite will be scaled horizontally
     to this size, in pixels. 16 for no scale.*/

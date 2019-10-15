@@ -120,6 +120,7 @@ parameter REG_SEL_TILEB_INC_COL = 7;
 parameter REG_SEL_TILEB_INC_ROW = 8;
 parameter REG_SEL_VIDPOS = 9;
 parameter REG_SEL_BGNDCOL = 10;
+parameter REG_SEL_SPRITE_OFF = 11;
 
 //Reminder: we have 64x64 tiles of 16x16 pixels, so in total a field of 1024x1024 pixels. Say we have one overflow bit, we need 11 bit
 //for everything... that leaves 5 bits for sub-pixel addressing in scaling modes. That sounds OK.
@@ -127,6 +128,8 @@ reg [15:0] tilea_xoff;
 reg [15:0] tilea_yoff;
 reg [15:0] tileb_xoff;
 reg [15:0] tileb_yoff;
+reg [12:0] sprite_xoff;
+reg [12:0] sprite_yoff;
 
 wire [17:0] dout_tilemapa;
 wire [17:0] dout_tilemapb;
@@ -191,6 +194,8 @@ always @(*) begin
 			dout = {7'h0, vid_ypos, 7'h0, vid_xpos};
 		end else if (addr[5:2]==REG_SEL_BGNDCOL) begin
 			dout = bgnd_color;
+		end else if (addr[5:2]==REG_SEL_SPRITE_OFF) begin
+			dout = {4'h0, sprite_yoff, 4'h0, sprite_xoff};
 		end
 	end else if (addr[16:13]=='h1) begin
 		cpu_sel_palette = 1;
@@ -311,6 +316,9 @@ vid_spriteeng spriteeng (
 	.cpu_din(din),
 	.cpu_dout(dout_sprites),
 	.cpu_wstrb(cpu_sel_sprites ? wstrb : 0),
+	.offx(sprite_xoff),
+	.offy(sprite_yoff),
+
 	.vid_xpos(vid_xpos),
 	.vid_ypos(vid_ypos),
 	.sprite_pix(sprite_pix),
@@ -466,6 +474,8 @@ always @(posedge clk) begin
 		fb_is_8bit <= 0;
 		alphamixer_out <= 0;
 		bgnd_color <= 0;
+		sprite_yoff <= 64;
+		sprite_xoff <= 64;
 	end else begin
 		/* CPU interface */
 		ready_delayed <= ((wstrb!=0) | ren);
@@ -498,6 +508,9 @@ always @(posedge clk) begin
 				tileb_rowinc_y <= din[31:16];
 			end else if (addr[5:2]==REG_SEL_BGNDCOL) begin
 				bgnd_color <= din;
+			end else if (addr[5:2]==REG_SEL_SPRITE_OFF) begin
+				sprite_xoff <= din[12:0];
+				sprite_yoff <= din[28:16];
 			end
 		end
 
