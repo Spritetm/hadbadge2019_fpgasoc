@@ -17,6 +17,11 @@ module vid_sprite_linebuf (DataInA, DataInB, AddressA, AddressB,
 
 	reg [8:0] mem[0:2047];
 
+	integer i;
+	initial begin
+		for (i=0; i<2048; i++) mem[i]=1;
+	end
+
 	always @(posedge ClockA) begin
 		if (ResetA) begin
 			QA <= 0;

@@ -419,7 +419,7 @@ always @(*) begin
 		tilepix_x = sprite_tilemem_x;
 		tilepix_y = sprite_tilemem_y;
 		tilemem_no = sprite_tilemem_no;
-		sprite_tilemem_ack = 0; //HACK
+		sprite_tilemem_ack = 1;
 		pal_addr = tilemem_pixel + {tileb_data[17:11], 2'b0}; //from tilemap b
 		alphamixer_rate = layer_en[1] ? pal_data[31:24] : 0; //tilemap a
 		alphamixer_in_b = alphamixer_out; //bgnd+fb

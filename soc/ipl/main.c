@@ -126,7 +126,7 @@ int show_main_menu(char *app_name) {
 	//Enable layers needed
 	GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_LAYEREN_TILEB|GFX_LAYEREN_TILEA|GFX_LAYEREN_SPR;
 	GFXPAL[FB_PAL_OFFSET+0x100]=0x00ff00ff; //Note: For some reason, the sprites use this as default bgnd. ToDo: fix this...
-	GFXPAL[FB_PAL_OFFSET+0x1ff]=0x00ff00ff; //so it becomes this instead.
+	GFXPAL[FB_PAL_OFFSET+0x1ff]=0x40ff00ff; //so it becomes this instead.
 
 	//loop
 	int p=0;
@@ -152,12 +152,14 @@ int show_main_menu(char *app_name) {
 		gfx_set_xlate_val(0, 240,24, 1+sin(p*0.2)*0.1, sin(p*0.11)*0.1);
 
 		int sprno=0;
-		for (int x=SCR_PITCH-(scrpos%SCR_PITCH); x<480; x+=SCR_PITCH) {
+		for (int x=-(scrpos%SCR_PITCH); x<480; x+=SCR_PITCH) {
 			float a=x*0.02+scrpos*0.1;
-			set_sprite(sprno++, x, 280+sin(a)*20, 16+cos(a)*4, 16+cos(a)*4, scrtxt[scrpos/SCR_PITCH+sprno], 0);
+			set_sprite(sprno++, x, 280+sin(a)*20, 16+cos(a)*8, 16+cos(a)*8, scrtxt[scrpos/SCR_PITCH+sprno], 0);
 		}
 		if (scrtxt[scrpos/SCR_PITCH+sprno]==0) scrpos=0;
 		scrpos+=2;
+//		set_sprite(65, 0, 0, 16, 16, 132, 0);
+
 
 		int usbstate=MISC_REG(MISC_GPEXT_IN_REG)&(1<<31);
 		if (usbstate!=old_usbstate) {

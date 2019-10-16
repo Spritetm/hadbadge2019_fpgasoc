@@ -119,6 +119,7 @@ assign linebuf_out_addr = {1'b0, vid_ypos[0], vid_xpos};
 
 wire [13:0] lb_xpos;
 reg [10:0] linebuf_w_addr;
+reg [10:0] linebuf_w_addr_next;
 reg [8:0] lb_din;
 reg lb_wr;
 wire [8:0] lb_dout;
@@ -131,7 +132,7 @@ vid_sprite_linebuf linebuf(
 	.ResetA(reset),
 	.ResetB(reset),
 	.AddressA(linebuf_out_addr),
-	.DataInA(9'h1FF),
+	.DataInA(~0),
 	.WrA(pix_done),
 	.QA(sprite_pix),
 	.AddressB(linebuf_w_addr),
@@ -319,8 +320,11 @@ always @(posedge clk) begin
 		dspr_tile_ypos <= 0;
 		lb_din <= 0;
 		linebuf_w_addr <= 0;
+		linebuf_w_addr_next <= 0;
 	end else 
 		lb_wr <= 0;
+		linebuf_w_addr <= linebuf_w_addr_next;
+		tilemem_has_data <= tilemem_ack;
 		if (dspr_state==DSPR_STATE_IDLE) begin
 			if (drawable_ready) begin
 				//Latch input data as the sprite iterator will move on.
@@ -340,7 +344,6 @@ always @(posedge clk) begin
 			//Note that for the first cycle, the output of the multiplier is always 0, which is correct,
 			//even if it doesn't have the correct value from reciproc_x yet.
 			reciproc_x_out_reg <= reciproc_x_out;
-			tilemem_has_data <= tilemem_ack;
 			//See if we're done.
 			if (tile_xpos_ovf) begin
 				dspr_state <= DSPR_STATE_IDLE;
@@ -350,7 +353,7 @@ always @(posedge clk) begin
 				dspr_xoff <= dspr_xoff + 1;
 			end else if (tilemem_ack) begin
 				//Set up write address; we'll write it next cycle
-				linebuf_w_addr <= {1'b0, ~vid_ypos[0], lb_xpos[8:0]};
+				linebuf_w_addr_next <= {1'b0, ~vid_ypos[0], lb_xpos[8:0]};
 				dspr_xoff <= dspr_xoff + 1;
 			end
 			if (tilemem_has_data) begin
