@@ -38,6 +38,8 @@ void tb_write(Vvid *tb, VerilatedVcdC *trace, int addr, int data) {
 
 void set_sprite(Vvid *tb, VerilatedVcdC *trace, int no, int x, int y, int sx, int sy, int tileno) {
 	uint32_t sa, sb;
+	x+=64;
+	y+=64;
 	sa=(y<<16)|x;
 	sb=sx|(sy<<8)|(tileno<<16);
 	printf("Sprite %d: %08X %08X\n", no, sa, sb);
@@ -174,10 +176,11 @@ int main(int argc, char **argv) {
 	load_tilemap(tb, trace, "tileset.png");
 	printf("Buffers inited.\n");
 	tb_write(tb, trace,REG_OFF+2*4, 0x8); //ena sprites
-	for (int i=4; i<10; i++) {
-		set_sprite(tb, trace, i*2, i*32, 144+i, i*2+1, i*2+1, 0);
-	}
-//	set_sprite(tb, trace, 2, 64, 64, 32, 32, 8);
+//	for (int i=0; i<10; i++) {
+//		set_sprite(tb, trace, i*2, i*32+64, 64, i*2+1, i*2+1, 0);
+//	}
+	set_sprite(tb, trace, 2, 0, 0, 16, 16, 8);
+	set_sprite(tb, trace, 3, 470, 16, 64, 16, 8);
 
 	int fetch_next=0;
 	int next_line=0;

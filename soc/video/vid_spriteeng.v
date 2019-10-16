@@ -75,6 +75,8 @@ module vid_spriteeng (
 	input [31:0] cpu_din,
 	output [31:0] cpu_dout,
 	input [3:0] cpu_wstrb,
+	input [12:0] offx,
+	input [12:0] offy,
 
 	input [8:0] vid_xpos,
 	input [8:0] vid_ypos,
@@ -117,6 +119,7 @@ assign linebuf_out_addr = {1'b0, vid_ypos[0], vid_xpos};
 
 wire [13:0] lb_xpos;
 reg [10:0] linebuf_w_addr;
+reg [10:0] linebuf_w_addr_next;
 reg [8:0] lb_din;
 reg lb_wr;
 wire [8:0] lb_dout;
@@ -129,7 +132,7 @@ vid_sprite_linebuf linebuf(
 	.ResetA(reset),
 	.ResetB(reset),
 	.AddressA(linebuf_out_addr),
-	.DataInA(9'h1FF),
+	.DataInA(~0),
 	.WrA(pix_done),
 	.QA(sprite_pix),
 	.AddressB(linebuf_w_addr),
@@ -151,10 +154,10 @@ vid_sprite_linebuf linebuf(
  - Stage 6: pipeline hangs here if sprite drawing hw is busy
 
 Data format is 64 bit:
-[13:0] xpos
+[12:0] xpos
 [14] xchain
 [15] xflip
-[29:16] ypos
+[28:16] ypos
 [30] ychain
 [31] yflip
 [39:32] xsize
@@ -177,8 +180,13 @@ size_to_d_lookup_rom reciproc_rom_y (
 	.d_out(reciproc_y_out)
 );
 
+wire [12:0] virt_ypos;
+wire [12:0] virt_xpos;
+assign virt_ypos = vid_ypos + offy;
+assign virt_xpos = vid_xpos + offx;
+
 wire [17:0] gfx_ypos; //ypos within the scaled output tile
-assign gfx_ypos = {10'h0, vid_ypos} - {4'h0, spritemem_data[2][29:16]}; //stage 4
+assign gfx_ypos = {7'h0, virt_ypos} - {4'h0, spritemem_data[2][29:16]}; //stage 4
 wire [35:0] tile_ypos_multiplied;
 reg [15:0] reciproc_y_out_reg; //for stage 4
 
@@ -191,7 +199,7 @@ mul_18x18 mul_ypos(
 	.dout(tile_ypos_multiplied)
 );
 
-wire [3:0] tile_ypos;	//actual ypos in tile mem corresponding to current vid_ypos and current sprite
+wire [3:0] tile_ypos;	//actual ypos in tile mem corresponding to current virt_ypos and current sprite
 wire tile_ypos_ovf;		//1 if ypos is outside tile
 //stage 5
 assign tile_ypos = tile_ypos_multiplied[15:12];
@@ -245,7 +253,7 @@ always @(posedge clk) begin
 			spritemem_data[4] <= spritemem_data[3]; //stage 6
 			reciproc_y_out_reg <= reciproc_y_out; //stage 4
 			tile_ypos_reg <= tile_ypos;
-			if (spritemem_data[2][29:16]<=vid_ypos && !tile_ypos_ovf && spritemem_data[2][39:32]!=0 && spritemem_data[2][47:40]!=0) begin
+			if (spritemem_data[2][29:16]<=virt_ypos && !tile_ypos_ovf && spritemem_data[2][39:32]!=0 && spritemem_data[2][47:40]!=0) begin
 				drawable_ready <= !line_done;
 			end
 		end
@@ -261,7 +269,7 @@ reg [8:0] dspr_tile;
 reg [6:0] dspr_pal_sel;
 reg [3:0] dspr_state;
 
-assign lb_xpos = dspr_xpos + dspr_xoff;
+assign lb_xpos = dspr_xpos + dspr_xoff - offx;
 
 parameter DSPR_STATE_IDLE = 0;
 parameter DSPR_STATE_PREP1 = 1;
@@ -312,8 +320,11 @@ always @(posedge clk) begin
 		dspr_tile_ypos <= 0;
 		lb_din <= 0;
 		linebuf_w_addr <= 0;
+		linebuf_w_addr_next <= 0;
 	end else 
 		lb_wr <= 0;
+		linebuf_w_addr <= linebuf_w_addr_next;
+		tilemem_has_data <= tilemem_ack;
 		if (dspr_state==DSPR_STATE_IDLE) begin
 			if (drawable_ready) begin
 				//Latch input data as the sprite iterator will move on.
@@ -333,7 +344,6 @@ always @(posedge clk) begin
 			//Note that for the first cycle, the output of the multiplier is always 0, which is correct,
 			//even if it doesn't have the correct value from reciproc_x yet.
 			reciproc_x_out_reg <= reciproc_x_out;
-			tilemem_has_data <= tilemem_ack;
 			//See if we're done.
 			if (tile_xpos_ovf) begin
 				dspr_state <= DSPR_STATE_IDLE;
@@ -343,7 +353,7 @@ always @(posedge clk) begin
 				dspr_xoff <= dspr_xoff + 1;
 			end else if (tilemem_ack) begin
 				//Set up write address; we'll write it next cycle
-				linebuf_w_addr <= {1'b0, ~vid_ypos[0], lb_xpos[8:0]};
+				linebuf_w_addr_next <= {1'b0, ~vid_ypos[0], lb_xpos[8:0]};
 				dspr_xoff <= dspr_xoff + 1;
 			end
 			if (tilemem_has_data) begin
