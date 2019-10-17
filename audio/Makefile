@@ -1,11 +1,12 @@
 PROJ=audio
+MODULES := button_number.v
 CONSTR=had19_proto2.lpf
 TRELLIS=/usr/share/trellis
 
 all: ${PROJ}.svf flash
 
 %.json: %.v
-	yosys -p "synth_ecp5 -json $@" $<
+	yosys -p "synth_ecp5 -json $@" $< ${MODULES}
 
 %_out.config: %.json
 	nextpnr-ecp5 --json $< --lpf ${CONSTR} --textcfg $@ --45k --package CABGA381 --speed 8
