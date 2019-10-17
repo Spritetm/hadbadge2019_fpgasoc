@@ -7,24 +7,24 @@ reg audio;
 always@(posedge clk) begin
 	counter <= counter + 1;
 	if (btn[0] == 0)
-		audio = counter[9];
+		audio <= counter[9];
 	if (btn[1] == 0)
-		audio = counter[10];
+		audio <= counter[10];
 	if (btn[2] == 0)
-		audio = counter[11];
+		audio <= counter[11];
 	if (btn[3] == 0)
-		audio = counter[12];
+		audio <= counter[12];
 	if (btn[4] == 0)
-		audio = counter[13];
+		audio <= counter[13];
 	if (btn[5] == 0)
-		audio = counter[14];
+		audio <= counter[14];
 	if (btn[6] == 0)
-		audio = counter[15];
+		audio <= counter[15];
 	if (btn[7] == 0)
-		audio = counter[16];
+		audio <= counter[16];
 end
-
-assign pwmout = audio;
+xor U1(pwmout, audio, counter[17]);
+/* assign pwmout = audio; */
 assign led[5:0] = ~btn[5:0];
 
 endmodule
