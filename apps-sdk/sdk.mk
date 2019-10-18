@@ -147,7 +147,7 @@ clean:
 
 
 gdb:
-	$(RISCV_TOOLCHAIN_PATH)riscv32-unknown-elf-gdb -b 115200 -ex "set debug remote 1" -ex "target remote /dev/ttyUSB0" \
+	$(PREFIX)gdb -b 115200 -ex "set debug remote 1" -ex "target remote /dev/ttyUSB0" \
 			-ex "set confirm off" -ex "add-symbol-file $(APPSSDK_DIR)/../soc/ipl/ipl.elf 0x40002000" \
 			-ex "add-symbol-file $(APPSSDK_DIR)/../soc/boot/rom.elf 0x40000000" -ex "set confirm on" $(APPNAME).elf
 

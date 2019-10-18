@@ -86,7 +86,7 @@ flash: $(TARGET_BIN)
 	tinyprog -p $(TARGET_BIN) -a 0x300000
 
 gdb: $(TARGET_ELF)
-	/home/jeroen/hackaday2019/riscv-toolchain/bin/riscv32-unknown-elf-gdb -b 115200 -ex "target remote /dev/ttyUSB0" $(APPNAME).elf
+	$(PREFIX)gdb -b 115200 -ex "target remote /dev/ttyUSB0" $(APPNAME).elf
 
 .PHONY: gloss/libgloss.a
 gloss/libgloss.a:

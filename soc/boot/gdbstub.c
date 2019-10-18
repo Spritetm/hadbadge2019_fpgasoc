@@ -405,7 +405,7 @@ static int gdbReadCommand(GdbRegFile *frame) {
 	}
 }
 
-GdbRegFile *gdb_panic_handler(GdbRegFile *frame) {
+GdbRegFile *gdb_panic_handler(GdbRegFile *frame, uint32_t reason) {
 	sendReason(frame);
 	while(gdbReadCommand(frame)!=ST_CONT);
 	LED[0]=0x3A;

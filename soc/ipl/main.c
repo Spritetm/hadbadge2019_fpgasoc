@@ -83,9 +83,63 @@ void set_sprite(int no, int x, int y, int sx, int sy, int tileno, int palstart) 
 	GFXSPRITES[no*2+1]=sx|(sy<<8)|(tileno<<16)|((palstart/4)<<25);
 }
 
-#define SCR_PITCH 20
+#define ITEM_MAX 256
+
+#define ITEM_FLAG_SELECTABLE (1<<0)
+#define ITEM_FLAG_ON_CART (1<<1)
+
+typedef struct {
+	int no_items;
+	int flag[ITEM_MAX];
+	char *item[ITEM_MAX];
+} menu_data_t;
+
+
+void menu_add_apps(menu_data_t *s, char *path, int flag) {
+	DIR *d=opendir(path);
+	struct dirent *ed;
+	int found=0;
+	while (ed=readdir(d)) {
+//		if (strlen(ed->d_name)>4 && strcasecmp(&ed->d_name[strlen(ed->d_name)-4], ".elf")==0) {
+			s->item[s->no_items]=strdup(ed->d_name);
+			s->flag[s->no_items++]=flag;
+			found=1;
+//		}
+	}
+	if (!found) {
+		s->item[s->no_items]=strdup("*NO FILES*");
+		s->flag[s->no_items++]=flag;
+	}
+	closedir(d);
+}
+
+
+void read_menu_items(menu_data_t *s) {
+	//First, clean struct
+	for (int i=0; i<s->no_items; i++) free(s->item[i]);
+	s->no_items=0;
+	//Check if external memory is available.
+	int has_cart=(flash_get_uid(FLASH_SEL_CART)!=0);
+	if (has_cart) {
+		s->flag[s->no_items]=0;
+		s->item[s->no_items++]=strdup("- CARTRIDGE -");
+		//ToDo: load files from cart
+		s->flag[s->no_items]=0;
+		s->item[s->no_items++]=strdup("- INTERNAL -");
+	}
+	menu_add_apps(s, "/", 0);
+}
+
+
+#define SCR_PITCH 20 //Scoller letter pitch
 
 int show_main_menu(char *app_name) {
+	menu_data_t menu={0};
+
+	//First read of available items
+	usb_msc_off();
+	read_menu_items(&menu);
+
 	//Allocate fb memory
 	lcdfb=malloc(320*512/2);
 
@@ -168,8 +222,10 @@ int show_main_menu(char *app_name) {
 				fprintf(console, "\0330M\033C\0330A"); //Set map to tilemap A, clear tilemap, set attr to 0
 				fprintf(console, "\0338;1PUSB CONNECTED"); //Menu header.
 				fprintf(console, "\0331M\033C\n"); //clear menu
+				selected=-1;
 			} else {
 				usb_msc_off();
+				read_menu_items(&menu);
 				fprintf(console, "\0330M\033C\0330A"); //Set map to tilemap A, clear tilemap, set attr to 0
 				fprintf(console, "\0338;1PSELECT AN APP\n\n"); //Menu header.
 				fprintf(console, "\0331M\033C\n"); //clear menu
@@ -179,43 +235,38 @@ int show_main_menu(char *app_name) {
 		old_usbstate=usbstate;
 
 		int btn=MISC_REG(MISC_BTN_REG);
-		//ToDo: we possibly want to store the list of files, so we can select an app even when USB is connected. This will 
-		//help for apps which e.g. use the usb cdc-acm
-		if (!usbstate) {
-			int need_redraw=0;
-			if (selected==-1) {
-				need_redraw=1;
-				selected=0;
-				app_name[0]=0;
-			}
-			if (btn&BUTTON_A && !(old_btn&BUTTON_A)) {
-				//start up app
-				done=1;
-			} else if (btn & BUTTON_UP && !(old_btn&BUTTON_UP)) {
-				selected=selected-1;
-				if (selected==-1) selected=0;
-				need_redraw=1;
-			} else if (btn & BUTTON_DOWN && !(old_btn&BUTTON_DOWN)) {
-				selected=selected+1;
-				need_redraw=1;
-			}
+		int need_redraw=0;
+		if (selected==-1) {
+			need_redraw=1;
+			selected=0;
+		}
+		int movedir=0;
+		if (btn&BUTTON_A && !(old_btn&BUTTON_A)) {
+			//start up app
+			done=1;
+		} else if (btn & BUTTON_UP && !(old_btn&BUTTON_UP)) {
+			movedir=-1;
+			need_redraw=1;
+		} else if (btn & BUTTON_DOWN && !(old_btn&BUTTON_DOWN)) {
+			movedir=1;
+			need_redraw=1;
+		}
+		//Note: This assumes there's always one selectable item in the menu.
+		do {
+			selected+=movedir;
+			if (selected<0) selected=menu.no_items-1;
+			if (selected>=menu.no_items) selected=0;
+		} while((menu.flag[selected] & ITEM_FLAG_SELECTABLE)!=0);
 
-			while (need_redraw) {
-				fprintf(console, "\033C");
-				DIR *d=opendir("/");
-				struct dirent *ed;
-				int n=0;
-				while (ed=readdir(d)) {
-					fprintf(console, "\0338;%dP %c %s\n", n+4, n==selected?16:32, ed->d_name);
-					if (n==selected) strcpy(app_name, ed->d_name);
-					n++;
-				}
-				closedir(d);
-				if (n<=selected) {
-					selected=n-1;
-				} else {
-					need_redraw=0;
-				}
+		if (need_redraw) {
+			fprintf(console, "\033C");
+			
+			int start=selected-5;
+			for (int i=0; i<10; i++) {
+				const char *itm;
+				itm="";
+				if (i+start>=0 && i+start<menu.no_items) itm=menu.item[i+start];
+				fprintf(console, "\0338;%dP %c %s\n", i+4, (i+start)==selected?16:32, itm);
 			}
 		}
 
@@ -226,6 +277,9 @@ int show_main_menu(char *app_name) {
 		}
 		old_btn=btn;
 	}
+
+	strcpy(app_name, menu.item[selected]);
+	for (int i=0; i<menu.no_items; i++) free(menu.item[i]);
 
 	//Set tilemaps to default 1-to-1 mapping
 	GFX_REG(GFX_TILEA_OFF)=(0<<16)+(0&0xffff);
@@ -257,6 +311,7 @@ void start_app(char *app) {
 
 void main() {
 	//Initialize USB subsystem
+	printf("IPL main function.\n");
 	tusb_init();
 	printf("USB inited.\n");
 	
