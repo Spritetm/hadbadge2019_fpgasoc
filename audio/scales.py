@@ -22,3 +22,10 @@ print( [round(maxclock / f) for f in frequencies] )
 maxclock = 8000000 # full-speed DDS
 print( [round(maxclock / f) for f in frequencies] )
 # [30578.0, 28862.0, 27242.0, 25713.0, 24270.0, 22908.0, 21622.0, 20408.0, 19263.0, 18182.0, 17161.0, 16198.0]
+
+
+## OK, real DDS
+# 16 bit DAC, 12 bit tuning
+print( [round(f*2**28/maxclock) for f in frequencies] )
+[8779, 9301, 9854, 10440, 11060, 11718, 12415, 13153, 13935, 14764, 15642, 16572]
+
