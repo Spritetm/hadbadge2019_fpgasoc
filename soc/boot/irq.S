@@ -3,6 +3,7 @@
 
 .section .text
 .global irq_vec
+.global irq_table
 
 .balign 16
 irq_vec:
@@ -56,23 +57,47 @@ irq_vec:
 
 	/* call interrupt handler C function */
 
-	lui sp, %hi(irq_stack)
-	addi sp, sp, %lo(irq_stack)
+	lui a0, %hi(irq_stack_ptr)
+	addi a0, a0, %lo(irq_stack_ptr)
+	lw sp, 0(a0)
 
+	// Arg 0 to irq handler is old reg addr, return is new reg address. Save this in S2.
+	lui s2, %hi(irq_regs)
+	addi s2, s2, %lo(irq_regs)
+	//S1 is irq handler table, starting at handler for irq 0
+	lui s1, %hi(irq_table)
+	addi s1, s1, %lo(irq_table)
+	//s0 is the bitmap of interrupts
+	picorv32_getq_insn(s0, q1)
+	//Note the ABI states S0 and S1 are preserved across calls.
+lp:
+	//Check if bit 1 is set in s0 If so, we need to call the handler.
+	andi a3, s0, 1
+	beq a3, zero, no_int_hdl
+	
 	// arg0 = address of regs
-	lui a0, %hi(irq_regs)
-	addi a0, a0, %lo(irq_regs)
+	addi a0, s2, 0
 
-	// arg1 = interrupt type
-	picorv32_getq_insn(a1, q1)
+	//Load and call handler.
+	lw a3, 0(s1)
+	jalr ra, a3, 0
 
-	// call to C function
-	jal ra, gdb_panic_handler
+	// ret = address of new regs
+	addi s2, a0, 0
+
+no_int_hdl: 
+
+	//Go to the next handler
+	addi s1, s1, 4
+	//and shift the interrupt bitmap right by one.
+	srli s0, s0, 1
+	//Check if 0, if so we are done.
+	bne s0, zero, lp
 
 	/* restore registers */
 
-	// new irq_regs address returned from C code in a0
-	addi x1, a0, 0
+	// new irq_regs address returned from C code in s2
+	addi x1, s2, 0
 
 	lw x2,   0*4(x1)
 	picorv32_setq_insn(q0, x2)
@@ -126,7 +151,3 @@ irq_regs:
 	.align 4
 	.fill 32,4
 
-	// stack for the interrupt handler
-	.align 8
-	.fill 128,4
-irq_stack:

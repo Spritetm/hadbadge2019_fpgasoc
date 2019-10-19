@@ -68,6 +68,11 @@ module usb #(
 	input  wire rst
 );
 
+	wire irq_evt;
+	wire irq_rstpending;
+	wire irq_sofpending;
+	assign irq = irq_evt || irq_rstpending || irq_sofpending;
+
 	// Signals
 	// -------
 
@@ -193,6 +198,12 @@ module usb #(
 	reg  sof_pending;
 	reg  sof_clear;
 
+	assign irq_rstpending = rst_pending && !rst_clear;
+	//Note: sof interrupt is disabled as on the poor li'l PicoRV32 it takes a lot of CPU
+	//power to handle the associated interrupt 1000 times a second. Moreover, none of TinyUSBs
+	//devices need it.
+//	assign irq_sofpending = sof_pending;
+	assign irq_sofpending = 0;
 
 	// PHY
 	// ---
@@ -420,7 +431,7 @@ module usb #(
 	// Read mux for CSR
 	assign csr_readout = {
 		cr_pu_ena,
-		irq,
+		irq_evt,
 		cel_state,
 		cr_cel_ena,
 		usb_suspend,
@@ -509,7 +520,7 @@ module usb #(
 			assign evt_rd_rdy = 1'b1;
 			assign evt_rd_data = { evt_cnt, 12'h000 };
 
-			assign irq = (evt_cnt != 4'h0);
+			assign irq_evt = (evt_cnt != 4'h0);
 
 		end else if (EVT_DEPTH == 1) begin
 			// Save the latest value and # of notify since last read
@@ -529,7 +540,7 @@ module usb #(
 			assign evt_rd_rdy = 1'b1;
 			assign evt_rd_data = { evt_cnt, evt_last };
 
-			assign irq = (evt_cnt != 4'h0);
+			assign irq_evt = (evt_cnt != 4'h0);
 
 		end else if (EVT_DEPTH > 1) begin
 			// Small shift-reg FIFO
@@ -555,7 +566,7 @@ module usb #(
 			assign evt_rd_data = { ~ef_empty, ef_overflow, 2'b00, ef_rdata };
 			assign ef_rden = evt_rd_ack;
 
-			assign irq = ~ef_rden;
+			assign irq_evt = ~ef_empty;
 
 			fifo_sync_shift #(
 				.DEPTH(EVT_DEPTH),

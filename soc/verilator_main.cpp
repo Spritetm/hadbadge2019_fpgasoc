@@ -43,8 +43,8 @@ int main(int argc, char **argv) {
 	Psram_emu psramb=Psram_emu(8*1024*1024);
 	psrama.force_qpi(); psramb.force_qpi();
 	//ToDo: load elfs so we can mark ro sections as read-only
-	psrama.load_file_nibbles("boot/rom.bin", 0, true, false);
-	psramb.load_file_nibbles("boot/rom.bin", 0, true, true);
+	psrama.load_file_nibbles("boot/rom.bin", 0, false, false);
+	psramb.load_file_nibbles("boot/rom.bin", 0, false, true);
 
 	psrama.load_file_nibbles("ipl/ipl.bin", 0x2000, false, false);
 	psramb.load_file_nibbles("ipl/ipl.bin", 0x2000, false, true);

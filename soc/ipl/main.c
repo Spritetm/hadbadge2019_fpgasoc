@@ -46,6 +46,11 @@ int simulated() {
 	return MISC_REG(MISC_SOC_VER)&0x8000;
 }
 
+//When in verilator, this starts a trace of the SoC.
+void verilator_start_trace() {
+	MISC_REG(MISC_SOC_VER)=1;
+}
+
 void cdc_task();
 
 extern char _binary_bgnd_png_start;
@@ -167,7 +172,6 @@ int show_main_menu(char *app_name) {
 	lcd_init(simulated());
 	printf("GFX inited. Yay!!\n");
 
-
 	printf("Loading bgnd...\n");
 	//This is the Hackaday logo background
 	gfx_load_fb_mem(lcdfb, &GFXPAL[FB_PAL_OFFSET], 4, 512, &_binary_bgnd_png_start, (&_binary_bgnd_png_end-&_binary_bgnd_png_start));
@@ -271,7 +275,6 @@ int show_main_menu(char *app_name) {
 		}
 
 		while ((GFX_REG(GFX_VIDPOS_REG)>>16)<318) {
-			usb_poll();
 			cdc_task();
 			tud_task();
 		}
@@ -309,7 +312,15 @@ void start_app(char *app) {
 	maincall(0, NULL);
 }
 
+extern uint32_t *irq_stack_ptr;
+
+#define IRQ_STACK_SIZE (16*1024)
 void main() {
+	syscall_reinit();
+	//Initialize IRQ stack to be bigger than the bootrom stack
+	uint32_t *int_stack=malloc(IRQ_STACK_SIZE);
+	irq_stack_ptr=int_stack+(IRQ_STACK_SIZE/sizeof(uint32_t));
+
 	//Initialize USB subsystem
 	printf("IPL main function.\n");
 	tusb_init();
@@ -320,7 +331,6 @@ void main() {
 	printf("Filesystem inited.\n");
 	while(1) {
 		MISC_REG(MISC_LED_REG)=0xfffff;
-		syscall_reinit();
 		printf("IPL running.\n");
 		char app_name[256];
 		show_main_menu(app_name);
@@ -328,6 +338,7 @@ void main() {
 		usb_msc_off();
 		syscall_reinit();
 		start_app(app_name);
+		syscall_reinit();
 		printf("IPL: App %s returned.\n", app_name);
 	}
 }

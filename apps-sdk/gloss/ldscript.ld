@@ -101,6 +101,9 @@ PROVIDE ( _sbrk			= 0x40002090 );
 PROVIDE ( gfx_load_fb_mem = 0x40002094 );
 PROVIDE ( gfx_load_tiles_mem = 0x40002094 );
 
+PROVIDE ( interrupt_vector_table = 0x40000020 );
+PROVIDE ( irq_stack_ptr = 0x400000a0 );
+
 PROVIDE ( UART =        0x10000000 );
 PROVIDE ( MISC =        0x20000000 );
 PROVIDE ( LCD =         0x30000000 );

@@ -157,7 +157,7 @@ module soc(
 			.ENABLE_TRACE(0),
 			.REGS_INIT_ZERO(0),
 			.MASKED_IRQ(0),
-			.LATCHED_IRQ('b11111111)
+			.LATCHED_IRQ('b11111111111111111111111111101111) //0 for level sensitive, 1 for latched
 		) cpu (
 			.clk         (clk48m     ),
 			.resetn      (cpu_resetn_gated[i] ),
@@ -892,13 +892,13 @@ IRQs used:
 */
 
 	//Interrupt logic
-	always @(posedge clk48m) begin
-		irq <= 'h0;
+	always @(*) begin
+		irq = 'h0;
 		if (bus_error) begin
-			irq[3] <= 1;
+			irq[3] = 1;
 		end
 		if (usb_irq) begin
-			irq[4] <= 1;
+			irq[4] = 1;
 		end
 	end
 

@@ -10,13 +10,54 @@
 
 
 reset_vec:
-//	picorv32_waitirq_insn(zero)
-//	picorv32_maskirq_insn(zero, zero)
 	j do_reset
 
 .balign 16
 irq_vec_entry:
 	j irq_vec
+
+.balign 16
+//Interrupt handler table is at 0x20. Normally initialized with jumps to the panic handler.
+//Can be modified by IPL/apps to real interrupt handlers later.
+	.global gdb_panic_handler
+	.global irq_table
+irq_table:
+	.word gdb_panic_handler
+	.word gdb_panic_handler
+	.word gdb_panic_handler
+	.word gdb_panic_handler
+	.word gdb_panic_handler
+	.word gdb_panic_handler
+	.word gdb_panic_handler
+	.word gdb_panic_handler
+	.word gdb_panic_handler
+	.word gdb_panic_handler
+	.word gdb_panic_handler
+	.word gdb_panic_handler
+	.word gdb_panic_handler
+	.word gdb_panic_handler
+	.word gdb_panic_handler
+	.word gdb_panic_handler
+	.word gdb_panic_handler
+	.word gdb_panic_handler
+	.word gdb_panic_handler
+	.word gdb_panic_handler
+	.word gdb_panic_handler
+	.word gdb_panic_handler
+	.word gdb_panic_handler
+	.word gdb_panic_handler
+	.word gdb_panic_handler
+	.word gdb_panic_handler
+	.word gdb_panic_handler
+	.word gdb_panic_handler
+	.word gdb_panic_handler
+	.word gdb_panic_handler
+	.word gdb_panic_handler
+	.word gdb_panic_handler
+
+.global irq_stack_ptr
+irq_stack_ptr:
+	.word 0x40002000
 
 do_reset:
 	//LEDS: 1 for init
@@ -39,7 +80,8 @@ do_reset:
 	//preloaded in psram.
 	li a2, MISC_OFFSET
 	lw a2, MISC_SOC_VER(a2)
-//	srli a2, a2, 31 //mask out 31th bit - does not work?
+	srli a2, a2, 15 //mask out 15th bit
+	andi a2, a2, 1
 	beq a2, zero, is_real_badge
 
 	li a2, MISC_OFFSET
@@ -55,11 +97,17 @@ do_reset:
 	li a2, LCD_CONTROL_BLEN | LCD_CONTROL_FBSTART
 	sw a2, LCD_CONTROL_REG(a1)
 
-	//Directly jump to IPL
-	call run_ipl
+	//irqs: enable 1 (ecall), 2 (unaligned mem), 3 (bus error) to bring us to gdbstub
+	li a1, 0xffffffff-0xE
+	picorv32_maskirq_insn(a1, a1)
+
 	li a2, MISC_OFFSET
 	li a1, 0xF
 	sw a1, MISC_LED_REG(a2)
+
+	//Directly jump to IPL
+	call run_ipl
+
 kill:
 	j kill
 

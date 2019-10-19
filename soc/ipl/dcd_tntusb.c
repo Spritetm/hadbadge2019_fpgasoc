@@ -8,6 +8,8 @@
 #include <string.h>
 #include <stdio.h>
 
+#include "gloss/mach_interrupt.h"
+
 //#define DEBUG 1
 
 #if DEBUG
@@ -108,6 +110,14 @@ static void _usb_hw_reset(bool pu) {
 /*------------------------------------------------------------------*/
 /* Controller API
  *------------------------------------------------------------------*/
+
+void usb_poll(void);
+
+static mach_int_frame_t* usb_int_handler(mach_int_frame_t *frame) {
+	usb_poll();
+	return frame;
+}
+
 void dcd_init (uint8_t rhport) {
 	DEBUGMSG("dcd_init()\n");
 	(void) rhport;
@@ -116,16 +126,19 @@ void dcd_init (uint8_t rhport) {
 
 	/* Reset and enable the core */
 	_usb_hw_reset(true);
+
+	/* Set interrupt handler */
+	mach_set_int_handler(INT_NO_USB, usb_int_handler);
 }
 
 void dcd_int_enable(uint8_t rhport) {
 	(void) rhport;
-	//ToDo: implement
+	mach_int_ena(1<<INT_NO_USB);
 }
 
 void dcd_int_disable(uint8_t rhport) {
 	(void) rhport;
-	//ToDo: implement
+	mach_int_dis(1<<INT_NO_USB);
 }
 
 void dcd_set_address (uint8_t rhport, uint8_t dev_addr) {
@@ -339,11 +352,13 @@ void dcd_edpt_clear_stall (uint8_t rhport, uint8_t ep_addr) {
 /*------------------------------------------------------------------*/
 
 void usb_poll(void) {
-	uint32_t csr=tntusb_regs->csr;
 	uint8_t tmpbuf[64]; //note: implies 64b mps
+
+	uint32_t csr=tntusb_regs->csr;
 
 	if (csr & TNTUSB_CSR_BUS_RST_PENDING) {
 		if (csr & TNTUSB_CSR_BUS_RST) {
+			DEBUGMSG("Reset pending and triggered. Ignoring rest.\n");
 			return;
 		}
 		DEBUGMSG("Reset pending: doing that\n");
@@ -359,84 +374,89 @@ void usb_poll(void) {
 		dcd_edpt_open(0, &eptd);
 	}
 
+	//Note: tntusb is not built to generate an interrupt on SOF, as handling 1000 interrupts a second
+	//slows down handling. Additionally, none of TinyUSBs drivers need it. In other words: this
+	//code path will be executed way, way less than the expected 1000 times a second.
 	if (csr & TNTUSB_CSR_SOF_PENDING) {
 		tntusb_regs->ar = TNTUSB_AR_SOF_CLEAR;
 		dcd_event_bus_signal(0, DCD_EVENT_SOF, true);
 	}
 
+	if (csr & TNTUSB_CSR_EVT_PENDING) {
+		uint32_t evt = tntusb_regs->evt;
+		DEBUGMSG("usbevt %x\n", evt);
 
-	//Setup handling. Note we only do this when the transactions to in/out ep0 are done, as if they
-	//still are running, we should fall through to tell tinyusb about the result of these first.
-	uint32_t bds_setup=tntusb_ep_regs[0].out.bd[1].csr;
-	if ((tntusb_ep_regs[0].out.bd[1].csr & TNTUSB_BD_STATE_MSK) == TNTUSB_BD_STATE_DONE_OK && 
-					g_usb.ep[0].out.buffer==NULL && g_usb.ep[0].in.buffer==NULL) {
-		//Setup packet received. Read and ack manually.
-		_usb_data_read(tmpbuf, tntusb_ep_regs[0].out.bd[1].ptr, 8);
-		DEBUGMSG("Setup packet rcvd:");
-		for (int i=0; i<8; i++) DEBUGMSG("%02X ", tmpbuf[i]);
-		DEBUGMSG("\n");
-		tntusb_ep_regs[0].out.bd[1].csr = TNTUSB_BD_STATE_RDY_DATA | TNTUSB_BD_LEN(8);
-		//clear in/out stall
-		tntusb_ep_regs[0].in.bd[0].csr = 0;
-		tntusb_ep_regs[0].out.bd[0].csr = 0;
-		g_usb.ep0_stall=false;
-		//release lockout
-		tntusb_regs->ar = TNTUSB_AR_CEL_RELEASE;
-		//Make sure DT=1 for IN endpoint after a SETUP
-		tntusb_ep_regs[0].in.status = TNTUSB_EP_TYPE_CTRL | TNTUSB_EP_DT_BIT;
-		dcd_event_setup_received(0, tmpbuf, true);
-	}
+		//Setup handling. Note we only do this when the transactions to in/out ep0 are done, as if they
+		//still are running, we should fall through to tell tinyusb about the result of these first.
+		uint32_t bds_setup=tntusb_ep_regs[0].out.bd[1].csr;
+		if ((tntusb_ep_regs[0].out.bd[1].csr & TNTUSB_BD_STATE_MSK) == TNTUSB_BD_STATE_DONE_OK && 
+						g_usb.ep[0].out.buffer==NULL && g_usb.ep[0].in.buffer==NULL) {
+			//Setup packet received. Read and ack manually.
+			_usb_data_read(tmpbuf, tntusb_ep_regs[0].out.bd[1].ptr, 8);
+			DEBUGMSG("Setup packet rcvd:");
+			for (int i=0; i<8; i++) DEBUGMSG("%02X ", tmpbuf[i]);
+			DEBUGMSG("\n");
+			tntusb_ep_regs[0].out.bd[1].csr = TNTUSB_BD_STATE_RDY_DATA | TNTUSB_BD_LEN(8);
+			//clear in/out stall
+			tntusb_ep_regs[0].in.bd[0].csr = 0;
+			tntusb_ep_regs[0].out.bd[0].csr = 0;
+			g_usb.ep0_stall=false;
+			//release lockout
+			tntusb_regs->ar = TNTUSB_AR_CEL_RELEASE;
+			//Make sure DT=1 for IN endpoint after a SETUP
+			tntusb_ep_regs[0].in.status = TNTUSB_EP_TYPE_CTRL | TNTUSB_EP_DT_BIT;
+			dcd_event_setup_received(0, tmpbuf, true);
+		}
 
-	//handle in endpoints
-	for (int ep=0; ep<16; ep++) {
-		uint32_t in_csr=tntusb_ep_regs[ep].in.bd[0].csr;
-		//ep0 stall gets handled here.
-		if (ep==0 && g_usb.ep0_stall) {
-			if ((in_csr & TNTUSB_BD_STATE_MSK) != TNTUSB_BD_STATE_RDY_STALL) {
-				tntusb_ep_regs[0].in.bd[0].csr = TNTUSB_BD_STATE_RDY_STALL;
+		//handle in endpoints
+		for (int ep=0; ep<16; ep++) {
+			uint32_t in_csr=tntusb_ep_regs[ep].in.bd[0].csr;
+			//ep0 stall gets handled here.
+			if (ep==0 && g_usb.ep0_stall) {
+				if ((in_csr & TNTUSB_BD_STATE_MSK) != TNTUSB_BD_STATE_RDY_STALL) {
+					tntusb_ep_regs[0].in.bd[0].csr = TNTUSB_BD_STATE_RDY_STALL;
+				}
+			} else if ((in_csr & TNTUSB_BD_STATE_MSK) == TNTUSB_BD_STATE_DONE_ERR) {
+				//Re-send packet.
+				DEBUGMSG("Error on ep %d. Re-sending %d bytes of data.\n", ep, g_usb.ep[ep].in.cur_plen);
+				tntusb_ep_regs[ep].in.bd[0].csr = TNTUSB_BD_STATE_RDY_DATA | TNTUSB_BD_LEN(g_usb.ep[ep].in.cur_plen);
+			} else if ((in_csr & TNTUSB_BD_STATE_MSK) == TNTUSB_BD_STATE_DONE_OK) {
+				tntusb_ep_regs[ep].in.bd[0].csr=0;
+				bool finished=_usb_ep_in_send_more(ep);
+				DEBUGMSG("IN xfer done on ep %d: %d bytes - %s\n", ep, g_usb.ep[ep].in.xfer_pos, finished?"all done":"continuing");
+				if (finished) {
+					dcd_event_xfer_complete(0, ep | 0x80, g_usb.ep[ep].in.xfer_pos, XFER_RESULT_SUCCESS, true);
+					g_usb.ep[ep].in.buffer=NULL;
+				}
 			}
-		} else if ((in_csr & TNTUSB_BD_STATE_MSK) == TNTUSB_BD_STATE_DONE_ERR) {
-			//Re-send packet.
-			DEBUGMSG("Error on ep %d. Re-sending %d bytes of data.\n", ep, g_usb.ep[ep].in.cur_plen);
-			tntusb_ep_regs[ep].in.bd[0].csr = TNTUSB_BD_STATE_RDY_DATA | TNTUSB_BD_LEN(g_usb.ep[ep].in.cur_plen);
-		} else if ((in_csr & TNTUSB_BD_STATE_MSK) == TNTUSB_BD_STATE_DONE_OK) {
-			tntusb_ep_regs[ep].in.bd[0].csr=0;
-			bool finished=_usb_ep_in_send_more(ep);
-			DEBUGMSG("IN xfer done on ep %d: %d bytes - %s\n", ep, g_usb.ep[ep].in.xfer_pos, finished?"all done":"continuing");
-			if (finished) {
-				dcd_event_xfer_complete(0, ep | 0x80, g_usb.ep[ep].in.xfer_pos, XFER_RESULT_SUCCESS, true);
-				g_usb.ep[ep].in.buffer=NULL;
+		}
+	
+		//handle out eps
+		for (int ep=0; ep<16; ep++) {
+			uint32_t out_csr=tntusb_ep_regs[ep].out.bd[0].csr;
+	
+			//ep0 stall gets handled here.
+			if (ep==0 && g_usb.ep0_stall) {
+				if ((out_csr & TNTUSB_BD_STATE_MSK) != TNTUSB_BD_STATE_RDY_STALL) {
+					tntusb_ep_regs[0].out.bd[0].csr = TNTUSB_BD_STATE_RDY_STALL;
+				}
+			} else if ((out_csr & TNTUSB_BD_STATE_MSK) == TNTUSB_BD_STATE_DONE_ERR) {
+				//Re-send packet.
+				DEBUGMSG("Error on ep %d. Re-triggering receive of mps=%d bytes of data.\n", ep, g_usb.ep[ep].out.mps);
+				tntusb_ep_regs[ep].out.bd[0].csr = TNTUSB_BD_STATE_RDY_DATA | TNTUSB_BD_LEN(g_usb.ep[ep].out.mps);
+			} else if ((out_csr & TNTUSB_BD_STATE_MSK) == TNTUSB_BD_STATE_DONE_OK) {
+				//Note that length includes 2 byte CRC. We subtract that here.
+				int len = (out_csr & TNTUSB_BD_LEN_MSK) - 2;
+				tntusb_ep_regs[ep].out.bd[0].csr = 0;
+				bool finished=_usb_ep_out_recv_more(ep, len);
+				DEBUGMSG("OUT xfer done on ep %d: %d bytes - %s\n", ep, len, finished?"all done":"continuing");
+				if (finished) {
+					DEBUGHEXDUMP(g_usb.ep[ep].out.buffer, g_usb.ep[ep].out.xfer_pos);
+					dcd_event_xfer_complete(0, ep,  g_usb.ep[ep].out.xfer_pos, XFER_RESULT_SUCCESS, true);
+					g_usb.ep[ep].out.buffer=NULL;
+				}
 			}
 		}
 	}
-
-	//handle out eps
-	for (int ep=0; ep<16; ep++) {
-		uint32_t out_csr=tntusb_ep_regs[ep].out.bd[0].csr;
-
-		//ep0 stall gets handled here.
-		if (ep==0 && g_usb.ep0_stall) {
-			if ((out_csr & TNTUSB_BD_STATE_MSK) != TNTUSB_BD_STATE_RDY_STALL) {
-				tntusb_ep_regs[0].out.bd[0].csr = TNTUSB_BD_STATE_RDY_STALL;
-			}
-		} else if ((out_csr & TNTUSB_BD_STATE_MSK) == TNTUSB_BD_STATE_DONE_ERR) {
-			//Re-send packet.
-			DEBUGMSG("Error on ep %d. Re-triggering receive of mps=%d bytes of data.\n", ep, g_usb.ep[ep].out.mps);
-			tntusb_ep_regs[ep].out.bd[0].csr = TNTUSB_BD_STATE_RDY_DATA | TNTUSB_BD_LEN(g_usb.ep[ep].out.mps);
-		} else if ((out_csr & TNTUSB_BD_STATE_MSK) == TNTUSB_BD_STATE_DONE_OK) {
-			//Note that length includes 2 byte CRC. We subtract that here.
-			int len = (out_csr & TNTUSB_BD_LEN_MSK) - 2;
-			tntusb_ep_regs[ep].out.bd[0].csr = 0;
-			bool finished=_usb_ep_out_recv_more(ep, len);
-			DEBUGMSG("OUT xfer done on ep %d: %d bytes - %s\n", ep, len, finished?"all done":"continuing");
-			if (finished) {
-				DEBUGHEXDUMP(g_usb.ep[ep].out.buffer, g_usb.ep[ep].out.xfer_pos);
-				dcd_event_xfer_complete(0, ep,  g_usb.ep[ep].out.xfer_pos, XFER_RESULT_SUCCESS, true);
-				g_usb.ep[ep].out.buffer=NULL;
-			}
-		}
-	}
-
-
 }
 
