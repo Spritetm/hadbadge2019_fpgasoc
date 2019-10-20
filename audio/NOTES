@@ -1,0 +1,15 @@
+## Architecture:
+
+DAC just takes in 16 bits whenever it gets 'em
+
+Oscillators can mix a few basic waveforms together with rough volume levels
+
+EG + amplifier + oscillator = voice (for now.  consider a filter?)
+
+mixer takes 8 voices, volumes, puts them out to the DAC
+
+## TODOS
+
+reconsider sample depth of the oscillators?  12 bit?
+pulse-width mod
+
