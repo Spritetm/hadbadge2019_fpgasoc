@@ -1,6 +1,7 @@
 `include "dac.v"
 `include "button_number.v"
 `include "oscillator.v"
+`include "lfsr.v"
 
 module top( 
 	input clk, 
@@ -27,32 +28,26 @@ button_number my_button_number(
 oscillator osc1(
 	.clk (clk), 
 	.increment (increment),
-	.saw_vol (14),
+	.saw_vol (13),
 	.pulse_vol (0),
 	.triangle_vol (0),
-	.suboctave_vol (12),
+	.suboctave_vol (0),
 	.mix(submix1)
 );
 
-oscillator osc2(
-	.clk (clk), 
-	.increment (increment2),
-	.saw_vol (0),
-	.pulse_vol (0),
-	.triangle_vol (14),
-	.suboctave_vol (0),
-	.mix(submix2)
+lfsr my_lfsr(
+	.clk (clk),
+	.dout (random)
 );
 
 wire [15:0] submix1;
-wire [15:0] submix2;
 wire [15:0] submix11;
-wire [15:0] submix22;
 wire [15:0] mix;
 
+wire [7:0] random;
+wire [15:0] randomnoise;
 
 reg [18:0] increment ;  // determines pitch = f*2**28/maxclock
-reg [18:0] increment2 ;  // determines pitch = f*2**28/maxclock
 // note: check the max value here.  is this reasonable?
 
 // [8779, 9301, 9854, 10440, 11060, 11718, 12415, 13153, 13935, 14764, 15642, 16572]
@@ -70,12 +65,13 @@ always @(posedge clk) begin
 		7: begin increment <= 8779*2/2; end
 		default: begin increment <= 0; end
 	endcase
-	increment2 <= increment + increment/2; // fifth up
 end
 
+// scale
+assign randomnoise = button < 15 ? random << 7 : 0;
 assign submix11 = submix1 / 2;
-assign submix22 = submix2 / 2;
-assign mix = submix11 + submix22;
+// add
+assign mix = submix11 + randomnoise;
 
 assign led[3:0] = button;
 endmodule

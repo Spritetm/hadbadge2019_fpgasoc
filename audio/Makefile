@@ -1,10 +1,11 @@
 PROJ=audio
+INCLUDES=oscillator.v dac.v button_number.v lfsr.v
 CONSTR=had19_proto2.lpf
 TRELLIS=/usr/share/trellis
 
 all: ${PROJ}.svf flash
 
-%.json: %.v
+%.json: %.v ${INCLUDES} 
 	yosys -p "synth_ecp5 -json $@" $< 
 
 %_out.config: %.json
