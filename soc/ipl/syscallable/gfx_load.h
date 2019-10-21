@@ -11,7 +11,7 @@
  @param pnglen Length of png data
  @returns 0 on success, other on failure (lodepng_decode error)
 */
-int gfx_load_fb_mem(uint8_t *fbmem, uint32_t *palmem, int fbbpp, int pitch,  char *pngstart, int pnglen);
+int gfx_load_fb_mem(uint8_t *fbmem, uint32_t *palmem, int fbbpp, int pitch, char *pngstart, int pnglen);
 
 /**
  Load a png file, already in memory, into a buffer that can either be or be copied to tile memory. 
