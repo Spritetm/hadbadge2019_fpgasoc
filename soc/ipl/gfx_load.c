@@ -3,11 +3,13 @@
 #include "gfx_load.h"
 
 
-int gfx_load_fb_mem(uint8_t *fbmem, uint32_t *palmem, int fbbpp, int pitch,  char *pngstart, int pnglen) {
-	unsigned char *decoded;
-	unsigned int w, h;
+int gfx_load_fb_mem(uint8_t *fbmem, uint32_t *palmem, int fbbpp, int pitch, char *pngstart, int pnglen) {
+	unsigned char *decoded=NULL;
+	unsigned int w=0, h=0;
 	if (fbbpp!=8 && fbbpp!=4) return -1;
 	LodePNGState st={0};
+	lodepng_state_init(&st);
+	st.decoder.color_convert=0;
 	st.info_raw.colortype=LCT_PALETTE;
 	st.info_raw.bitdepth=fbbpp;
 	st.info_raw.palette=NULL;
@@ -39,6 +41,7 @@ int gfx_load_fb_mem(uint8_t *fbmem, uint32_t *palmem, int fbbpp, int pitch,  cha
 			}
 		}
 	}
+	lodepng_state_cleanup(&st);
 	free(decoded);
 	return 0;
 }
@@ -47,6 +50,8 @@ int gfx_load_tiles_mem(uint32_t *tilemem, uint32_t *palettemem, char *pngstart, 
 	unsigned char *decoded;
 	unsigned int w, h;
 	LodePNGState st={0};
+	lodepng_state_init(&st);
+	st.decoder.color_convert=0;
 	st.info_raw.colortype=LCT_PALETTE;
 	st.info_raw.bitdepth=8;
 	st.info_raw.palette=NULL;
@@ -82,6 +87,7 @@ int gfx_load_tiles_mem(uint32_t *tilemem, uint32_t *palettemem, char *pngstart, 
 			ty+=16;
 		}
 	}
+	lodepng_state_cleanup(&st);
 	free(decoded);
 	return 0;
 }
