@@ -39,3 +39,8 @@ void mach_int_ena(uint32_t mask);
 //Note this should be given e.g. (1<<INT_NO_USB) as argument.
 void mach_int_dis(uint32_t mask);
 
+//PicoRV32 has a timer that counts down at clock freq, then generates an interrupt. These
+//functions set/get the timer. Set to 0 to disable the timer.
+uint32_t mach_timer_get();
+uint32_t mach_timer_set(uint32_t timeout);
+

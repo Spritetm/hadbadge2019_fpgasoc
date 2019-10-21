@@ -19,3 +19,15 @@ mach_int_dis:
 	picorv32_maskirq_insn(a1, a1)
 	ret
 
+
+.global mach_timer_get
+mach_timer_get:
+	li a0, 0
+	picorv32_timer_insn(a0, a0)
+	picorv32_timer_insn(a0, a0)
+	ret
+
+.global mach_timer_set
+mach_timer_set:
+	picorv32_timer_insn(a0, a0)
+	ret
