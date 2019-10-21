@@ -143,6 +143,7 @@ void dcd_int_disable(uint8_t rhport) {
 
 void dcd_set_address (uint8_t rhport, uint8_t dev_addr) {
 	DEBUGMSG("dcd_set_address %d\n", dev_addr);
+	dcd_int_disable(rhport); //don't want the int to interfere
 	// Response with status first before changing device address
 	dcd_edpt_xfer(rhport, tu_edpt_addr(0, TUSB_DIR_IN), NULL, 0);
 	
@@ -152,6 +153,7 @@ void dcd_set_address (uint8_t rhport, uint8_t dev_addr) {
 	//set address
 	tntusb_regs->csr = TNTUSB_CSR_PU_ENA | TNTUSB_CSR_CEL_ENA | TNTUSB_CSR_ADDR_MATCH | TNTUSB_CSR_ADDR(dev_addr);
 	DEBUGMSG("Address set\n");
+	dcd_int_enable(rhport);
 }
 
 void dcd_set_config (uint8_t rhport, uint8_t config_num)
