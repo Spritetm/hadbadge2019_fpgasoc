@@ -152,7 +152,7 @@ void fs_init() {
 	//Initialize tjftl on internal flash
 	flash_wake(FLASH_SEL_INT);
 	ftl[0]=tjftl_init(tj_flash_read, tj_flash_erase_32k, tj_flash_program, &part_int,
-				FS_INT_PART_END-FS_INT_PART_START, FS_INT_TFL_SECT);
+				FS_INT_PART_END-FS_INT_PART_START, FS_INT_TFL_SECT, true);
 	if (!ftl[0]) {
 		printf("Aiee! Couldn't initialize ftl for internal flash!\n");
 	}

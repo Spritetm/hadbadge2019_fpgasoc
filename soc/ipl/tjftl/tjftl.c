@@ -230,9 +230,9 @@ static void cache_update(tjftl_t *tj, int lba, int blkno, int sec) {
 
 static bool garbage_collect(tjftl_t *tj);
 
-tjftl_t *tjftl_init(flashcb_read_t rf, flashcb_erase_32k_t ef, flashcb_program_t pf, void *arg, int size, int sect_cnt) {
+tjftl_t *tjftl_init(flashcb_read_t rf, flashcb_erase_32k_t ef, flashcb_program_t pf, void *arg, int size, int sect_cnt, int verbose) {
 	TJ_MSG("Initializing tjftl with size=%d, sect_cnt %d\n", size, sect_cnt);
-	tjftl_t *ret=malloc(sizeof(tjftl_t));
+	tjftl_t *ret=calloc(sizeof(tjftl_t), 1);
 	if (!ret) return NULL;
 #if CACHE_LBALOC
 	ret->lba_cache=calloc(sect_cnt, sizeof(uint32_t));
@@ -240,6 +240,7 @@ tjftl_t *tjftl_init(flashcb_read_t rf, flashcb_erase_32k_t ef, flashcb_program_t
 		free(ret);
 		return NULL;
 	}
+	if (verbose) printf("tjfl: allocated %d bytes for cache\n", sect_cnt*sizeof(uint32_t));
 #endif
 	ret->flash_read=rf;
 	ret->flash_erase=ef;
@@ -265,9 +266,11 @@ tjftl_t *tjftl_init(flashcb_read_t rf, flashcb_erase_32k_t ef, flashcb_program_t
 			ret->free_blk_cnt++;
 		}
 	}
+	if (verbose) printf("tjfl: %d of %d blocks free.\n", ret->free_blk_cnt, ret->backing_blks);
 	if (ret->free_blk_cnt<GC_MIN_FREE_BLK_CNT) {
 		TJ_MSG("Starting initial garbage collection run...\n");
 		all_ok&=garbage_collect(ret);
+		if (verbose) printf("After garbage collection: %d blocks free.\n", ret->free_blk_cnt);
 	}
 	if (!all_ok) {
 		TJ_MSG("ERROR! tjftl failed to initialize.\n");
