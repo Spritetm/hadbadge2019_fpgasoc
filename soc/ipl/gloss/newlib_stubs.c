@@ -344,7 +344,7 @@ char * sbrk_app (int nbytes) {
 	char *base;
 	base = app_heap_ptr;
 	app_heap_ptr += nbytes;
-	if (app_heap_ptr > &_stack_end) {
+	if (app_heap_ptr > (void*)(MACH_RAM_START+MACH_RAM_SIZE)) {
 		printf("ERROR: sbrk_app: Malloc is out of memory! (heap_ptr=%p stack_end=%p\n", app_heap_ptr, &_stack_end);
 		abort();
 	}
