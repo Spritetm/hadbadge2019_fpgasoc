@@ -118,11 +118,11 @@ Software setup
 --------------
 
 First, clone this repository and grab the submodules, if you haven't already:
-``
+```
 git clone https://github.com/Spritetm/hadbadge2019_fpgasoc
 cd hadbadge2019_fpgasoc
 git submodule update --init --recursive
-``
+```
 
 Now you need a toolchain for the FPGA and the RiscV stuff.Compile Yosys, nextpnr, 
 prjtrellis and a RiscV toolchain according to their instructions. (For RiscV
@@ -215,7 +215,7 @@ Compile and upload an app
 
 - Mount the badge as an USB drive, if your OS doesn't do this automatically
 
-- Copy the generated *.elf file to the USB drive
+- Copy the generated \*.elf file to the USB drive
 
 - Make sure the USB drive is ejected and disconnect the badge from USB.
 
@@ -270,6 +270,3 @@ actual badge and SDK than this document.)
 
 Aside from the standard C stuff you can use, there are a few routines in the IPL that are exported
 for you to use, as well as some headers that define useful stuff.
-
-
-
