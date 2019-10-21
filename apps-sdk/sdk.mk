@@ -30,7 +30,7 @@ BUILD_DIR_SDK := $(BUILD_DIR)/apps-sdk
 #Ipl gloss is in include path because mach_defines.h
 INCLUDEDIRS += $(APPSSDK_DIR) $(APPSSDK_DIR)/gloss $(APPSSDK_DIR)/../soc/ipl/gloss $(APPSSDK_DIR)/../soc/ipl/syscallable/
 CFLAGS += -Os -ggdb $(addprefix -I,$(INCLUDEDIRS)) -march=rv32im -mabi=ilp32
-LDFLAGS += -Wl,-Bstatic -Wl,--gc-sections -Wl,-T,$(LDSCRIPT) -Wl,-Map,$(TARGET_MAP) -lgcc -lm -nostartfiles -Wl,-melf32lriscv -march=rv32im -mabi=ilp32
+LDFLAGS +=  -march=rv32im -mabi=ilp32 -Wl,-Bstatic -Wl,--gc-sections -Wl,-T,$(LDSCRIPT) -Wl,-Map,$(TARGET_MAP) -lgcc -lm -nostartfiles -Wl,-melf32lriscv
 DEPFLAGS := -MMD -MP 
 
 export PREFIX CC AR LD OBJCOPY CFLAGS LDFLAGS APPNAME
@@ -147,7 +147,7 @@ clean:
 
 
 gdb:
-	$(PREFIX)gdb -b 115200 -ex "set debug remote 1" -ex "target remote /dev/ttyUSB0" \
+	$(PREFIX)gdb -b 115200 -ex "target remote /dev/ttyUSB0" \
 			-ex "set confirm off" -ex "add-symbol-file $(APPSSDK_DIR)/../soc/ipl/ipl.elf 0x40002000" \
 			-ex "add-symbol-file $(APPSSDK_DIR)/../soc/boot/rom.elf 0x40000000" -ex "set confirm on" $(APPNAME).elf
 
