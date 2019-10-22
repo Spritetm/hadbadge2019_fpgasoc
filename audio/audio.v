@@ -12,8 +12,8 @@ module top(
 );
 /* Button and audio workout */
 
-localparam BITDEPTH    = 12;
-localparam BITFRACTION = 8;
+localparam BITDEPTH    = 14;
+localparam BITFRACTION = 6;
 localparam SAMPLEFREQ  = 8000000 / 2**8;
 
 reg sample_clock       = 0;
@@ -31,7 +31,7 @@ dac #(.BITDEPTH(BITDEPTH)) mydac (
 	.out (pwmout) // connect to PWM pin
 );
 
-`define CALC_INCREMENT(hz) $rtoi(hz * 2**(BITDEPTH+BITFRACTION)/SAMPLEFREQ)
+`define CALC_INCREMENT(hz) $rtoi(hz * 2**(BITDEPTH+BITFRACTION)/SAMPLEFREQ*2)
  wire [3:0] button; 
  button_number my_button_number( 
  	.clk (clk), 
@@ -57,11 +57,12 @@ dac #(.BITDEPTH(BITDEPTH)) mydac (
  assign led[3:0] = button; 
 
 
-reg [18:0] increment = 2**18-1 ;  // determines pitch = 
+reg [20:0] increment = 0 ;  // determines pitch = 
 oscillator #( .BITDEPTH(BITDEPTH), .BITFRACTION(BITFRACTION)) mysaw 
 (
 	.sample_clock(sample_clock),
-	.increment(increment) ,  
+	.increment(`CALC_INCREMENT(261.6256)) ,  
+	.voice_select(button+1),
 	.out (mix)
 );
 
