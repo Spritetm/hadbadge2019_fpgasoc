@@ -61,8 +61,8 @@ reg [20:0] increment = 0 ;  // determines pitch =
 oscillator #( .BITDEPTH(BITDEPTH), .BITFRACTION(BITFRACTION)) mysaw 
 (
 	.sample_clock(sample_clock),
-	.increment(`CALC_INCREMENT(261.6256)) ,  
-	.voice_select(button+1),
+	.increment(increment) ,  
+	.voice_select(button[3:0]),
 	.out (mix)
 );
 

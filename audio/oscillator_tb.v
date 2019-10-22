@@ -1,11 +1,11 @@
-`timescale 100ns/10ns
+`timescale 1ns/1ns
 module test();
 localparam SAMPLEFREQ = 8000000 / 2**8;
 localparam BD=12;
 
-reg [18:0] increment;
+reg [20:0] increment;
 wire [BD-1:0] out;
-
+reg [3:0] voice_select;
 initial begin
 	$dumpvars(0,test);
 	$display("Go!");
@@ -14,7 +14,7 @@ end
 /* Clocks */
 reg clk = 0;
 always 
-	#1 clk = !clk;
+	#125 clk = !clk;
 
 reg sample_clock = 0;
 reg [8:0] sample_count = 0;
@@ -27,14 +27,17 @@ end
 oscillator #( .BITDEPTH(12), .BITFRACTION(12)) testsaw (
 	.sample_clock(sample_clock),
 	.increment(increment), 
+.voice_select(voice_select),
 	.out(out)
 );
 
 initial begin
 	increment = 0;
-	#100000 increment = 2**4;
-	#300000 increment = 2**13;
-	#2000000 $finish;
+	voice_select = 1;
+	#1000000 increment = 2**4;
+	#3000000 increment = 2**13;
+	#3500000 voice_select=2;
+	#20000000 $finish;
 
 
 end
