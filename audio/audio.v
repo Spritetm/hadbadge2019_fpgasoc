@@ -12,67 +12,58 @@ module top(
 );
 /* Button and audio workout */
 
-dac mydac (
-	.clk (clk),
-	.pcm (mix),
-	.out (pwmout)
-);
+localparam BITDEPTH    = 12;
+localparam BITFRACTION = 8;
+localparam SAMPLEFREQ  = 8000000 / 2**8;
 
-wire [3:0] button;
-button_number my_button_number(
-	.clk (clk), 
-	.btn (btn), 
-	.button (button)
-);
-
-oscillator osc1(
-	.clk (clk), 
-	.increment (increment),
-	.saw_vol (13),
-	.pulse_vol (0),
-	.triangle_vol (0),
-	.suboctave_vol (0),
-	.mix(submix1)
-);
-
-lfsr my_lfsr(
-	.clk (clk),
-	.dout (random)
-);
-
-wire [15:0] submix1;
-wire [15:0] submix11;
-wire [15:0] mix;
-
-wire [7:0] random;
-wire [15:0] randomnoise;
-
-reg [18:0] increment ;  // determines pitch = f*2**28/maxclock
-// note: check the max value here.  is this reasonable?
-
-// [8779, 9301, 9854, 10440, 11060, 11718, 12415, 13153, 13935, 14764, 15642, 16572]
+reg sample_clock       = 0;
+reg [8:0] sample_count = 0;
 always @(posedge clk) begin
-	// note: make sensitive to button?  why not? if routing trouble, clock
-	// is fine
-	case (button)
-		0: begin increment <= 8779/2; end
-		1: begin increment <= 9854/2; end
-		2: begin increment <= 11060/2; end
-		3: begin increment <= 11718/2; end
-		4: begin increment <= 13153/2; end
-		5: begin increment <= 14764/2; end
-		6: begin increment <= 16572/2; end
-		7: begin increment <= 8779*2/2; end
-		default: begin increment <= 0; end
-	endcase
+	sample_count <= sample_count + 1;
+	sample_clock <= sample_count[8];
 end
 
-// scale
-assign randomnoise = button < 15 ? random << 7 : 0;
-assign submix11 = submix1 / 2;
-// add
-assign mix = submix11 + randomnoise;
+wire [BITDEPTH-1:0] mix;
+dac #(.BITDEPTH(BITDEPTH)) mydac (
+	.clk (clk),
+	.sample_clock (sample_clock),
+	.pcm (mix), // input to DAC
+	.out (pwmout) // connect to PWM pin
+);
 
-assign led[3:0] = button;
+`define CALC_INCREMENT(hz) $rtoi(hz * 2**(BITDEPTH+BITFRACTION)/SAMPLEFREQ)
+ wire [3:0] button; 
+ button_number my_button_number( 
+ 	.clk (clk), 
+ 	.btn (btn),  
+ 	.button (button) 
+ ); 
+//frequencies = [261.6256, 293.6648, 329.6276, 349.2282, 391.9954, 440.0000, 493.8833]
+ always @(posedge clk) begin 
+ 	case (button) 
+ 		0: begin increment <= `CALC_INCREMENT(261.6256); end 
+ 		1: begin increment <= `CALC_INCREMENT(293.6648); end 
+ 		2: begin increment <= `CALC_INCREMENT(329.6276); end 
+ 		3: begin increment <= `CALC_INCREMENT(349.2282); end 
+ 		4: begin increment <= `CALC_INCREMENT(391.9954); end 
+ 		5: begin increment <= `CALC_INCREMENT(440.0000); end 
+ 		6: begin increment <= `CALC_INCREMENT(493.8833); end 
+ 		7: begin increment <= `CALC_INCREMENT(261.6256*2); end 
+ 		default: begin increment <= 0; end 
+ 	endcase 
+ end 
+
+
+ assign led[3:0] = button; 
+
+
+reg [18:0] increment = 2**18-1 ;  // determines pitch = 
+oscillator #( .BITDEPTH(BITDEPTH), .BITFRACTION(BITFRACTION)) mysaw 
+(
+	.sample_clock(sample_clock),
+	.increment(increment) ,  
+	.out (mix)
+);
+
 endmodule
 

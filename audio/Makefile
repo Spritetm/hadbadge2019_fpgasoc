@@ -1,9 +1,12 @@
 PROJ=audio
+DUT=oscillator
 INCLUDES=oscillator.v dac.v button_number.v lfsr.v
 CONSTR=had19_proto2.lpf
 TRELLIS=/usr/share/trellis
 
+
 all: ${PROJ}.svf flash
+# all: sim
 
 %.json: %.v ${INCLUDES} 
 	yosys -p "synth_ecp5 -json $@" $< 
@@ -24,6 +27,12 @@ clean:
 
 flash: 
 	tinyprog -p ${PROJ}.bit -a 0x180000
+
+
+sim: ${DUT}.v  ${DUT}_tb.v 
+	iverilog -Wall -o${DUT} ${DUT}.v ${DUT}_tb.v 
+	vvp ${DUT}
+	# gtkwave dump.vcd config.gtkw 
 
 .PHONY: prog clean
 .PRECIOUS: ${PROJ}.json ${PROJ}_out.config

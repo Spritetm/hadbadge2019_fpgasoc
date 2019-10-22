@@ -3,3 +3,6 @@
 *.config
 *.json
 *.bit
+dac
+dump.vcd
+oscillator

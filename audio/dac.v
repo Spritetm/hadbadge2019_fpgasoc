@@ -1,16 +1,26 @@
-/* Quick and dirty 16-bit sigma-delta converter */
-module dac (
+/* Quick and dirty sigma-delta converter */
+`timescale 10ns/1ns
+module dac #(parameter BITDEPTH=12) (
 	input clk,
-	input [15:0] pcm,
+	input sample_clock,
+	input [BITDEPTH-1:0] pcm,
 	output out
 );
 
 
-reg [16:0] accumulator;
-always @(posedge clk) begin
-	accumulator <= accumulator[15:0] + pcm;
+reg [BITDEPTH:0] accumulator=0;
+reg [BITDEPTH:0] sample=0;
+
+// buffer at sample clock
+always @(posedge sample_clock) begin
+	sample = pcm;
 end
-assign out = accumulator[16];
+
+always @(posedge clk) begin
+	accumulator <= accumulator[BITDEPTH-1:0] + sample;
+end
+
+assign out = accumulator[BITDEPTH];
 
 endmodule
 

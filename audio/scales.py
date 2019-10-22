@@ -29,3 +29,7 @@ print( [round(maxclock / f) for f in frequencies] )
 print( [round(f*2**28/maxclock) for f in frequencies] )
 [8779, 9301, 9854, 10440, 11060, 11718, 12415, 13153, 13935, 14764, 15642, 16572]
 
+
+## OK, now at 31.25 kHz
+# 12 bit DAC, 12 bit tuning
+

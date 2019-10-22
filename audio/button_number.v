@@ -1,7 +1,7 @@
 module button_number( 
 	input clk, 
 	input [7:0] btn, 
-	output [4:0] button
+	output reg [3:0] button
 );
 
 always@(posedge clk) begin 
@@ -34,5 +34,4 @@ always@(posedge clk) begin
 end
 
 endmodule
-
 
