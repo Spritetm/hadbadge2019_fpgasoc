@@ -1,25 +1,116 @@
 -include ../local-settings.mk
 #Badge version. Green (unused) is 1, red is 2, blue is 3, prod (black) is 4
 BADGE_VER ?= 2
+#Project name
 PROJ=soc
-SRC=soc.v picorv32/picorv32.v simpleuart.v lcdiface.v qpi_cache/qpimem_cache.v 
-SRC+=qpi_cache/qpimem_iface.v qpi_cache/simple_mem.v qpi_cache/simple_mem_words.v
-SRC+=arbiter.v pcpi_fastmul_dsp.v video/vid_linerenderer.v
-SRC+=video/video_mem.v qpi_cache/qpimem_arbiter.v qpi_cache/qpimem_iface_intl.v
-SRC+=usb/usb_trans.v usb/usb_ep_buf.v usb/usb_rx_pkt.v usb/usb_phy.v usb/usb.v
-SRC+=usb/usb_tx_pkt.v usb/usb_ep_status.v usb/usb_tx_ll.v usb/usb_rx_ll.v usb/usb_crc.v
-SRC+=usb/fifo_sync_shift.v usb_soc.v pic/pic_wrapper.v pic/risc16f84_clk2x.v
-SRC+=pic/dpram_1kx16.v qpi_cache/qpimem_dma_rdr.v ledctl.v simpleuart_irda.v
-SRC+=dsadc.v video/video_alphamixer.v video/vid_spriteeng.v dma_writer.v
-SRC_SYNTH=pll.v top_fpga.v mul_18x18_ecp5.v hdmi/clk_8_250_125_25.v hdmi/fake_differential.v
-SRC_SYNTH+=hdmi/hdmi-encoder.v hdmi/tmds_encoder.v hdmi/vga2dvid.v hdmi/vga.v 
-SRC_SYNTH+= video/ram_dp_24x2048_ecp5.v rng.v video/vid_palettemem_ecp5.v
-SRC_SYNTH+= video/vid_tilemapmem_ecp5.v video/vid_tilemem_ecp5.v
-SRC_SYNTH+= video/vid_sprite_linebuf_ecp5.v video/vid_spritemem_ecp5.v
-SRC_SIM=verilator_main.cpp psram_emu.cpp uart_emu.cpp uart_emu_gdb.cpp mul_18x18_sim.v
-SRC_SIM+=video/video_renderer.cpp video/lcd_renderer.cpp video/ram_dp_24x2048_sim.v
-SRC_SIM+=trellis_io_sim.v video/vid_palettemem_sim.v video/vid_tilemapmem_sim.v 
-SRC_SIM+=video/vid_tilemem_sim.v video/vid_sprite_linebuf_sim.v video/vid_spritemem_sim.v
+#Seed for nextpnr. Change this to another random value if you happen to run 
+#into a situation that mis-synths or takes extremely long to synth the SoC.
+SEED = 45
+
+# Sources
+	# Base
+SRC = \
+	arbiter.v \
+	dsadc.v \
+	dma_writer.v \
+	lcdiface.v \
+	ledctl.v \
+	picorv32/picorv32.v \
+	pcpi_fastmul_dsp.v \
+	simpleuart.v \
+	simpleuart_irda.v \
+	soc.v \
+	$(NULL)
+
+SRC_SYNTH = \
+	mul_18x18_ecp5.v \
+	pll.v \
+	rng.v \
+	top_fpga.v \
+	$(NULL)
+
+SRC_SIM = \
+	mul_18x18_sim.v \
+	psram_emu.cpp \
+	trellis_io_sim.v \
+	uart_emu.cpp \
+	uart_emu_gdb.cpp \
+	verilator_main.cpp \
+	$(NULL)
+
+	# QPI cache
+SRC += $(addprefix qpi_cache/, \
+	qpimem_arbiter.v \
+	qpimem_cache.v \
+	qpimem_dma_rdr.v \
+	qpimem_iface.v \
+	qpimem_iface_intl.v \
+	simple_mem.v \
+	simple_mem_words.v \
+)
+
+	# Video
+SRC += $(addprefix video/, \
+	vid_linerenderer.v \
+	video_mem.v \
+	video_alphamixer.v \
+	vid_spriteeng.v \
+)
+
+SRC_SYNTH += $(addprefix video/, \
+	ram_dp_24x2048_ecp5.v \
+	vid_palettemem_ecp5.v \
+	vid_sprite_linebuf_ecp5.v \
+	vid_spritemem_ecp5.v \
+	vid_tilemapmem_ecp5.v \
+	vid_tilemem_ecp5.v \
+)
+
+SRC_SIM += $(addprefix video/, \
+	lcd_renderer.cpp \
+	ram_dp_24x2048_sim.v \
+	vid_palettemem_sim.v \
+	vid_tilemapmem_sim.v \
+	vid_tilemem_sim.v \
+	vid_sprite_linebuf_sim.v \
+	vid_spritemem_sim.v \
+	video_renderer.cpp \
+)
+
+	# USB
+SRC += $(addprefix usb/, \
+	usb_trans.v \
+	usb_ep_buf.v \
+	usb_rx_pkt.v \
+	usb_phy.v \
+	usb.v \
+	usb_tx_pkt.v \
+	usb_ep_status.v \
+	usb_tx_ll.v \
+	usb_rx_ll.v \
+	usb_crc.v \
+	fifo_sync_shift.v \
+)
+
+SRC += usb_soc.v
+
+	# PIC
+SRC += $(addprefix pic/, \
+	dpram_1kx16.v \
+	pic_wrapper.v \
+	risc16f84_clk2x.v \
+)
+
+	# HDMI
+SRC_SYNTH += $(addprefix hdmi/, \
+	clk_8_250_125_25.v \
+	fake_differential.v \
+	hdmi-encoder.v \
+	tmds_encoder.v \
+	vga2dvid.v \
+	vga.v \
+)
+
 EXTRA_DEPEND=rom_random_seeds0x123456.hex pic/rom_initial.hex
 BRAMFILE=rom.hex
 CONSTR=$(word $(BADGE_VER), had19_proto1.lpf had19_proto2.lpf had19_proto3.lpf had19_prod.lpf)
@@ -46,7 +137,7 @@ $(PROJ).json $(PROJ).blif: $(SRC) $(SRC_SYNTH) $(EXTRA_DEPEND)
 
 %_out_synth.config: %.json clock-constrainsts.py
 	nextpnr-ecp5 --json $< --lpf $(CONSTR) --textcfg $@ --45k --package CABGA381 --speed 8 \
-			--pre-pack clock-constrainsts.py -l nextpnr.log --freq 48 --seed 41
+			--pre-pack clock-constrainsts.py -l nextpnr.log --freq 48 --seed $(SEED)
 
 %_out.config: %_out_synth.config bram_replace/bram_replace$(EXE) rom.hex
 	bram_replace/bram_replace$(EXE) -l 8192 -r $< $@ rom.hex
