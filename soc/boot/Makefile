@@ -1,19 +1,11 @@
 -include ../../local-settings.mk
 
-ifeq ("$(RISCV_TOOLCHAIN_PATH)", "")
-PREFIX := riscv64-unknown-elf-
-else
-PREFIX := $(RISCV_TOOLCHAIN_PATH)/riscv64-unknown-elf-
-endif
-CC := $(PREFIX)gcc
-AR := $(PREFIX)ar
-LD := $(PREFIX)ld
-OBJCOPY := $(PREFIX)objcopy
-OBJDUMP := $(PREFIX)objdump
-SIZE := $(PREFIX)size
+include ../../toolchain-settings.mk
+
 CHMOD := chmod
 
-CFLAGS=-Os -ggdb -I../ipl -march=rv32im -mabi=ilp32
+CFLAGS += -ggdb -I../ipl
+
 OBJS:=rom.o irq.o gdbstub.o loadipl.o ipl_flash.o
 
 DEPDIR := .deps
