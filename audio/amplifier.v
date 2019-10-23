@@ -3,21 +3,19 @@ module amplifier #(
 	parameter BITDEPTH = 14,
 	parameter VOLBITS  = 8
 )(
-	input clk,
-	input [BITDEPTH-1:0] unsigned_audio,
+	input [BITDEPTH-1:0] in,
 	input [VOLBITS-1:0] volume,
-	output wire signed [BITDEPTH-1:0] unsigned_out
+	output [BITDEPTH-1:0] out
 );
 
-wire signed [VOLBITS:0] signed_volume;
-assign signed_volume = {1'b0, volume[VOLBITS-1:0]};
-reg signed [BITDEPTH+VOLBITS-1:0] signed_scaled_audio;
+localparam OFFSET  = 2**(BITDEPTH -1); // idles at mid-volume
 
-always @(posedge clk) begin
-	signed_scaled_audio <= (unsigned_audio * signed_volume);
-end
+wire [BITDEPTH+VOLBITS-1:0] summer;
+wire [BITDEPTH+VOLBITS-1:0] offset;
 
-assign unsigned_out = signed_scaled_audio[BITDEPTH+VOLBITS-1 -: BITDEPTH] ;
+assign offset = (2**VOLBITS - volume)*OFFSET;
+assign summer = in * volume + offset;
+assign out = summer[BITDEPTH+VOLBITS-1 -: BITDEPTH] ;
 
 endmodule
 

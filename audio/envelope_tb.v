@@ -26,8 +26,8 @@ sample_clock #( .SAMPLECLOCK_DIV(SAMPLECLOCK_DIV) ) mysampleclock (
 
 /* Wires, registers, and module here */
 reg gate = 0;
-reg [7:0] a = 220;
-reg [7:0] r = 60;
+reg [7:0] a = 8'd255;
+reg [7:0] r = 8'd30;
 wire [7:0] volume;
 
 envelope myenv

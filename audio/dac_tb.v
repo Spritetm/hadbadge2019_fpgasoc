@@ -1,4 +1,4 @@
-`timescale 10ns/1ns
+`timescale 1ns/1ns
 module test();
 localparam SAMPLEFREQ = 8000000 / 2**8;
 localparam BD=12;

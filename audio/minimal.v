@@ -31,7 +31,7 @@ oscillator #( .BITDEPTH(BITDEPTH), .BITFRACTION(BITFRACTION)) mysaw
 (
 	.sample_clock(sample_clock),
 	.increment(increment) ,  
-	.voice_select(4'b0010), // sawtooth
+	.voice_select(4'b0010), 
 	.out (preamp)
 );
 
@@ -44,7 +44,7 @@ envelope myenv
 (
 	.sample_clock(sample_clock),
 	.gate(gate),
-	.a(8'hf0),
+	.a(8'h01),
 	.r(8'h01),
 	.volume(volume)
 );

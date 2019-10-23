@@ -23,8 +23,11 @@ initial begin
 	volume = 0;
 end
 
-reg [8:0] attack_counter = 0;
-reg [8:0] release_counter = 0;
+reg [9:0] attack_counter = 0;
+reg [8:0] attack_exponential = 0;
+
+reg [10:0] release_counter = 0; // 2x slower counter
+reg [8:0] release_exponential = 0;
 
 // state machine
 always @(posedge sample_clock)
@@ -35,24 +38,38 @@ begin
 				state <= ATTACK; attack_counter <= 0; 
 		end
 		ATTACK: begin
-			attack_counter <= attack_counter[7:0] + a;
-			if (attack_counter[8]) 				
-				volume = volume < 255 ? volume + 1 : volume;
-			if (volume == 255) begin state <= SUSTAIN; end
-			if (!gate) begin state <= RELEASE; release_counter <= 0; end
+			attack_counter <= attack_counter[8:0] + a;
+			if (attack_counter[9]) 	begin
+				attack_exponential <= ((255-volume)>>6) > 0 ? (255-volume)>>6 : 1;
+				volume <= (volume < 255-attack_exponential) ? (volume + attack_exponential) : 255 ;  
+			end
+				/* volume <= volume < 255 ? volume + 1 : 255; */
+			if (volume == 255) 
+				state <= SUSTAIN;
+			if (!gate) begin 
+				state <= RELEASE; 
+				release_counter <= 0; 
+			end
 		end
 		SUSTAIN: begin
-			if (!gate) begin state <= RELEASE; release_counter <= 0; end
+			if (!gate) begin 
+				state <= RELEASE; 
+				release_counter <= 0; 
+			end
 		end
-		RELEASE: 
-		begin
-			release_counter <= release_counter[7:0] + r;
-			if (release_counter[8]) 				
-				volume = volume > 0 ? volume - 1: volume;  // change me later for expo decay?
-			if (volume == 0) state <= WAIT; 
-			if (gate) begin state <= ATTACK; attack_counter <= 0; end
+		RELEASE: begin
+			release_counter <= release_counter[9:0] + r;
+			if (release_counter[10]) begin				
+				release_exponential <= (volume>>5) > 0 ? volume>>5 : 1;
+				volume <= (volume > release_exponential) ? (volume - release_exponential) : 0 ;  
+			end
+			if (volume == 0) 
+				state <= WAIT; 
+			if (gate) begin 
+				state <= ATTACK; 
+				attack_counter <= 0; 
+			end
 		end
-
 	endcase
 end // state machine loop
 

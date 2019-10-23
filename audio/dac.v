@@ -1,5 +1,5 @@
 /* Quick and dirty sigma-delta converter */
-`timescale 10ns/1ns
+`timescale 1ns/1ns
 module dac #(parameter BITDEPTH=12) (
 	input clk,
 	input sample_clock,
