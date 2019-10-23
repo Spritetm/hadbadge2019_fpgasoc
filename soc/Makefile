@@ -70,6 +70,9 @@ prog: $(PROJ).svf
 flash: $(PROJ).bit
 	tinyprog -p $(PROJ).bit -a 0x180000
 
+dfu_flash: $(PROJ).bit
+	dfu-util -d 1d50:6146 -a 0 -D $<
+
 clean:
 	rm -f $(PROJ).json $(PROJ).svf $(PROJ).bit $(PROJ)_out.config
 	rm -rf verilator-build
