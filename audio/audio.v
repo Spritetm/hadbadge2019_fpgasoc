@@ -3,6 +3,7 @@
 `include "oscillator.v"
 `include "lfsr.v"
 `include "amplifier.v"
+`include "envelope.v"
 
 module top( 
 	input clk, 
@@ -24,12 +25,12 @@ always @(posedge clk) begin
 	sample_clock <= sample_count[7];
 end
 
-reg ms_clock = 0;
-reg [4:0] ms_count = 0;
-always @(posedge clk) begin
-	ms_count <= ms_count + 1;
-	ms_clock <= ms_count[4];
-end
+/* reg ms_clock = 0; */
+/* reg [4:0] ms_count = 0; */
+/* always @(posedge clk) begin */
+/* 	ms_count <= ms_count + 1; */
+/* 	ms_clock <= ms_count[4]; */
+/* end */
 
 
 
@@ -77,7 +78,18 @@ oscillator #( .BITDEPTH(BITDEPTH), .BITFRACTION(BITFRACTION)) mysaw
 	.out (preamp)
 );
 
-reg [7:0] volume = 30;
+wire gate;
+assign gate = ~(button == 15);
+wire [7:0] volume;
+
+envelope myenv
+(
+	.clk(clk),
+	.gate(~btn[1]),
+	.a(220),
+	.r(60),
+	.volume(volume)
+);
 
 amplifier #( .BITDEPTH(BITDEPTH), .VOLBITS(8) ) myamp
 (

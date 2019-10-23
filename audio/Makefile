@@ -1,12 +1,13 @@
-PROJ=audio
-DUT=amplifier
-INCLUDES=oscillator.v dac.v button_number.v lfsr.v amplifier.v
+#PROJ=audio
+PROJ=minimal
+DUT=envelope
+INCLUDES=oscillator.v dac.v button_number.v lfsr.v amplifier.v envelope.v
 CONSTR=had19_proto2.lpf
 TRELLIS=/usr/share/trellis
 
 
-all: ${PROJ}.svf flash
-# all: sim
+# all: ${PROJ}.svf flash
+all: sim
 
 %.json: %.v ${INCLUDES} 
 	yosys -p "synth_ecp5 -json $@" $< 
