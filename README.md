@@ -50,10 +50,6 @@ The soc folder at this point is a bit of a mess: it contains most of the 'base' 
 as well as code for simulation of parts using Icarus, or the entirety using Verilator. Apart
 from this, the contents of the directories are:
 
-- bram_replace is a tool to replace the content of bram in bitstreams. It's used here to
-generate a new bitfile when the bootloader code has changed without having to re-synthesize
-the entire project.
-
 - jtagload is a nearly-trivial program to convert a binary executable file into a svf file 
 that can then be sent to the FPGA using OpenOCD. At the moment, the boot ROM only invokes a
 mode compatible with this when it doesn't find a proper IPL in flash.

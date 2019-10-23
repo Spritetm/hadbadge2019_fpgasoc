@@ -47,13 +47,8 @@ $(PROJ).json $(PROJ).blif: $(SRC) $(SRC_SYNTH) $(EXTRA_DEPEND)
 %_out_synth.config: %.json clock-constrainsts.py
 	nextpnr-ecp5 --json $< --lpf $(CONSTR) --textcfg $@ --45k --package CABGA381 --speed 8  --pre-pack clock-constrainsts.py --seed 37
 
-%_out.config: %_out_synth.config bram_replace/bram_replace$(EXE) rom.hex
-	bram_replace/bram_replace$(EXE) -l 8192 -r $< $@ rom.hex
-
-bram_replace/bram_replace:
-ifneq ($(OS),Windows_NT)
-	make -C bram_replace
-endif
+%_out.config: %_out_synth.config rom.hex
+	ecpbram -i $< -o $@ -f rom_random_seeds0x123456.hex -t rom.hex
 
 #Note: can't generate bit and svf at the same time as some silicon revs of the ECP5 don't seem to accept
 #bitstreams with SPI-specific things over JTAG.
@@ -104,6 +99,6 @@ pic/rom_initial.hex: pic/rom.asm
 ipl:
 	make -C ipl
 
-.PHONY: prog clean verilator bram_replace boot/ ipl
+.PHONY: prog clean verilator boot/ ipl
 .PRECIOUS: $(PROJ).json $(PROJ)_out_synth.config $(PROJ)_out.config
 
