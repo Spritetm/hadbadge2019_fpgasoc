@@ -18,7 +18,6 @@ TARGET_BIN := $(APPNAME).bin
 TARGET_MAP := $(APPNAME).map
 TARGET_SVF := $(APPNAME).svf
 OBJS = main.o lcd.o UGUI/ugui.o
-#OBJS += usb/usb.o usb/usb_ctrl_ep0.o usb/usb_ctrl_std.o usb/usb_desc_app.o usb/utils.o
 OBJS += tinyusb/src/device/usbd.o tinyusb/src/device/usbd_control.o tinyusb/src/tusb.o
 OBJS += tinyusb/src/common/tusb_fifo.o
 OBJS += tinyusb/src/class/msc/msc_device.o tinyusb/src/class/midi/midi_device.o
