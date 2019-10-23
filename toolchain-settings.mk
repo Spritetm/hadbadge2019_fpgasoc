@@ -28,5 +28,5 @@ STRIP := $(CROSS)strip
 GDB := $(CROSS)gdb
 
 ASFLAGS := -march=rv32im -mabi=ilp32
-CFLAGS  := -march=rv32im -mabi=ilp32 -Os
-LDFLAGS := -march=rv32im -mabi=ilp32 -ffreestanding -nostartfiles -Wl,--gc-section -Wl,-Bstatic -Wl,-melf32lriscv 
+CFLAGS  := -march=rv32im -mabi=ilp32 -flto -Os
+LDFLAGS := -march=rv32im -mabi=ilp32 -flto -ffreestanding -nostartfiles -Wl,--gc-section -Wl,-Bstatic -Wl,-melf32lriscv
