@@ -42,11 +42,9 @@ void main(int argc, char **argv) {
 //Allocate fb memory
 	fbmem=malloc(320*512/2);
 
-	for (uint8_t i=0; i<10;i++) {
-		MISC_REG(MISC_LED_REG)=0xFFFFF;
-		__INEFFICIENT_delay(100);
-		MISC_REG(MISC_LED_REG)=0x00000;
-		__INEFFICIENT_delay(100);
+	for (uint8_t i=0; i<0x3F;i++) {
+		MISC_REG(MISC_LED_REG)=i;
+		__INEFFICIENT_delay(20);
 	}
 	
 
@@ -56,6 +54,9 @@ void main(int argc, char **argv) {
 	GFX_REG(GFX_FBPITCH_REG)=(FB_PAL_OFFSET<<GFX_FBPITCH_PAL_OFF)|(512<<GFX_FBPITCH_PITCH_OFF);
 	//Blank out fb while we're loading stuff.
 	GFX_REG(GFX_LAYEREN_REG)=0;
+
+		//Nuke the palette animation indexes to be black.
+	// for (int x=0; x<10; x++) GFXPAL[FB_PAL_OFFSET+6+x]=0;
 
 	//Load up the default tileset and font.
 	//ToDo: loading pngs takes a long time... move over to pcx instead.
@@ -76,14 +77,19 @@ void main(int argc, char **argv) {
 		printf("Error opening console!\n");
 	}
 
-	// //Now, use a library function to load the image into the framebuffer memory. This function will also set up the palette entries,
-	// //we tell it to start writing from entry 0.
-	gfx_load_fb_mem(fbmem, &GFXPAL[FB_PAL_OFFSET], 4, 512, &_binary_bgnd_png_start, (&_binary_bgnd_png_end-&_binary_bgnd_png_start));
+	//Now, use a library function to load the image into the framebuffer memory. This function will also set up the palette entries,
+	//we tell it to start writing from entry 0.
+	//gfx_load_fb_mem(fbmem, &GFXPAL[FB_PAL_OFFSET], 4, 512, &_binary_bgnd_png_start, (&_binary_bgnd_png_end-&_binary_bgnd_png_start));
 	// printf("gfx_load_mem: %d\n", i);
-
+	for (int x=0; x<512; x++) {
+		for (int y=0; y<320; y++) {
+			((uint32_t *)fbmem)[(x+y)/2] = 0x00FF0000;
+		}
+	}
 	//Flush the memory region to psram so the GFX hw can stream it from there.
 	cache_flush(fbmem, fbmem+FB_WIDTH*FB_HEIGHT);
 
+	//This seems to set transparency
 	GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_LAYEREN_TILEB|GFX_LAYEREN_TILEA|GFX_LAYEREN_SPR;
 	GFXPAL[FB_PAL_OFFSET+0x100]=0x00ff00ff; //Note: For some reason, the sprites use this as default bgnd. ToDo: fix this...
 	GFXPAL[FB_PAL_OFFSET+0x1ff]=0x40ff00ff; //so it becomes this instead.
@@ -99,10 +105,10 @@ void main(int argc, char **argv) {
 
 	cache_flush(fbmem, fbmem+FB_WIDTH*FB_HEIGHT);
 	
-	// //The user can still see nothing of this graphics goodness, so let's re-enable the framebuffer and
-	// //tile layer A (the default layer for the console). Also indicate the framebuffer we have is
-	// //8-bit.
-	// GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB_8BIT|GFX_LAYEREN_FB|GFX_LAYEREN_TILEA;
+	//The user can still see nothing of this graphics goodness, so let's re-enable the framebuffer and
+	//tile layer A (the default layer for the console). Also indicate the framebuffer we have is
+	//8-bit.
+	GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB_8BIT|GFX_LAYEREN_FB|GFX_LAYEREN_TILEA;
 
 	printf("Hello Flappy222\r\n");
 	fprintf(console,"Hello Flappy\r\n");
