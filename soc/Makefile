@@ -12,8 +12,6 @@ SRC = \
 	ledctl.v \
 	picorv32/picorv32.v \
 	pcpi_fastmul_dsp.v \
-	simpleuart.v \
-	simpleuart_irda.v \
 	soc.v \
 	$(NULL)
 
@@ -32,6 +30,14 @@ SRC_SIM = \
 	uart_emu_gdb.cpp \
 	verilator_main.cpp \
 	$(NULL)
+
+	# Misc
+SRC += $(addprefix misc/, \
+	fifo_sync_ram.v \
+	fifo_sync_shift.v \
+	glitch_filter.v \
+	ram_sdp.v \
+)
 
 	# QPI cache
 SRC += $(addprefix qpi_cache/, \
@@ -72,6 +78,15 @@ SRC_SIM += $(addprefix video/, \
 	video_renderer.cpp \
 )
 
+	# UART
+SRC += $(addprefix uart/, \
+	uart_irda_rx.v \
+	uart_irda_tx.v \
+	uart_rx.v \
+	uart_tx.v \
+	uart_wb.v \
+)
+
 	# USB
 SRC += $(addprefix usb/, \
 	usb_trans.v \
@@ -84,7 +99,6 @@ SRC += $(addprefix usb/, \
 	usb_tx_ll.v \
 	usb_rx_ll.v \
 	usb_crc.v \
-	fifo_sync_shift.v \
 )
 
 SRC += usb_soc.v

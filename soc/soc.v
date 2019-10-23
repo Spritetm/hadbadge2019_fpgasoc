@@ -263,18 +263,19 @@ module soc(
 	);
 
 	reg mem_select;
-	reg uart_div_select;
-	reg uart_dat_select;
-	reg irda_div_select;
-	reg irda_dat_select;
+
+	// UART
+	wire [31:0] uart_rdata;
+	reg  uart_select;
+	wire uart_ready;
+
+	// IRDA
+	wire [31:0] irda_rdata;
+	reg  irda_select;
+	wire irda_ready;
+
 	reg misc_select;
 	wire[31:0] ram_rdata;
-	wire[31:0] uart_reg_div_do;
-	wire[31:0] uart_reg_dat_do;
-	wire[31:0] irda_reg_div_do;
-	wire[31:0] irda_reg_dat_do;
-	wire uart_reg_dat_wait;
-	wire irda_reg_dat_wait;
 	reg ram_ready;
 	wire [31:0] lcd_rdata;
 	reg lcd_select;
@@ -342,10 +343,8 @@ module soc(
 
 	always @(*) begin
 		mem_select = 0;
-		uart_div_select = 0;
-		uart_dat_select = 0;
-		irda_div_select = 0;
-		irda_dat_select = 0;
+		uart_select = 0;
+		irda_select = 0;
 		misc_select = 0;
 		lcd_select = 0;
 		usb_select = 0;
@@ -354,18 +353,12 @@ module soc(
 		bus_error = 0;
 		mem_rdata = 'hx;
 		if (mem_addr[31:28]=='h1) begin
-			if (mem_addr[3:2]=='h0) begin
-				uart_dat_select = mem_valid;
-				mem_rdata = uart_reg_dat_do;
-			end else if (mem_addr[3:2]=='h1) begin
-				uart_div_select = mem_valid;
-				mem_rdata = uart_reg_div_do;
-			end else if (mem_addr[3:2]=='h2) begin
-				irda_dat_select = mem_valid;
-				mem_rdata = irda_reg_dat_do;
-			end else if (mem_addr[3:2]=='h3) begin
-				irda_div_select = mem_valid;
-				mem_rdata = irda_reg_div_do;
+			if (mem_addr[4] == 1'b0) begin
+				uart_select = mem_valid;
+				mem_rdata = uart_rdata;
+			end else begin
+				irda_select = mem_valid;
+				mem_rdata = irda_rdata;
 			end
 		end else if (mem_addr[31:28]=='h2) begin
 			misc_select = mem_valid;
@@ -439,8 +432,7 @@ module soc(
 	end
 `endif
 
-	assign mem_ready = ram_ready || uart_div_select || irda_div_select || misc_select || 
-			(uart_dat_select && !uart_reg_dat_wait) || (irda_dat_select && !irda_reg_dat_wait) ||
+	assign mem_ready = ram_ready || uart_ready || irda_ready || misc_select ||
 			lcd_ready || linerenderer_ready || usb_ready || pic_ready || bus_error;
 
 	dsadc dsadc (
@@ -543,40 +535,40 @@ module soc(
 		.pad_pu(usb_pu)
 	);
 
-	simpleuart simpleuart (
-		.clk         (clk48m      ),
-		.resetn      (resetn      ),
-
-		.ser_tx      (uart_tx    ),
-		.ser_rx      (uart_rx      ),
-
-		.reg_div_we  (uart_div_select ? mem_wstrb : 4'b 0000),
-		.reg_div_di  (mem_wdata),
-		.reg_div_do  (uart_reg_div_do),
-
-		.reg_dat_we  (uart_dat_select ? mem_wstrb[0] : 1'b 0),
-		.reg_dat_re  (uart_dat_select && mem_wstrb==0),
-		.reg_dat_di  (mem_wdata),
-		.reg_dat_do  (uart_reg_dat_do),
-		.reg_dat_wait(uart_reg_dat_wait)
+	uart_wb #(
+		.FIFO_DEPTH(16),
+		.DIV_WIDTH(16),
+		.DW(32),
+		.IRDA(0)
+	) uart_I (
+		.uart_tx(uart_tx),
+		.uart_rx(uart_rx),
+		.bus_addr(mem_addr[3:2]),
+		.bus_wdata(mem_wdata),
+		.bus_rdata(uart_rdata),
+		.bus_cyc(uart_select),
+		.bus_ack(uart_ready),
+		.bus_we(mem_wstrb != 0),
+		.clk(clk48m),
+		.rst(rst)
 	);
 
-	simpleuart_irda simpleuart_irda (
-		.clk         (clk48m      ),
-		.resetn      (resetn      ),
-
-		.ser_tx      (irda_tx    ),
-		.ser_rx      (irda_rx      ),
-
-		.reg_div_we  (irda_div_select ? mem_wstrb : 4'b 0000),
-		.reg_div_di  (mem_wdata),
-		.reg_div_do  (irda_reg_div_do),
-
-		.reg_dat_we  (irda_dat_select ? mem_wstrb[0] : 1'b 0),
-		.reg_dat_re  (irda_dat_select && mem_wstrb==0),
-		.reg_dat_di  (mem_wdata),
-		.reg_dat_do  (irda_reg_dat_do),
-		.reg_dat_wait(irda_reg_dat_wait)
+	uart_wb #(
+		.FIFO_DEPTH(16),
+		.DIV_WIDTH(16),
+		.DW(32),
+		.IRDA(1)
+	) irda_I (
+		.uart_tx(irda_tx),
+		.uart_rx(irda_rx),
+		.bus_addr(mem_addr[3:2]),
+		.bus_wdata(mem_wdata),
+		.bus_rdata(irda_rdata),
+		.bus_cyc(irda_select),
+		.bus_ack(irda_ready),
+		.bus_we(mem_wstrb != 0),
+		.clk(clk48m),
+		.rst(rst)
 	);
 
 	reg [15:0] pic_led;

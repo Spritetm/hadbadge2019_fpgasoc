@@ -69,10 +69,11 @@ do_reset:
 	lw a2,MISC_CPU_NO(a1)
 	bne a2, zero, secondcpu
 
-	//Set up UART divider
+	//Set up UART divider for 115200
 	li a1, UART_OFFSET
-	li a2, 416 //115200 with a clock of 48MHz
+	li a2, 414
 	sw a2, UART_DIV_REG(a1)
+	li a2, 24
 	sw a2, UART_IRDA_DIV_REG(a1)
 
 
