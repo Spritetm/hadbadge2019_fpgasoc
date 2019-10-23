@@ -27,6 +27,6 @@ SIZE := $(CROSS)size
 STRIP := $(CROSS)strip
 GDB := $(CROSS)gdb
 
-ASFLAGS := -march=rv32im -mabi=ilp32
-CFLAGS  := -march=rv32im -mabi=ilp32 -flto -Os
-LDFLAGS := -march=rv32im -mabi=ilp32 -flto -ffreestanding -nostartfiles -Wl,--gc-section -Wl,-Bstatic -Wl,-melf32lriscv
+ASFLAGS := -march=rv32imac -mabi=ilp32
+CFLAGS  := -march=rv32imac -mabi=ilp32 -flto -Os
+LDFLAGS := -march=rv32imac -mabi=ilp32 -flto -ffreestanding -nostartfiles -Wl,--gc-section -Wl,-Bstatic -Wl,-melf32lriscv
