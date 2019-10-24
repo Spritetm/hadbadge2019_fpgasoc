@@ -1,7 +1,7 @@
 `timescale 1ns/1ns
 module oscillator 
 #(
-	parameter BITDEPTH   = 12,
+	parameter BITDEPTH   = 14,
 	parameter BITFRACTION   = 8
 ) (
 	input sample_clock,

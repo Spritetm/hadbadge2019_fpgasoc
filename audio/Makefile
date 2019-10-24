@@ -1,6 +1,6 @@
 #PROJ=audio
 PROJ=minimal
-DUT=ar
+DUT=voice
 INCLUDES=oscillator.v dac.v button_number.v lfsr.v amplifier.v envelope.v
 CONSTR=had19_proto2.lpf
 TRELLIS=/usr/share/trellis
