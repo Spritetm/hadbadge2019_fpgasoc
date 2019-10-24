@@ -69,7 +69,7 @@ assign led[3:0] = button;
 
 
 wire [BITDEPTH-1:0] preamp;
-reg [20:0] increment = 0 ;  // determines pitch = 
+reg [15:0] increment = 0 ;  // determines pitch = 
 oscillator #( .BITDEPTH(BITDEPTH), .BITFRACTION(BITFRACTION)) mysaw 
 (
 	.sample_clock(sample_clock),

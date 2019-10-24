@@ -1,8 +1,7 @@
 `timescale 1ns/1ns
 `include "sample_clock.v"
-`include "oscillator.v"
-
 module test();
+
 localparam BITDEPTH    = 14;
 localparam BITFRACTION = 6;
 localparam SAMPLECLOCK_DIV = 8;
@@ -24,39 +23,33 @@ sample_clock #( .SAMPLECLOCK_DIV(SAMPLECLOCK_DIV) ) mysampleclock (
 	.clk(clk), .sample_clock(sample_clock) 
 );
 
-// import oscillator for sound source
-`define CALC_INCREMENT(hz) $rtoi(hz * 2**(BITDEPTH+BITFRACTION)/SAMPLEFREQ*2)
-reg [15:0] increment = `CALC_INCREMENT(262) ; 
-
-wire [BITDEPTH-1:0] osc_out;
-oscillator #( .BITDEPTH(BITDEPTH), .BITFRACTION(BITFRACTION)) mysaw 
-(
-	.sample_clock(sample_clock),
-	.increment(increment) ,  
-	.voice_select(4'b0010), 
-	.out (osc_out)
-);
-
-/* Wires, registers, and module here */
-reg gate=0;
+reg gate = 0;
+reg [3:0] voice = 4'b0010;
+reg [15:0] pitch = 22345;
 wire [BITDEPTH-1:0] out;
+/* Wires, registers, and module here */
 
-ar #(
-) myar (
+voice DUT (
 	.sample_clock(sample_clock),
-	.in(osc_out),
-	.envelope_attack(8'hf0),
-	.envelope_decay(8'h30),
+	.voice_select(voice),
+  	.pitch_increment(pitch),
+  	.envelope_attack(8'hf0),
+  	.envelope_decay(8'h10),
 	.gate(gate),
 	.out(out)
 );
 
 
 initial begin
-
+	// full cycle, attack, sustain, release
 	#10000000 gate = 1;
-	#20000000 gate = 0;
-	#50000000 $finish;
+	#50000000 pitch=22345;
+	#10000000 voice =4'b0001;
+	#50000000 gate = 0;
+	#50000000 voice = 4'b1000;
+	#10000000 gate = 1;
+	#50000000 gate = 0;
+	#100000000 $finish;
 end
 
 endmodule // test

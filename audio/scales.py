@@ -33,3 +33,16 @@ print( [round(f*2**28/maxclock) for f in frequencies] )
 ## OK, now at 31.25 kHz
 # 12 bit DAC, 12 bit tuning
 
+##  Ah screw it.  When the SoC is up and running, I'll be using a 48 MHz clock
+##  anyway...
+
+## probably should make a MIDI note number to pitch lookup table someday:
+def midi_to_pitch(midi_note_number):
+    return 440 * 2**((midi_note_number-69.0)/12.0)
+
+def increment(m, bit_depth, bit_fraction, sample_freq):
+    return midi_to_pitch(m) * 2**(bit_depth + bit_fraction)/sample_freq*2.0
+
+for i in range(40,86):
+    print i, increment(i, 14, 6, 31250)
+

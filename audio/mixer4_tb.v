@@ -20,7 +20,7 @@ always
 
 // import in sample clock module
 wire sample_clock;
-wire [20:0] increment = 20'd12345;
+wire [15:0] increment = 16'd12345;
 sample_clock #( .SAMPLECLOCK_DIV(SAMPLECLOCK_DIV) ) mysampleclock ( 
 	.clk(clk), .sample_clock(sample_clock) 
 );

@@ -6,14 +6,14 @@ CONSTR=had19_proto2.lpf
 TRELLIS=/usr/share/trellis
 
 
-#all: ${PROJ}.svf flash
-all: sim
+all: ${PROJ}.svf flash
+# all: sim
 
 %.json: %.v ${INCLUDES} 
 	yosys -p "synth_ecp5 -json $@" $< 
 
 %_out.config: %.json
-	nextpnr-ecp5 --json $< --lpf ${CONSTR} --textcfg $@ --45k --package CABGA381 --speed 8
+	nextpnr-ecp5 --json $< --lpf ${CONSTR} --textcfg $@ --45k --package CABGA381 --speed 8 -r
 
 %.bit: %_out.config
 	ecppack --svf-rowsize 100000 --svf ${PROJ}.svf --input $< --bit $@

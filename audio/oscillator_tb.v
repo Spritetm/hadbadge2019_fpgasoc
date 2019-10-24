@@ -3,7 +3,7 @@ module test();
 localparam SAMPLEFREQ = 8000000 / 2**8;
 localparam BD=12;
 
-reg [20:0] increment;
+reg [15:0] increment;
 wire [BD-1:0] out;
 reg [3:0] voice_select;
 initial begin
