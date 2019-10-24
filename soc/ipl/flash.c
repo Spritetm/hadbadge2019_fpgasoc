@@ -41,6 +41,7 @@ static inline uint8_t flash_send_recv(uint8_t data) {
 #define CMD_ERASE32K 0x52
 #define CMD_ERASE64K 0xD8
 #define CMD_WAKE 0xAB
+#define CMD_VOLATILE_SR_WRITE_EN 0x50
 
 uint32_t flash_get_id(int flash_sel) {
 	int id=0;
@@ -106,9 +107,19 @@ bool flash_write_enable(int flash_sel) {
 	return true;
 }
 
+//We also enable qpi here.
 bool flash_wake(int flash_sel) {
 	flash_start_xfer(flash_sel);
 	flash_send_recv(CMD_WAKE);
+	flash_end_xfer();
+
+	//qpi enable needs to write 2 in status register 2
+	flash_start_xfer(flash_sel);
+	flash_send_recv(CMD_VOLATILE_SR_WRITE_EN);
+	flash_end_xfer();
+	flash_start_xfer(flash_sel);
+	flash_send_recv(CMD_WRITESR2);
+	flash_send_recv(2);
 	flash_end_xfer();
 	return true;
 }

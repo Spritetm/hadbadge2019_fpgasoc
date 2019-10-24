@@ -3,9 +3,8 @@ Qpi interface. Note that this code assumes the chip already is in whatever state
 accept read/write commands over a qpi interface, e.g. by having a microcontroller or state machine bitbang 
 the lines manually.
 
-Instructions needed:
-ly68l6400: 0x35 <- goto qio mode
-w25q32: 0x50, 0x31 0x02 <- enable qio mode
+This has both an interface for 'automated' QPI reading/writing, currently used by the PSRAM, as well as 
+a method of sending user SPI commands, intended for flash writing and 'misc'.
 
 How to use:
 - Wait until is_idle is 1
@@ -19,21 +18,6 @@ Note:
 - Do_read/do_write should stay active as long as there's data to read/write. If it goes inactive,
   the current word will finish writing.
 - This code needs at least one dummy cycle on read.
-
-*WIP notes*
-Modifications for flash memory:
-Flash memory should already work well for the read scenario: poke do_read, hw auto-get bytes on next_word.
-For the write scenario, we need:
-- Set write enable latch (cmd 0x06)
-- Sector erase (cmd 0x20, address in SPI-mode)
-- Read status register 1 until non-busy (cmd 0x05)
-- Page program (can be SPI, 0x02)
-- Read SR1
-- Done!
-
-All of this can be done in SPI. (Page program is so slow that qpi doesn't improve things at
-our clock speed.) Means, we don't have to do qpi stuff and can just take a byte, push it out of MOSI,
-grab a byte from MISO at the time and return that.
 
 Wrt upgrading speed to 2x memory bus clock using a 2nd tap from the same PLL:
 (on needing domain-crossing flipflops)

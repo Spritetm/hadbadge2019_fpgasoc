@@ -79,17 +79,22 @@
     well as the cartridge flash. (ToDo: document)*/
 #define MISC_FLASH_CTL_REG 0x1C
 #define MISC_FLASH_CTL_CLAIM (1<<0)
-#define MISC_FLASH_CTL_IDLE (1<<1)
+#define MISC_FLASH_CTL_IDLE (1<<1) //RO
+#define MISC_FLASH_CTL_DMADONE (1<<2) //RO
 /** Flash write register. (ToDo: document) */
 #define MISC_FLASH_WDATA_REG 0x20
 /** Flash read register. (ToDo: document) */
 #define MISC_FLASH_RDATA_REG 0x24
-/** Random number register. A read returns a fully random number. Do not read more
-    than once every 32 clock cycles for maximum random-ness. */
-#define MISC_RNG_REG 0x28
+/* Flash DMA: memory address to write block to */
+#define MISC_FLASH_DMAADDR 0x28
+/* Flash DMA: Start byte address in flash to read block from */
+#define MISC_FLASH_RDADDR 0x2C
+/* Flash DMA: Length. A write here starts a new DMA transfer. Check
+   MISC_FLASH_CTL_DMADONE for status. */
+#define MISC_FLASH_DMALEN 0x30
 /** Flash selection register. Write a value to select a flash chip. Also
     is used to reboot the FPGA into the next bitstream by pulling the PROGRAMN pin. */
-#define MISC_FLASH_SEL_REG 0x2C
+#define MISC_FLASH_SEL_REG 0x34
 /** Write this to select cartridge flash */
 #define MISC_FLASH_SEL_CARTFLASH 1
 /** Write this to select internal flash */
@@ -98,36 +103,39 @@
    MISC_FLASH_SEL_* values will reload the FPGA from that particular flash
    chip. */
 #define MISC_FLASH_SEL_FPGARELOAD_MAGIC (0xD0F1A5<<8)
+/** Random number register. A read returns a fully random number. Do not read more
+    than once every 32 clock cycles for maximum random-ness. */
+#define MISC_RNG_REG 0x38
 /** SAR ADC register. ToDo: document */
 #define MISC_ADC_CTL_REG 0x30
 #define MISC_ADC_CTL_ENA (1<<0)
 #define MISC_ADC_CTL_VALID (1<<1)
 #define MISC_ADC_CTL_DIV(x) (x<<16)
 /** SAR ADC value readout */
-#define MISC_ADC_VAL_REG 0x34
+#define MISC_ADC_VAL_REG 0x3C
 /** General I/O input register. Bits 29-0 reflect the values of the corresponding lines on the cartridge I/O connector. */
-#define MISC_GENIO_IN_REG 0x38
+#define MISC_GENIO_IN_REG 0x40
 /** General I/O output register. Bits 29-0 set the values of the cartridge lines that are selected as outputs. */
-#define MISC_GENIO_OUT_REG 0x3C
+#define MISC_GENIO_OUT_REG 0x44
 /** General I/O output enable registers. Set 1 to any of the bits 29-0 to make the corresponding line into an output. */
-#define MISC_GENIO_OE_REG 0x40
+#define MISC_GENIO_OE_REG 0x48
 /** Write 1 to set register. Any write of 1 will set the corresponding bit in MISC_GENIO_OUT_REG to 1. */
-#define MISC_GENIO_W2S_REG 0x44
+#define MISC_GENIO_W2S_REG 0x4C
 /** Write 1 to clear register. Any write of 1 will set the corresponding bit in MISC_GENIO_OUT_REG to 0. */
-#define MISC_GENIO_W2C_REG 0x48
+#define MISC_GENIO_W2C_REG 0x50
 /** Extended I/O input register. The bits here reflect the values of the corresponding lines on the cartridge I/O connector:
    (ToDo: insert mapping here)
    Bit 31 reflects the status of the input-only USB VDET line, which is high when a +5V voltage is on the USB VBUS line.
     */
-#define MISC_GPEXT_IN_REG 0x4C
+#define MISC_GPEXT_IN_REG 0x54
 /** Extended I/O: if a pin is an output, the corresponding bit here will set its value */
-#define MISC_GPEXT_OUT_REG 0x50
+#define MISC_GPEXT_OUT_REG 0x58
 /** Extended I/O: output enable register */
-#define MISC_GPEXT_OE_REG 0x54
+#define MISC_GPEXT_OE_REG 0x5C
 /** Extended I/O: write 1 to set output register */
-#define MISC_GPEXT_W2S_REG 0x58
+#define MISC_GPEXT_W2S_REG 0x60
 /** Extended I/O: write 1 to clear output register */
-#define MISC_GPEXT_W2C_REG 0x5C
+#define MISC_GPEXT_W2C_REG 0x64
 
 /** Offset to the LCD controller. This allows you to send commands and data directly to the LCD. Note
     that normally this is not used aside from setting up the LCD; actual graphics are pushed automatically

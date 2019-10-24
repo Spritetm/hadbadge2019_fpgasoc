@@ -3,6 +3,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include "gloss/mach_defines.h"
+#include "gloss/mach_interrupt.h"
 #include "gloss/uart.h"
 #include <stdio.h>
 #include <lcd.h>
@@ -199,6 +200,11 @@ int show_main_menu(char *app_name) {
 						"                       ";
 	int scrpos=0;
 	while(!done) {
+		//We're using the timer as a wdt here. The int is by default set to the panic handler,
+		//so we're dropped there if something hangs.
+		mach_timer_set(48000000*5); //5 sec timeout
+		mach_int_ena(1<<INT_NO_TIMER);
+
 		p++;
 
 		bgnd_pal_state++;
@@ -317,6 +323,17 @@ extern uint32_t *irq_stack_ptr;
 #define IRQ_STACK_SIZE (16*1024)
 void main() {
 	syscall_reinit();
+	uint32_t buf[512];
+	for (int i=0; i<512; i++) buf[i]=0xa5a5a5a5;
+	printf("Flash read start...\n");
+	verilator_start_trace();
+	flash_wake(FLASH_SEL_INT);
+	MISC_REG(MISC_FLASH_DMAADDR)=(uint32_t)buf;
+	MISC_REG(MISC_FLASH_RDADDR)=0;
+	MISC_REG(MISC_FLASH_DMALEN)=511;
+	while((MISC_REG(MISC_FLASH_CTL_REG) & MISC_FLASH_CTL_DMADONE)==0);
+	hexdump(buf, 512*4);
+
 	//Initialize IRQ stack to be bigger than the bootrom stack
 	uint32_t *int_stack=malloc(IRQ_STACK_SIZE);
 	irq_stack_ptr=int_stack+(IRQ_STACK_SIZE/sizeof(uint32_t));
@@ -329,10 +346,12 @@ void main() {
 	//Initialize filesystem (fatfs, flash translation layer)
 	fs_init();
 	printf("Filesystem inited.\n");
+
+
 	while(1) {
 		MISC_REG(MISC_LED_REG)=0xfffff;
 		printf("IPL running.\n");
-		char app_name[256];
+		char app_name[256]="";
 		show_main_menu(app_name);
 		printf("IPL: starting app %s\n", app_name);
 		usb_msc_off();
@@ -376,3 +395,4 @@ void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts) {
 void tud_cdc_rx_cb(uint8_t itf) {
 	(void)itf;
 }
+

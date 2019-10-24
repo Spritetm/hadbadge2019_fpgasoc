@@ -108,8 +108,12 @@ module soc(
 	`define SLICE_32(v, i) v[32*i+:32]
 	`define SLICE_4(v, i) v[4*i+:4]
 
-	parameter integer MASTERCNT = 3;
 	parameter integer CPUCNT = 2;
+`ifdef WANT_JTAG
+	parameter integer MASTERCNT = CPUCNT + 2;
+`else
+	parameter integer MASTERCNT = CPUCNT + 1;
+`endif
 	wire [32*MASTERCNT-1:0] arb_addr;
 	wire [32*MASTERCNT-1:0] arb_wdata;
 	wire [32*MASTERCNT-1:0] arb_rdata;
@@ -195,13 +199,48 @@ module soc(
 
 /* verilator lint_on PINMISSING */
 
+	wire [31:0] flash_dmadata;
+	wire flash_dmastrobe;
+	wire flash_dmadone;
+	reg flash_claim, flash_xfer;
+	wire [7:0] flash_rdata;
+	reg [31:0] flash_dmaaddr;
+	reg [23:0] flash_rdaddr;
+	reg [15:0] flash_dmalen;
+	wire flash_dma_memw_done;
+	wire flash_idle;
+	reg flash_dma_run;
+
+	parameter integer FLASHDMA_ARB_PRT = CPUCNT;
+	assign `SLICE_4(arb_wstrb, FLASHDMA_ARB_PRT) = 'hf; //write only for now
+	dma_writer dma_writer (
+		.clk(clk48m),
+		.reset(rst),
+
+		.mem_addr(`SLICE_32(arb_addr, FLASHDMA_ARB_PRT)),
+		.mem_data(`SLICE_32(arb_wdata, FLASHDMA_ARB_PRT)),
+		.mem_wr(arb_valid[FLASHDMA_ARB_PRT]),
+		.mem_rdy(arb_ready[FLASHDMA_ARB_PRT]),
+		
+		.src_data(flash_dmadata),
+		.src_strobe(flash_dmastrobe),
+		.src_done(flash_dmadone),
+		
+		.dst_addr(flash_dmaaddr),
+		.len(flash_dmalen),
+		.run(flash_dma_run),
+		.done(flash_dma_memw_done)
+	);
+
+
+`ifdef WANT_JTAG
 	//Final master is to write memory over the JTAG port. It's kinda janky, as JTAG at this point
 	//does not have the option to feed back the fact that RAM may be busy. We work around that for
 	//now by assuming JTAG is slow enough not to overflow.
 
 	//0x38 = address, 0x32 is data
 
-	parameter integer JTAG_ARB_PRT = CPUCNT;
+	parameter integer JTAG_ARB_PRT = CPUCNT+1;
 	reg [31:0] jtag_addr;
 	reg jtag_mem_valid;
 	assign `SLICE_32(arb_addr, JTAG_ARB_PRT) = jtag_addr;
@@ -240,6 +279,8 @@ module soc(
 			end
 		end
 	end
+
+`endif
 
 	arbiter #(
 		.MASTER_IFACE_CNT(MASTERCNT)
@@ -298,9 +339,6 @@ module soc(
 `endif
 
 
-	reg flash_claim, flash_xfer;
-	wire [7:0] flash_rdata;
-	wire flash_idle;
 	reg adc_enabled;
 	reg [4:0] adc_divider;
 	wire adc_valid;
@@ -316,20 +354,23 @@ module soc(
 	parameter MISC_REG_FLASH_CTL = 7;
 	parameter MISC_REG_FLASH_WDATA = 8;
 	parameter MISC_REG_FLASH_RDATA = 9;
-	parameter MISC_REG_RNG = 10;
-	parameter MISC_REG_FLASH_SEL = 11;
-	parameter MISC_REG_ADC_CTL = 12;
-	parameter MISC_REG_ADC_VAL = 13;
-	parameter MISC_REG_GENIO_IN = 14;
-	parameter MISC_REG_GENIO_OUT = 15;
-	parameter MISC_REG_GENIO_OE = 16;
-	parameter MISC_REG_GENIO_W2S = 17;
-	parameter MISC_REG_GENIO_W2C = 18;
-	parameter MISC_REG_GPEXT_IN = 19;
-	parameter MISC_REG_GPEXT_OUT = 20;
-	parameter MISC_REG_GPEXT_OE = 21;
-	parameter MISC_REG_GPEXT_W2S = 22;
-	parameter MISC_REG_GPEXT_W2C = 23;
+	parameter MISC_REG_FLASH_DMAADDR = 10;
+	parameter MISC_REG_FLASH_RDADDR = 11;
+	parameter MISC_REG_FLASH_DMALEN = 12;
+	parameter MISC_REG_FLASH_SEL = 13;
+	parameter MISC_REG_RNG = 14;
+	parameter MISC_REG_ADC_CTL = 15;
+	parameter MISC_REG_ADC_VAL = 16;
+	parameter MISC_REG_GENIO_IN = 17;
+	parameter MISC_REG_GENIO_OUT = 18;
+	parameter MISC_REG_GENIO_OE = 19;
+	parameter MISC_REG_GENIO_W2S = 20;
+	parameter MISC_REG_GENIO_W2C = 21;
+	parameter MISC_REG_GPEXT_IN = 22;
+	parameter MISC_REG_GPEXT_OUT = 23;
+	parameter MISC_REG_GPEXT_OE = 24;
+	parameter MISC_REG_GPEXT_W2S = 25;
+	parameter MISC_REG_GPEXT_W2C = 26;
 
 	wire [31:0] rngno;
 	rng rng(
@@ -382,13 +423,19 @@ module soc(
 			end else if (mem_addr[6:2]==MISC_REG_PSRAMOVR_B) begin
 				mem_rdata = psramb_ovr;
 			end else if (mem_addr[6:2]==MISC_REG_FLASH_CTL) begin
-				mem_rdata = {30'h0, flash_idle, flash_claim};
+				mem_rdata = {29'h0, flash_dma_memw_done, flash_idle, flash_claim};
 			end else if (mem_addr[6:2]==MISC_REG_FLASH_RDATA) begin
 				mem_rdata = {24'h0, flash_rdata};
-			end else if (mem_addr[6:2]==MISC_REG_RNG) begin
-				mem_rdata = rngno;
+			end else if (mem_addr[6:2]==MISC_REG_FLASH_DMAADDR) begin
+				mem_rdata = flash_dmaaddr;
+			end else if (mem_addr[6:2]==MISC_REG_FLASH_RDADDR) begin
+				mem_rdata = {8'h0, flash_rdaddr};
+			end else if (mem_addr[6:2]==MISC_REG_FLASH_DMALEN) begin
+				mem_rdata = {16'h0, flash_dmalen};
 			end else if (mem_addr[6:2]==MISC_REG_FLASH_SEL) begin
 				mem_rdata = {31'h0, fsel_d};
+			end else if (mem_addr[6:2]==MISC_REG_RNG) begin
+				mem_rdata = rngno;
 			end else if (mem_addr[6:2]==MISC_REG_ADC_CTL) begin
 				mem_rdata = {11'h0, adc_divider, 14'h0, adc_valid, adc_enabled};
 			end else if (mem_addr[6:2]==MISC_REG_ADC_VAL) begin
@@ -745,16 +792,23 @@ module soc(
 	assign psramb_nce = psrama_override ? psramb_ovr[4] : qpsram_nce;
 	assign psramb_sout = psrama_override ? psramb_ovr[3:0] : qpsramb_sout;
 
-	//This is abused as a simple SPI flash interface. We can add qpi reading later.
-	qpimem_iface flash_iface(
+	//Flash mostly uses SPI to communicate, but can use QPI for DMA reads.
+	qpimem_iface #(
+		.READCMD('hEb),
+		.READDUMMY(3),
+		.DUMMYVAL('hf),
+		.CMD_IS_SPI(1)
+	) flash_iface (
 		.clk(clk48m),
 		.rst(rst),
 		
-		//qpi is not supported yet
-		.do_read(0),
-		.do_write(0),
-		.addr('hX),
+		//qpi is used for DMA transfers
+		.do_read(!flash_dmadone),
+		.do_write(0), //qpi isn't used for flash writes
+		.addr(flash_rdaddr),
 		.wdata('hX),
+		.rdata(flash_dmadata),
+		.next_word(flash_dmastrobe),
 
 		//no spi transfers supported, we do setup using bitbanging
 		.spi_xfer_wdata(mem_wdata[7:0]),
@@ -801,8 +855,13 @@ module soc(
 			adc_divider <= 0;
 			irda_sd <= 1;
 			trace_en <= 0;
+			flash_dma_run <= 0;
+			flash_dmaaddr <= 0;
+			flash_rdaddr <= 0;
+			flash_dmalen <= 0;
 		end else begin
 			fsel_strobe <= 0;
+			flash_dma_run <= 0;
 			if (misc_select && mem_wstrb[0]) begin
 				if (mem_addr[6:2]==MISC_REG_LED) begin
 					pic_led <= mem_wdata[16:0];
@@ -825,6 +884,13 @@ module soc(
 						//D0F1A50x is written. Pull PROGRAMN.
 						programn_queue <= 1;
 					end
+				end else if (mem_addr[6:2]==MISC_REG_FLASH_DMAADDR) begin
+					flash_dmaaddr <= mem_wdata;
+				end else if (mem_addr[6:2]==MISC_REG_FLASH_RDADDR) begin
+					flash_rdaddr <= mem_wdata[23:0];
+				end else if (mem_addr[6:2]==MISC_REG_FLASH_DMALEN) begin
+					flash_dmalen <= mem_wdata[15:0];
+					flash_dma_run <= 1;
 				end else if (mem_addr[6:2]==MISC_REG_ADC_CTL) begin
 					adc_divider <= mem_wdata[23:16];
 					adc_enabled <= mem_wdata[0];

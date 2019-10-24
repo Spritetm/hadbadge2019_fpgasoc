@@ -85,6 +85,7 @@ int main(int argc, char **argv) {
 		tb->irda_rx=tb->irda_tx;
 		tb->adc4=tb->adcrefout?0:1;
 		tb->clk48m = 1;
+		tb->flash_sin = ts&0xf;
 		tb->eval();
 		tb->psrama_sin=sina;
 		tb->psramb_sin=sinb;
