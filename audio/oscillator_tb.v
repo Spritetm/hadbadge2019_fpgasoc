@@ -17,6 +17,7 @@ always
 	#125 clk = !clk;
 
 reg sample_clock = 0;
+reg rst = 0;
 reg [8:0] sample_count = 0;
 always @(posedge clk) begin
 	sample_count <= sample_count + 1;
@@ -26,6 +27,7 @@ end
 /* Wires, registers, and module here */
 oscillator #( .BITDEPTH(12), .BITFRACTION(12)) testsaw (
 	.sample_clock(sample_clock),
+	.rst(rst),
 	.increment(increment), 
 .voice_select(voice_select),
 	.out(out)

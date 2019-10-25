@@ -13,7 +13,7 @@ all: ${PROJ}.svf flash
 	yosys -p "synth_ecp5 -json $@" $< 
 
 %_out.config: %.json
-	nextpnr-ecp5 --json $< --lpf ${CONSTR} --textcfg $@ --45k --package CABGA381 --speed 8 -r
+	nextpnr-ecp5 --json $< --lpf ${CONSTR} --textcfg $@ --45k --package CABGA381 --speed 8 --seed 42
 
 %.bit: %_out.config
 	ecppack --svf-rowsize 100000 --svf ${PROJ}.svf --input $< --bit $@

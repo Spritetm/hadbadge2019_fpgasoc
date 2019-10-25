@@ -9,8 +9,8 @@
 
 module top( 
 	input clk, 
-	input [7:0] btn, 
-	output [5:0] led, 
+	/* input [7:0] btn, */ 
+	/* output [5:0] led, */ 
 	output pwmout
 );
 /* Button and audio workout */
@@ -22,8 +22,9 @@ localparam SAMPLEFREQ  = 8000000 / 2**SAMPLECLOCK_DIV;  // 31,250 Hz or 32 us
 
 wire sample_clock;
 sample_clock #( .SAMPLECLOCK_DIV(SAMPLECLOCK_DIV) ) mysampleclock ( 
-	.clk(clk), .sample_clock(sample_clock) 
+	.clk(clk), .rst(rst), .sample_clock(sample_clock) 
 );
+reg rst = 0;
 
 `define CALC_INCREMENT(hz) $rtoi(hz * 2**(BITDEPTH+BITFRACTION)/SAMPLEFREQ*2)
 `define MIDI_NOTE(n) $rtoi(440 * 2**((n-69)/12) * 2**(BITDEPTH+BITFRACTION)/SAMPLEFREQ*2)
@@ -60,6 +61,7 @@ end
 
 voice osc1 (
 	.sample_clock(sample_clock),
+	.rst(rst),
 	.voice_select(voice),
   	.pitch_increment(`MIDI_NOTE(60)),
   	.envelope_attack(8'h70),
@@ -69,6 +71,7 @@ voice osc1 (
 );
 voice osc2 (
 	.sample_clock(sample_clock),
+	.rst(rst),
 	.voice_select(voice),
   	.pitch_increment(`MIDI_NOTE(62)),
   	.envelope_attack(8'h70),
@@ -76,36 +79,39 @@ voice osc2 (
 	.gate(gate2),
 	.out(osc2_out)
 );
-voice osc3 (
-	.sample_clock(sample_clock),
-	.voice_select(voice),
-  	.pitch_increment(`MIDI_NOTE(64)),
-  	.envelope_attack(8'h70),
-  	.envelope_decay(8'h10),
-	.gate(gate3),
-	.out(osc3_out)
-);
-voice osc4 (
-	.sample_clock(sample_clock),
-	.voice_select(voice),
-  	.pitch_increment(`MIDI_NOTE(65)),
-  	.envelope_attack(8'h70),
-  	.envelope_decay(8'h10),
-	.gate(gate4),
-	.out(osc4_out)
-);
+/* voice osc3 ( */
+/* 	.sample_clock(sample_clock), */
+/* 	.rst(rst), */
+/* 	.voice_select(voice), */
+/*   	.pitch_increment(`MIDI_NOTE(64)), */
+/*   	.envelope_attack(8'h70), */
+/*   	.envelope_decay(8'h10), */
+/* 	.gate(gate3), */
+/* 	.out(osc3_out) */
+/* ); */
+/* voice osc4 ( */
+/* 	.sample_clock(sample_clock), */
+/* 	.rst(rst), */
+/* 	.voice_select(voice), */
+/*   	.pitch_increment(`MIDI_NOTE(65)), */
+/*   	.envelope_attack(8'h70), */
+/*   	.envelope_decay(8'h10), */
+/* 	.gate(gate4), */
+/* 	.out(osc4_out) */
+/* ); */
 
 wire [BITDEPTH-1:0] mix;
 mixer4 mixer (
 	.in1(osc1_out),
 	.in2(osc2_out),
-	.in3(osc3_out),
-	.in4(osc4_out),
+	.in3(osc1_out),
+	.in4(osc2_out),
 	.mix(mix)
 );
 
 dac #(.BITDEPTH(BITDEPTH)) mydac (
 	.clk (clk),
+	.rst(rst),
 	.sample_clock (sample_clock),
 	.pcm (mix), // input to DAC
 	.out (pwmout) // connect to PWM pin

@@ -14,6 +14,7 @@ initial begin
 end
 /* Clocks */
 reg clk = 0;
+reg rst = 0;
 always 
 	#62 clk = !clk; // 8 MHz = 125 ns. Awkward.
 
@@ -31,6 +32,7 @@ wire [BITDEPTH-1:0] out;
 
 voice DUT (
 	.sample_clock(sample_clock),
+	.rst(rst),
 	.voice_select(voice),
   	.pitch_increment(pitch),
   	.envelope_attack(8'hf0),

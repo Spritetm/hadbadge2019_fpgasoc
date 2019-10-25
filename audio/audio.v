@@ -7,6 +7,7 @@
 
 module top( 
 	input clk, 
+	input rst,
 	input [7:0] btn, 
 	output [5:0] led, 
 	output [5:0] sao1,
@@ -37,6 +38,7 @@ end
 wire [BITDEPTH-1:0] mix;
 dac #(.BITDEPTH(BITDEPTH)) mydac (
 	.clk (clk),
+	.rst(rst),
 	.sample_clock (sample_clock),
 	.pcm (mix), // input to DAC
 	.out (pwmout) // connect to PWM pin
@@ -46,6 +48,7 @@ dac #(.BITDEPTH(BITDEPTH)) mydac (
 wire [3:0] button; 
 button_number my_button_number( 
 	.clk (clk), 
+	.rst(rst),
 	.btn (btn),  
 	.button (button) 
 ); 
@@ -73,6 +76,7 @@ reg [15:0] increment = 0 ;  // determines pitch =
 oscillator #( .BITDEPTH(BITDEPTH), .BITFRACTION(BITFRACTION)) mysaw 
 (
 	.sample_clock(sample_clock),
+	.rst(rst),
 	.increment(increment) ,  
 	.voice_select(button[3:0]),
 	.out (preamp)
@@ -85,6 +89,7 @@ wire [7:0] volume;
 envelope myenv
 (
 	.clk(clk),
+	.rst(rst),
 	.gate(~btn[1]),
 	.a(220),
 	.r(60),
@@ -94,6 +99,7 @@ envelope myenv
 amplifier #( .BITDEPTH(BITDEPTH), .VOLBITS(8) ) myamp
 (
 	.clk(clk),
+	.rst(rst),
 	.unsigned_audio(preamp),
 	.volume(volume),
 	.unsigned_out(mix)

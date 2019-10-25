@@ -15,6 +15,7 @@ initial begin
 end
 /* Clocks */
 reg clk = 0;
+reg rst = 0;
 always 
 	#62 clk = !clk; // 8 MHz = 125 ns. Awkward.
 
@@ -32,6 +33,7 @@ wire [BITDEPTH-1:0] osc_out;
 oscillator #( .BITDEPTH(BITDEPTH), .BITFRACTION(BITFRACTION)) mysaw 
 (
 	.sample_clock(sample_clock),
+	.rst(rst),
 	.increment(increment) ,  
 	.voice_select(4'b0010), 
 	.out (osc_out)
@@ -44,6 +46,7 @@ wire [BITDEPTH-1:0] out;
 ar #(
 ) myar (
 	.sample_clock(sample_clock),
+	.rst(rst),
 	.in(osc_out),
 	.envelope_attack(8'hf0),
 	.envelope_decay(8'h30),

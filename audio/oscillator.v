@@ -5,6 +5,7 @@ module oscillator
 	parameter BITFRACTION   = 8
 ) (
 	input sample_clock,
+	input rst,
 	input [15:0] increment,  
 	input [3:0] voice_select,
 	output reg [BITDEPTH-1:0] out 
@@ -17,7 +18,12 @@ localparam MIDPOINT   = 2**(BITDEPTH-1)-1;
 
 reg [TOPBIT:0] accumulator = 0 ;  
 always @(posedge sample_clock) begin 
-	accumulator <= accumulator + increment;
+	if (rst) begin 
+		accumulator <= 0 ;  
+	end
+	else begin
+		accumulator <= accumulator + increment;
+	end
 end
 
 reg [BITDEPTH-1:0] saw      = MIDPOINT;
@@ -29,11 +35,11 @@ reg [BITDEPTH-1:0] pulse    = MIDPOINT;
 always @(posedge sample_clock) begin 
 	saw <= accumulator[TOPBIT -: BITDEPTH] ; 
 	triangle <= accumulator[TOPBIT] ? ~accumulator[TOPBIT-1 -: BITDEPTH] : accumulator[TOPBIT-1 -: BITDEPTH];
-        
+
 	pulse <= accumulator[TOPBIT -: BITDEPTH] < PULSEWIDTH ? 2**BITDEPTH-1 : 0 ;
 end
 always @(posedge accumulator[TOPBIT]) // suboctave square is so much cooler
-  square <= ~square;
+	square <= ~square;
 
 reg [1:0] gain;
 reg [2:0] num_ones = 0;

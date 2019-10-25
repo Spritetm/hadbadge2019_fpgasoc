@@ -5,6 +5,7 @@ module ar #(
 	parameter BITDEPTH = 14
 )(
 	input sample_clock,
+	input rst,
 	input [BITDEPTH-1:0] in,
 	input [7:0] envelope_attack,
 	input [7:0] envelope_decay,
@@ -17,6 +18,7 @@ module ar #(
 wire [7:0] volume;
 envelope myenv (
 	.sample_clock(sample_clock),
+	.rst(rst),
 	.gate(gate),
 	.a(envelope_attack),
 	.r(envelope_decay),

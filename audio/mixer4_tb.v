@@ -15,6 +15,7 @@ initial begin
 end
 /* Clocks */
 reg clk = 0;
+reg rst = 0;
 always 
 	#62 clk = !clk; // 8 MHz = 125 ns. Awkward.
 
@@ -30,6 +31,7 @@ wire [BITDEPTH-1:0] osc1_out;
 oscillator mytri1
 (
 	.sample_clock(sample_clock),
+	.rst(rst),
 	.increment(increment) ,  
 	.voice_select(4'b0001), 
 	.out (osc1_out)
@@ -39,6 +41,7 @@ wire [BITDEPTH-1:0] osc2_out;
 oscillator mytri2
 (
 	.sample_clock(sample_clock),
+	.rst(rst),
 	.increment(increment) ,  
 	.voice_select(4'b0010), 
 	.out (osc2_out)
@@ -48,6 +51,7 @@ wire [BITDEPTH-1:0] osc3_out;
 oscillator mytri3
 (
 	.sample_clock(sample_clock),
+	.rst(rst),
 	.increment(increment) ,  
 	.voice_select(4'b0010), 
 	.out (osc3_out)
@@ -57,6 +61,7 @@ wire [BITDEPTH-1:0] osc4_out;
 oscillator mytri4
 (
 	.sample_clock(sample_clock),
+	.rst(rst),
 	.increment(increment) ,  
 	.voice_select(4'b1100), 
 	.out (osc4_out)

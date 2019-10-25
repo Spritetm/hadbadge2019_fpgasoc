@@ -15,6 +15,7 @@ initial #40000 $finish;
 
 /* Clocks */
 reg clk = 0;
+reg rst = 0;
 always 
 	#1 clk = !clk;
 
@@ -28,6 +29,7 @@ end
 /* Wires, registers, and module here */
 dac #(.BITDEPTH(BD)) dut (
 	.clk(clk),
+	.rst(rst),
 	.sample_clock(sample_clock),
 	.pcm(pcm),
 	.out(out)

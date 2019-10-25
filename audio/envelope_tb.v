@@ -14,6 +14,7 @@ initial begin
 end
 /* Clocks */
 reg clk = 0;
+reg rst=0;
 always 
 	#62 clk = !clk; // 8 MHz = 125 ns. Awkward.
 
@@ -33,6 +34,7 @@ wire [7:0] volume;
 envelope myenv
 (
 	.sample_clock(sample_clock),
+	.rst(rst),
 	.gate(gate),
 	.a(a),
 	.r(r),
