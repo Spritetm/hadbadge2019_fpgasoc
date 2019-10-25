@@ -18,7 +18,7 @@ INCLUDEDIRS =
 
 #You can include binaries directly in your app by adding it to BINFILE. See main.c on how
 #to reference to its data.
-BINFILES = bgnd.png tileset-default.png
+BINFILES = bgnd.png flappy_tileset.png
 
 #Normally, you'd put the APSSDK_DIR in your environment. Here, we know where it is, so
 #if people have not got it set, we assume the default relative directory to it.
