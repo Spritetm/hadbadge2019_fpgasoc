@@ -61,7 +61,7 @@ void Lcd_renderer::update(int db, int wr, int rd, int rs) {
 			Uint32 time_since_last=SDL_GetTicks()-last_update;
 			if (time_since_last>100) {
 				SDL_UpdateWindowSurface(window);
-				time_since_last=SDL_GetTicks();
+				last_update=SDL_GetTicks();
 			}
 			xpos=0;
 			ypos++;
