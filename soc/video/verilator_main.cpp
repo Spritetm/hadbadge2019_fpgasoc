@@ -13,6 +13,7 @@ double sc_time_stamp() {
 }
 
 
+// Clock data out to a given register in video subsystem
 void tb_write(Vvid *tb, VerilatedVcdC *trace, int addr, int data) {
 	tb->addr=addr;
 	tb->din=data;
@@ -29,6 +30,7 @@ void tb_write(Vvid *tb, VerilatedVcdC *trace, int addr, int data) {
 	tb->wstrb=0x0;
 }
 
+// These match constants from ../../ipl/gloss/mach_defines.h
 #define REG_OFF 0x0000
 #define PAL_OFF 0x2000
 #define TILEMAPA_OFF 0x4000
@@ -36,6 +38,7 @@ void tb_write(Vvid *tb, VerilatedVcdC *trace, int addr, int data) {
 #define SPRITE_OFF 0xC000
 #define TILEMEM_OFF 0x10000
 
+// Set a sprite's position, scale and tile number
 void set_sprite(Vvid *tb, VerilatedVcdC *trace, int no, int x, int y, int sx, int sy, int tileno) {
 	uint32_t sa, sb;
 	x+=64;
@@ -47,6 +50,8 @@ void set_sprite(Vvid *tb, VerilatedVcdC *trace, int no, int x, int y, int sx, in
 	tb_write(tb, trace, SPRITE_OFF+no*8+4, sb);
 }
 
+// Iterate over each 16x16 pixel block of a rectangular PNG file,
+// loading tile memory.
 void load_tilemap(Vvid *tb, VerilatedVcdC *trace, char *file) {
 	FILE *f=fopen(file, "r");
 	if (file==NULL) {
@@ -92,6 +97,8 @@ void load_tilemap(Vvid *tb, VerilatedVcdC *trace, char *file) {
 	fclose(f);
 }
 
+// Simulates a 1MB block of flash memory that takes 4 cycles to produce a result.
+// Used by video memory controller.
 int qpi_cur_adr;
 int qpi_state=0;
 uint8_t qpi_mem[1024*1024];
@@ -132,14 +139,17 @@ int main(int argc, char **argv) {
 	Verilated::traceEverOn(true);
 
 	// Create an instance of our module under test
+	// Vvid contains a line renderer and video memory controller wired together
 	Vvid *tb = new Vvid;
 	//Create trace
 	VerilatedVcdC *trace = new VerilatedVcdC;
 	tb->trace(trace, 99);
 	trace->open("vidtrace.vcd");
 
+	// Video renderer - shows HDMI output in GUI and simulates hdmi-encoder.v
 	Video_renderer *vid=new Video_renderer(true);
 
+	// Load background.raw file into simulated flash
 	FILE *f=fopen("background.raw", "r");
 	if (!f) perror("raw fb data");
 	for (int i=0; i<320; i++) {
@@ -147,6 +157,7 @@ int main(int argc, char **argv) {
 	}
 	fclose(f);
 
+	// Toggle reset signal
 	tb->reset=1;
 	tb->ren=0;
 	for (int i=0; i<16; i++) {
@@ -159,6 +170,7 @@ int main(int argc, char **argv) {
 		if (i==8) tb->reset=0;
 	}
 	
+	// Set first 256 colors of palette to standard VGA colors 
 	for (int i=0; i<256; i++) {
 		int p;
 		p=vgapal[i*3];
@@ -169,19 +181,26 @@ int main(int argc, char **argv) {
 		tb_write(tb, trace, PAL_OFF+((i+256)*4), p);
 	}
 
+	// Set some of the remaining palette colors
 //	tb_write(tb, trace, PAL_OFF+(0x100*4), 0xffff00ff);
 	tb_write(tb, trace, PAL_OFF+((0x1ff)*4), 0x10ff00ff);
 
-
+	// Load a tileset for use by sprites
 	load_tilemap(tb, trace, "tileset.png");
 	printf("Buffers inited.\n");
+
+	// Set up sprites
 	tb_write(tb, trace,REG_OFF+2*4, 0x8); //ena sprites
 //	for (int i=0; i<10; i++) {
 //		set_sprite(tb, trace, i*2, i*32+64, 64, i*2+1, i*2+1, 0);
 //	}
-	set_sprite(tb, trace, 2, 0, 0, 16, 16, 8);
-	set_sprite(tb, trace, 3, 470, 16, 64, 16, 8);
+	set_sprite(tb, trace, 2, 5, 5, 16, 16, 0);
+	//set_sprite(tb, trace, 3, 470, 16, 64, 16, 8);
 
+	// Main display loop
+	// Runs two clocks 
+	// 1. tb->clk is the base system clock
+	// 2. tb->pixelclk runs about 1/4 the speed of the system clock
 	int fetch_next=0;
 	int next_line=0;
 	int next_field=0;
@@ -189,35 +208,51 @@ int main(int argc, char **argv) {
 	int qpi_is_idle=0, qpi_next_word=0;
 	uint32_t qpi_rdata=0;
 	int layer=0;
-	while(1) {
+
+	// Main loop - count fields
+	int field = 0;
+	while (field < 3) {
+		// Toggle main clock high
 		tb->pixelclk = (pixelclk_pos>0.5)?1:0;
 		tb->clk = !tb->clk;
+
+		// Drive memory
 		qpi_eval(tb->clk, tb->qpi_addr, tb->qpi_do_read, &qpi_is_idle, &qpi_next_word, &qpi_rdata);
 		tb->qpi_rdata=qpi_rdata;
 		tb->qpi_is_idle=qpi_is_idle;
 		tb->qpi_next_word=qpi_next_word;
 		tb->eval();
 		trace->dump(ts++);
+
+		// Set main clock low
 		tb->clk = !tb->clk;
 		tb->eval();
 		trace->dump(ts++);
 
+		// Drive video output based on pixel clock
 		pixelclk_pos=pixelclk_pos+0.26;
 		if (pixelclk_pos>1.0) {
 			pixelclk_pos-=1.0;
 			vid->next_pixel(tb->red, tb->green, tb->blue, &fetch_next, &next_line, &next_field);
 			tb->fetch_next=fetch_next;
-//			if (tb->next_field==0 && next_field==1) {
-//				layer=(layer+1)&0xf;
-//				tb_write(tb, trace,REG_OFF+2*4, 0x10000|layer);
-//				printf("Layer: %x\n", layer);
-//			}
+			// Count fields
+			if (tb->next_field==1 && next_field==0) {
+				printf("Finished field: %d\n", field);
+				field++;
+			}
+			// if (tb->next_field==0 && next_field==1) {
+			// 	layer=(layer+1)&0xf;
+			// 	tb_write(tb, trace,REG_OFF+2*4, 0x10000|layer);
+			// 	printf("Layer: %x\n", layer);
+			// }
 			tb->next_field=next_field;
 			tb->next_line=next_line;
 		}
 	}
 	trace->flush();
-
 	trace->close();
+
+	printf("Press ENTER to exit\n");
+	getc(stdin);
 	exit(EXIT_SUCCESS);
 }
