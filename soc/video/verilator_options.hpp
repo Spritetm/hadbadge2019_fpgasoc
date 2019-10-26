@@ -9,6 +9,9 @@ public:
 	// For how many fields to run
 	unsigned int num_fields;
 
+	// Whether we should trace (generates large files)
+	bool trace_on;
+
 	// Factory method: creates from command line
 	static CmdLineOptions parse(int argc, char**argv);
 

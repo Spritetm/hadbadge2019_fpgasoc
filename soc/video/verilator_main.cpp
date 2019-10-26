@@ -9,11 +9,13 @@
 #include <stdint.h>
 #include "vgapal.h"
 
+
+// Trace machinery
+#define EVAL(tb, trace, ts) { tb->eval(); if (trace) trace->dump(ts); ts++;}
 uint64_t ts=0;
 double sc_time_stamp() {
 	return ts;
 }
-
 
 // Clock data out to a given register in video subsystem
 void tb_write(Vvid *tb, VerilatedVcdC *trace, int addr, int data) {
@@ -23,11 +25,9 @@ void tb_write(Vvid *tb, VerilatedVcdC *trace, int addr, int data) {
 	do {
 		tb->eval();
 		tb->clk=1;
-		tb->eval();
-		if (trace) trace->dump(ts++);
+		EVAL(tb, trace, ts);
 		tb->clk=0;
-		tb->eval();
-		if (trace) trace->dump(ts++);
+		EVAL(tb, trace, ts);
 	} while (tb->ready==0);
 	tb->wstrb=0x0;
 }
@@ -145,10 +145,13 @@ int main(int argc, char **argv) {
 	// Create an instance of our module under test
 	// Vvid contains a line renderer and video memory controller wired together
 	Vvid *tb = new Vvid;
-	//Create trace
-	VerilatedVcdC *trace = new VerilatedVcdC;
-	tb->trace(trace, 99);
-	trace->open("vidtrace.vcd");
+	//Create trace, if requested.
+	VerilatedVcdC *trace = NULL;
+	if (options.trace_on) {
+		trace = new VerilatedVcdC;
+		tb->trace(trace, 99);
+		trace->open("vidtrace.vcd");
+	}
 
 	// Video renderer - shows HDMI output in GUI and simulates hdmi-encoder.v
 	Video_renderer *vid=new Video_renderer(true);
@@ -166,11 +169,9 @@ int main(int argc, char **argv) {
 	tb->ren=0;
 	for (int i=0; i<16; i++) {
 		tb->clk = 1;
-		tb->eval();
-		trace->dump(ts++);
+		EVAL(tb, trace, ts);
 		tb->clk = 0;
-		tb->eval();
-		trace->dump(ts++);
+		EVAL(tb, trace, ts);
 		if (i==8) tb->reset=0;
 	}
 	
@@ -225,13 +226,11 @@ int main(int argc, char **argv) {
 		tb->qpi_rdata=qpi_rdata;
 		tb->qpi_is_idle=qpi_is_idle;
 		tb->qpi_next_word=qpi_next_word;
-		tb->eval();
-		trace->dump(ts++);
+		EVAL(tb, trace, ts);
 
 		// Set main clock low
 		tb->clk = !tb->clk;
-		tb->eval();
-		trace->dump(ts++);
+		EVAL(tb, trace, ts);
 
 		// Drive video output based on pixel clock
 		pixelclk_pos=pixelclk_pos+0.26;
@@ -253,8 +252,11 @@ int main(int argc, char **argv) {
 			tb->next_line=next_line;
 		}
 	}
-	trace->flush();
-	trace->close();
+
+	if (trace) {
+		trace->flush();
+		trace->close();
+	}
 
 	printf("Press ENTER to exit\n");
 	getc(stdin);

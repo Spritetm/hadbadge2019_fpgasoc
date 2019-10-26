@@ -4,15 +4,17 @@
 #include <stdlib.h>
 
 CmdLineOptions::CmdLineOptions(): 
-	num_fields(3) {}
+	num_fields(3), trace_on(false) {}
 
 void CmdLineOptions::dump() {
-	printf("CmdLineOptions{%u}", num_fields);
+	printf("CmdLineOptions{%u, %s}", num_fields, trace_on ? "true" : "false");
 }
 
 static void errExit(char *prog_name, const char *msg, char opt) {
     fprintf(stderr, "Option '%c': %s\n"
-    	"Usage: %s [-f fields]\n",
+    	"Usage: %s [-f fields] [-t]\n"
+    	"  -f: number of HDMI fields to run consecutively\n"
+    	"  -t: trace execution to a .vcd file\n",
     	   opt, msg, prog_name);
     exit(EXIT_FAILURE);	
 }
@@ -33,10 +35,13 @@ static unsigned int readPosNum(char *prog_name, char opt, char *s) {
 CmdLineOptions CmdLineOptions::parse(int argc, char**argv) {
 	CmdLineOptions result;
 	int opt;
-	while ((opt = getopt(argc, argv, "f:")) != -1) {
+	while ((opt = getopt(argc, argv, "f:t")) != -1) {
     	switch (opt) {
 		case 'f':
 			result.num_fields = readPosNum(argv[0], 'f', optarg);
+			break;
+		case 't':
+			result.trace_on = true;
 			break;
         default: /* '?' */
             errExit(argv[0], "Unknown", opt);
