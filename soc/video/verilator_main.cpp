@@ -2,6 +2,8 @@
 #include "Vvid.h"
 #include <verilated.h>
 #include <verilated_vcd_c.h>
+
+#include "verilator_options.hpp"
 #include "video_renderer.hpp"
 #include <gd.h>
 #include <stdint.h>
@@ -134,6 +136,8 @@ void qpi_eval(int clk, int qpi_addr, int qpi_do_read, int *qpi_is_idle, int *qpi
 }
 
 int main(int argc, char **argv) {
+	CmdLineOptions options = CmdLineOptions::parse(argc, argv);
+
 	// Initialize Verilators variables
 	Verilated::commandArgs(argc, argv);
 	Verilated::traceEverOn(true);
@@ -211,7 +215,7 @@ int main(int argc, char **argv) {
 
 	// Main loop - count fields
 	int field = 0;
-	while (field < 3) {
+	while (field < options.num_fields) {
 		// Toggle main clock high
 		tb->pixelclk = (pixelclk_pos>0.5)?1:0;
 		tb->clk = !tb->clk;
