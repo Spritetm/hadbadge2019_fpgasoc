@@ -6,7 +6,7 @@
 POSSIBLE_CROSS = riscv-none-embed- riscv32-unknown-elf- riscv64-unknown-elf-
 
 ifneq ("$(RISCV_TOOLCHAIN_PATH)", "")
-POSSIBLE_CROSS := $(addprefix $(RISCV_TOOLCHAIN_PATH), $(POSSIBLE_CROSS))
+POSSIBLE_CROSS := $(addprefix $(RISCV_TOOLCHAIN_PATH)/, $(POSSIBLE_CROSS))
 endif
 
 ifeq ("$(CROSS)", "")
@@ -14,7 +14,9 @@ CROSS := $(shell for c in $(POSSIBLE_CROSS); do which $${c}gcc >/dev/null 2>&1 &
 endif
 
 ifeq ("$(CROSS)", "")
-$(error Need a RISC-V toolchain)
+$(info ERROR: We couldn't find a RiscV toolchain anywhere in your path or in RISCV_TOOLCHAIN_PATH.)
+$(info ERROR: We looked for anything looking like $(POSSIBLE_CROSS) but couldn't find anything.)
+$(error Aborting: Need a RISC-V toolchain)
 endif
 
 # Set prefixes and paths to all tools.
