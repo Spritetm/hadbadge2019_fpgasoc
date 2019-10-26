@@ -318,6 +318,14 @@ void start_app(char *app) {
 	maincall(0, NULL);
 }
 
+static void
+usb_setup_serial_no(void)
+{
+	extern char const* string_desc_arr[];
+	uint64_t serial = flash_get_uid(FLASH_SEL_INT);
+	sprintf((void*)string_desc_arr[3], "%016llx", serial);
+}
+
 extern uint32_t *irq_stack_ptr;
 
 #define IRQ_STACK_SIZE (16*1024)
@@ -332,6 +340,7 @@ void main() {
 
 	//Initialize USB subsystem
 	printf("IPL main function.\n");
+	usb_setup_serial_no();
 	tusb_init();
 	printf("USB inited.\n");
 	
