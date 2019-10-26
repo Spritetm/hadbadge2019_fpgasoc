@@ -1,60 +1,16 @@
 #include <stdlib.h>
-#include "Vvid.h"
 #include <verilated.h>
-#include <verilated_vcd_c.h>
 
+#include "verilator_setup.hpp"
 #include "verilator_options.hpp"
 #include "video_renderer.hpp"
 #include <gd.h>
 #include <stdint.h>
-#include "vgapal.h"
 
-
-// Trace machinery
-#define EVAL(tb, trace, ts) { tb->eval(); if (trace) trace->dump(ts); ts++;}
-uint64_t ts=0;
-double sc_time_stamp() {
-	return ts;
-}
-
-// Clock data out to a given register in video subsystem
-void tb_write(Vvid *tb, VerilatedVcdC *trace, int addr, int data) {
-	tb->addr=addr;
-	tb->din=data;
-	tb->wstrb=0xf;
-	do {
-		tb->eval();
-		tb->clk=1;
-		EVAL(tb, trace, ts);
-		tb->clk=0;
-		EVAL(tb, trace, ts);
-	} while (tb->ready==0);
-	tb->wstrb=0x0;
-}
-
-// These match constants from ../../ipl/gloss/mach_defines.h
-#define REG_OFF 0x0000
-#define PAL_OFF 0x2000
-#define TILEMAPA_OFF 0x4000
-#define TILEMAPB_OFF 0x8000
-#define SPRITE_OFF 0xC000
-#define TILEMEM_OFF 0x10000
-
-// Set a sprite's position, scale and tile number
-void set_sprite(Vvid *tb, VerilatedVcdC *trace, int no, int x, int y, int sx, int sy, int tileno) {
-	uint32_t sa, sb;
-	x+=64;
-	y+=64;
-	sa=(y<<16)|x;
-	sb=sx|(sy<<8)|(tileno<<16);
-	printf("Sprite %d: %08X %08X\n", no, sa, sb);
-	tb_write(tb, trace, SPRITE_OFF+no*8, sa);
-	tb_write(tb, trace, SPRITE_OFF+no*8+4, sb);
-}
 
 // Iterate over each 16x16 pixel block of a rectangular PNG file,
 // loading tile memory.
-void load_tilemap(Vvid *tb, VerilatedVcdC *trace, char *file) {
+void load_tilemap(const char *file) {
 	FILE *f=fopen(file, "r");
 	if (file==NULL) {
 		perror(file);
@@ -72,8 +28,8 @@ void load_tilemap(Vvid *tb, VerilatedVcdC *trace, char *file) {
 //				c=x; //HACK
 				p|=((uint64_t)c)<<60ULL;
 			}
-			tb_write(tb, tile<3?trace:NULL, TILEMEM_OFF+(tile*32+y*2+0)*4, p&0xFFFFFFFF);
-			tb_write(tb, tile<3?trace:NULL, TILEMEM_OFF+(tile*32+y*2+1)*4, p>>32ULL);
+			tb_write(TILEMEM_OFF+(tile*32+y*2+0)*4, p&0xFFFFFFFF, tile>=3);
+			tb_write(TILEMEM_OFF+(tile*32+y*2+1)*4, p>>32ULL, tile>=3);
 		}
 		
 		tx+=16;
@@ -89,7 +45,7 @@ void load_tilemap(Vvid *tb, VerilatedVcdC *trace, char *file) {
 	for (int y=0; y<64; y++) {
 		tile=y*(gdImageSX(im)/16);
 		for (int x=0; x<64; x+=2) {
-//			tb_write(tb, trace, TILEMAPA_OFF+pos*4, ((tile+1)<<16)|tile);
+//			tb_write(TILEMAPA_OFF+pos*4, ((tile+1)<<16)|tile);
 			pos++;
 			tile+=2;
 		}
@@ -144,14 +100,7 @@ int main(int argc, char **argv) {
 
 	// Create an instance of our module under test
 	// Vvid contains a line renderer and video memory controller wired together
-	Vvid *tb = new Vvid;
-	//Create trace, if requested.
-	VerilatedVcdC *trace = NULL;
-	if (options.trace_on) {
-		trace = new VerilatedVcdC;
-		tb->trace(trace, 99);
-		trace->open("vidtrace.vcd");
-	}
+	init_test_bench(options.trace_on);
 
 	// Video renderer - shows HDMI output in GUI and simulates hdmi-encoder.v
 	Video_renderer *vid=new Video_renderer(true);
@@ -164,43 +113,21 @@ int main(int argc, char **argv) {
 	}
 	fclose(f);
 
-	// Toggle reset signal
-	tb->reset=1;
-	tb->ren=0;
-	for (int i=0; i<16; i++) {
-		tb->clk = 1;
-		EVAL(tb, trace, ts);
-		tb->clk = 0;
-		EVAL(tb, trace, ts);
-		if (i==8) tb->reset=0;
-	}
-	
-	// Set first 256 colors of palette to standard VGA colors 
-	for (int i=0; i<256; i++) {
-		int p;
-		p=vgapal[i*3];
-		p|=vgapal[i*3+1]<<8;
-		p|=vgapal[i*3+2]<<16;
-		p|=(0xff<<24);
-		tb_write(tb, trace, PAL_OFF+(i*4), p);
-		tb_write(tb, trace, PAL_OFF+((i+256)*4), p);
-	}
-
-	// Set some of the remaining palette colors
-//	tb_write(tb, trace, PAL_OFF+(0x100*4), 0xffff00ff);
-	tb_write(tb, trace, PAL_OFF+((0x1ff)*4), 0x10ff00ff);
-
-	// Load a tileset for use by sprites
-	load_tilemap(tb, trace, "tileset.png");
+	// Load a tileset and palette for use by sprites
+	load_tilemap("tileset.png");
+	load_default_palette();
 	printf("Buffers inited.\n");
 
 	// Set up sprites
-	tb_write(tb, trace,REG_OFF+2*4, 0x8); //ena sprites
+	tb_write(REG_OFF+2*4, 0x8); //ena sprites
 //	for (int i=0; i<10; i++) {
-//		set_sprite(tb, trace, i*2, i*32+64, 64, i*2+1, i*2+1, 0);
+//		set_sprite(i*2, i*32+64, 64, i*2+1, i*2+1, 0);
 //	}
-	set_sprite(tb, trace, 2, 5, 5, 16, 16, 0);
-	//set_sprite(tb, trace, 3, 470, 16, 64, 16, 8);
+	set_sprite(2, 5, 5, 16, 16, 0);
+	//set_sprite(3, 470, 16, 64, 16, 8);
+
+	// Toggle reset signal
+	toggle_reset();
 
 	// Main display loop
 	// Runs two clocks 
@@ -226,11 +153,11 @@ int main(int argc, char **argv) {
 		tb->qpi_rdata=qpi_rdata;
 		tb->qpi_is_idle=qpi_is_idle;
 		tb->qpi_next_word=qpi_next_word;
-		EVAL(tb, trace, ts);
+		tb_step();
 
 		// Set main clock low
 		tb->clk = !tb->clk;
-		EVAL(tb, trace, ts);
+		tb_step();
 
 		// Drive video output based on pixel clock
 		pixelclk_pos=pixelclk_pos+0.26;
@@ -245,7 +172,7 @@ int main(int argc, char **argv) {
 			}
 			// if (tb->next_field==0 && next_field==1) {
 			// 	layer=(layer+1)&0xf;
-			// 	tb_write(tb, trace,REG_OFF+2*4, 0x10000|layer);
+			// 	tb_write(REG_OFF+2*4, 0x10000|layer);
 			// 	printf("Layer: %x\n", layer);
 			// }
 			tb->next_field=next_field;
