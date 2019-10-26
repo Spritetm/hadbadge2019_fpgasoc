@@ -83,3 +83,28 @@ void set_sprite(int no, int x, int y, int sx, int sy, int tileno) {
 	tb_write(SPRITE_OFF+no*8, sa);
 	tb_write(SPRITE_OFF+no*8+4, sb);
 }
+
+// Load a tile into memory from a 256 char string
+// 0-9a-f are the 16 colors. 
+// A-F aliases a-f
+// All other characters -> lower 4 bits are used
+void load_tile(int tile, const char *s) {
+	uint32_t eight_pix;
+	for (int i = 0; s[i] && i < 256; i++) {
+		char c = s[i];
+		int v = 0;
+		if ('a' <= c && c <= 'f') {
+			v = c - 'a' + 10;
+		} else if ('A' <= c && c <= 'F') {
+			v = c - 'A' + 10;
+		} else {
+			v = c & 0xf;
+		}
+		eight_pix = (v << 28) | (eight_pix >> 4);
+		if (i % 8 == 7) {
+			uint32_t addr = TILEMEM_OFF+(tile*32+i/8)*4;
+			tb_write(addr, eight_pix);
+		}
+
+	}
+}

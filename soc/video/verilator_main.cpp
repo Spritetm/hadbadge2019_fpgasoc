@@ -1,3 +1,4 @@
+#include <string>
 #include <stdlib.h>
 #include <verilated.h>
 
@@ -102,7 +103,6 @@ unsigned load_png_to_qpi(const char *file, size_t addr) {
 	gdImagePtr im=gdImageCreateFromPng(f);
 	unsigned sx = gdImageSX(im);
 	unsigned sy = gdImageSY(im);
-	printf("sx %u sy %u\n", sx, sy);
 	for (unsigned y = 0; y < sy; y++) {
 		for (int x = 0; x < sx; x++) {
 			qpi_mem[addr++] = (uint8_t) gdImageGetPixel(im, x, y);
@@ -147,6 +147,7 @@ void setup2() {
 // Setup 3: Tile layer A
 void setup3() {
 	// Load a tileset and palette
+	// Just uses tile 0 everywhere
 	load_tilemap("tileset.png");
 	load_default_palette();
 	tb_write(REG_OFF+2*4, 0x10002); // tileA
@@ -165,12 +166,26 @@ void setup4() {
 	tb_write(REG_OFF+2*4, 0x10001); // 8 bit pixels, FB enabled
 }
 
+// Setup 5: Set tile 0 to be something useful for debugging HDMI horizontal output
+// and use it to tile the whole window
+void setup5() {
+	// load a tile composed of 1 pixel wide green and black vertical stripes
+	std::string s = "2 ";
+	for (int i = 0; i < 7; i++) {
+		s = s + s;
+	}
+	load_tile(0, s.c_str());
+	load_default_palette();
+	tb_write(REG_OFF+2*4, 0x10002); // all tile 0
+}
+
 // Array of all setups - defined in verilator_options.hpp
 setup_fn setups[] = {
 	setup1,
 	setup2,
 	setup3,
 	setup4,
+	setup5,
 	NULL
 };
 
@@ -236,11 +251,6 @@ int main(int argc, char **argv) {
 				printf("Finished field: %d\n", field);
 				field++;
 			}
-			// if (tb->next_field==0 && next_field==1) {
-			// 	layer=(layer+1)&0xf;
-			// 	tb_write(REG_OFF+2*4, 0x10000|layer);
-			// 	printf("Layer: %x\n", layer);
-			// }
 			tb->next_field=next_field;
 			tb->next_line=next_line;
 		}

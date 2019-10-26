@@ -39,3 +39,9 @@ void load_default_palette();
 
 // Set a sprite's position, scale and tile number
 void set_sprite(int no, int x, int y, int sx, int sy, int tileno);
+
+// Load a tile into memory from a 256 char string
+// 0-9a-f are the 16 colors. 
+// A-F aliases a-f
+// All other characters -> lower 4 bits are used
+void load_tile(int no, const char *s);
