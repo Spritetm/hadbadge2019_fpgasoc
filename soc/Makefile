@@ -5,7 +5,7 @@ BADGE_VER ?= 2
 PROJ=soc
 #Seed for nextpnr. Change this to another random value if you happen to run 
 #into a situation that mis-synths or takes extremely long to synth the SoC.
-SEED = 45
+SEED = 58
 
 # Sources
 	# Base
@@ -104,7 +104,6 @@ SRC += $(addprefix usb/, \
 	usb_tx_ll.v \
 	usb_rx_ll.v \
 	usb_crc.v \
-	fifo_sync_shift.v \
 )
 
 SRC += usb_soc.v
