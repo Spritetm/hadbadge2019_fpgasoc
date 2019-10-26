@@ -3,7 +3,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-CmdLineOptions::CmdLineOptions(): 
+unsigned int setup_count() {
+	unsigned int i = 0;
+	while (setups[i])
+		i++;
+	return i;
+}
+
+CmdLineOptions::CmdLineOptions():
 	num_fields(3), trace_on(false) {}
 
 void CmdLineOptions::dump() {
@@ -12,14 +19,14 @@ void CmdLineOptions::dump() {
 
 static void errExit(char *prog_name, const char *msg, char opt) {
     fprintf(stderr, "Option '%c': %s\n"
-    	"Usage: %s [-f fields] [-t]\n"
-    	"  -f: number of HDMI fields to run consecutively\n"
-    	"  -t: trace execution to a .vcd file\n",
-    	   opt, msg, prog_name);
-    exit(EXIT_FAILURE);	
+	"Usage: %s [-f fields] [-t]\n"
+	"  -f: number of HDMI fields to run consecutively\n"
+	"  -t: trace execution to a .vcd file\n",
+	   opt, msg, prog_name);
+    exit(EXIT_FAILURE);
 }
 
-static unsigned int readPosNum(char *prog_name, char opt, char *s) {
+static unsigned int readPosNum(char *prog_name, unsigned int max, char opt, char *s) {
 	if (s == NULL) {
 		errExit(prog_name, "Must provide a positive number", opt);
 		return 0;
@@ -29,19 +36,28 @@ static unsigned int readPosNum(char *prog_name, char opt, char *s) {
 		errExit(prog_name, "Must provide a positive number", opt);
 		return 0;
 	}
+	if (result > max) {
+		char buf[80];
+		sprintf(buf, "Maximum value is %u", max);
+		errExit(prog_name, buf, opt);
+		return 0;
+	}
 	return result;
 }
 
 CmdLineOptions CmdLineOptions::parse(int argc, char**argv) {
 	CmdLineOptions result;
 	int opt;
-	while ((opt = getopt(argc, argv, "f:t")) != -1) {
-    	switch (opt) {
+	while ((opt = getopt(argc, argv, "f:ts:")) != -1) {
+	switch (opt) {
 		case 'f':
-			result.num_fields = readPosNum(argv[0], 'f', optarg);
+			result.num_fields = readPosNum(argv[0], 1000, 'f', optarg);
 			break;
 		case 't':
 			result.trace_on = true;
+			break;
+		case 's':
+			result.setup = setups[readPosNum(argv[0], setup_count(), 's', optarg) - 1];
 			break;
         default: /* '?' */
             errExit(argv[0], "Unknown", opt);

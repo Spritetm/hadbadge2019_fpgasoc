@@ -31,7 +31,7 @@ void load_tilemap(const char *file) {
 			tb_write(TILEMEM_OFF+(tile*32+y*2+0)*4, p&0xFFFFFFFF, tile>=3);
 			tb_write(TILEMEM_OFF+(tile*32+y*2+1)*4, p>>32ULL, tile>=3);
 		}
-		
+
 		tx+=16;
 		if (tx>=gdImageSX(im)) {
 			tx=0;
@@ -91,9 +91,92 @@ void qpi_eval(int clk, int qpi_addr, int qpi_do_read, int *qpi_is_idle, int *qpi
 	}
 }
 
+// Loads an image from a png file into qpi memory at 8 bits resolution
+// Returns the width of the image
+unsigned load_png_to_qpi(const char *file, size_t addr) {
+	FILE *f=fopen(file, "r");
+	if (file==NULL) {
+		perror(file);
+		exit(1);
+	}
+	gdImagePtr im=gdImageCreateFromPng(f);
+	unsigned sx = gdImageSX(im);
+	unsigned sy = gdImageSY(im);
+	printf("sx %u sy %u\n", sx, sy);
+	for (unsigned y = 0; y < sy; y++) {
+		for (int x = 0; x < sx; x++) {
+			qpi_mem[addr++] = (uint8_t) gdImageGetPixel(im, x, y);
+		}
+	}
+
+	return sx;
+}
+
+// Setup classic: the orignal-ish setup
+void setup1() {
+	// Load a tileset and palette for use by sprites
+	load_tilemap("tileset.png");
+	load_default_palette();
+	printf("Buffers inited.\n");
+
+	// Set up sprites: sprite 0 at 5, 5
+	tb_write(REG_OFF+2*4, 0x8); //ena sprites
+	set_sprite(2, 5, 5, 16, 16, 0);
+
+}
+
+// Setup 2: show the loaded background
+void setup2() {
+	// Load background.raw file into simulated flash
+	FILE *f=fopen("background.raw", "r");
+	if (!f) perror("raw fb data");
+	for (int i=0; i<320; i++) {
+		fread(&qpi_mem[512*i], 480, 1, f);
+	}
+	fclose(f);
+	tb_write(REG_OFF+0, 0);
+	tb_write(REG_OFF+4, (0 << 16) + 512);
+
+	// Load a tileset and palette for use by sprites
+	load_default_palette();
+
+	// Enable frame buffer
+	tb_write(REG_OFF+2*4, 0x10001);
+}
+
+// Setup 3: Tile layer A
+void setup3() {
+	// Load a tileset and palette
+	load_tilemap("tileset.png");
+	load_default_palette();
+	tb_write(REG_OFF+2*4, 0x10002); // tileA
+}
+
+// Setup 4: Load a background
+void setup4() {
+	// Load a tileset and palette
+	unsigned addr = 0x12340;
+	unsigned width = load_png_to_qpi("../ipl/bgnd.png", addr);
+	load_default_palette();
+
+	// Set frame buffer at location addr
+	tb_write(REG_OFF+0, addr);
+	tb_write(REG_OFF+4, (0 << 16) + width);
+	tb_write(REG_OFF+2*4, 0x10001); // 8 bit pixels, FB enabled
+}
+
+// Array of all setups - defined in verilator_options.hpp
+setup_fn setups[] = {
+	setup1,
+	setup2,
+	setup3,
+	setup4,
+	NULL
+};
+
 int main(int argc, char **argv) {
 	CmdLineOptions options = CmdLineOptions::parse(argc, argv);
-
+	
 	// Initialize Verilators variables
 	Verilated::commandArgs(argc, argv);
 	Verilated::traceEverOn(true);
@@ -105,32 +188,15 @@ int main(int argc, char **argv) {
 	// Video renderer - shows HDMI output in GUI and simulates hdmi-encoder.v
 	Video_renderer *vid=new Video_renderer(true);
 
-	// Load background.raw file into simulated flash
-	FILE *f=fopen("background.raw", "r");
-	if (!f) perror("raw fb data");
-	for (int i=0; i<320; i++) {
-		fread(&qpi_mem[512*i], 480, 1, f);
-	}
-	fclose(f);
-
-	// Load a tileset and palette for use by sprites
-	load_tilemap("tileset.png");
-	load_default_palette();
-	printf("Buffers inited.\n");
-
-	// Set up sprites
-	tb_write(REG_OFF+2*4, 0x8); //ena sprites
-//	for (int i=0; i<10; i++) {
-//		set_sprite(i*2, i*32+64, 64, i*2+1, i*2+1, 0);
-//	}
-	set_sprite(2, 5, 5, 16, 16, 0);
-	//set_sprite(3, 470, 16, 64, 16, 8);
-
-	// Toggle reset signal
+	// Toggle reset signal.
+	// We do this before setup as reset resets many of the line_render's registers
 	toggle_reset();
 
+	// Call the selected setup
+	options.setup();
+
 	// Main display loop
-	// Runs two clocks 
+	// Runs two clocks
 	// 1. tb->clk is the base system clock
 	// 2. tb->pixelclk runs about 1/4 the speed of the system clock
 	int fetch_next=0;
