@@ -3,6 +3,8 @@
 //Hardware definitions of the SoC. Also is the main repo of documentation for the
 //programmer-centric view of the hardware.
 
+/* -------------- Main machine defines --------------------- */
+
 /** The external PSRAM starts here. The PSRAM is cached. */
 #define MACH_RAM_START		0x40000000
 /** Size of RAM on the badge */
@@ -18,6 +20,8 @@
 #define MEM_IPL_START		0x40002000
 /** (Not specifically SoC-related) Start of RAM containing the application */
 #define MEM_APP_START		0x40100000
+
+/* -------------- UART defines --------------------- */
 
 /** Start of memory range for the UART peripheral */
 #define UART_OFFSET		0x10000000
@@ -36,15 +40,17 @@
 /** Divisor register for IrDA UART. Works similar to UART_DIV_REG */
 #define UART_IRDA_DIV_REG	0xC
 
+/* -------------- Misc register block defines --------------------- */
+
 /** Start of memory range for the 'misc' peripheral, containing all sorts of
     non-specific SoC functionality */
 #define MISC_OFFSET 0x20000000
 /** LED offset. The lower bits here map directly to a LED. Write to set the LED
     values. Reading reads the last written value.*/
-#define MISC_LED_REG 0x0
+#define MISC_LED_REG (0*4)
 /** Button register. Reads return the status of the buttons (pressed = 1). Writes
     get ignored. */
-#define MISC_BTN_REG 0x4
+#define MISC_BTN_REG (1*4)
 /** Bitmask for the 'up' button. */
 #define BUTTON_UP (1<<0)
 /** Bitmask for the 'down' button. */
@@ -62,39 +68,39 @@
 /** Bitmask for the 'start' button. */
 #define BUTTON_START (1<<7)
 /** SoC version register. Reads return the SoC version. */
-#define MISC_SOC_VER 0x8
+#define MISC_SOC_VER (2*4)
 /** If this bit is set, the software is running in a Verilator simulation. 
     (If you find this bit set on the real badge, please take the red pill.)*/
 #define MISC_SOC_VER_VERILATOR (1<<16)
 /** This reads the ID of the current CPU reading this. */
-#define MISC_CPU_NO 0xC
+#define MISC_CPU_NO (3*4)
 /** PSRAM I/O override register for PSRAM A. Used to bitbang the SPI lines to
     get the PSRAM in the proper QPI mode. (ToDo: document bits)*/
-#define MISC_PSRAMOVRA_REG 0x10
+#define MISC_PSRAMOVRA_REG (4*4)
 /** PSRAM I/O override register for PSRAM B. */
-#define MISC_PSRAMOVRB_REG 0x14
+#define MISC_PSRAMOVRB_REG (5*4)
 /** Reset register for various CPUs in the SoC. (ToDo: document) */
-#define MISC_RESETN_REG 0x18
+#define MISC_RESETN_REG (6*4)
 /** Flash control register. Used to read from / write to both the on-board as
     well as the cartridge flash. (ToDo: document)*/
-#define MISC_FLASH_CTL_REG 0x1C
+#define MISC_FLASH_CTL_REG (7*4)
 #define MISC_FLASH_CTL_CLAIM (1<<0)
 #define MISC_FLASH_CTL_IDLE (1<<1) //RO
 #define MISC_FLASH_CTL_DMADONE (1<<2) //RO
 /** Flash write register. (ToDo: document) */
-#define MISC_FLASH_WDATA_REG 0x20
+#define MISC_FLASH_WDATA_REG (8*4)
 /** Flash read register. (ToDo: document) */
-#define MISC_FLASH_RDATA_REG 0x24
+#define MISC_FLASH_RDATA_REG (9*4)
 /* Flash DMA: memory address to write block to */
-#define MISC_FLASH_DMAADDR 0x28
+#define MISC_FLASH_DMAADDR (10*4)
 /* Flash DMA: Start byte address in flash to read block from */
-#define MISC_FLASH_RDADDR 0x2C
+#define MISC_FLASH_RDADDR (11*4)
 /* Flash DMA: Length. A write here starts a new DMA transfer. Check
    MISC_FLASH_CTL_DMADONE for status. */
-#define MISC_FLASH_DMALEN 0x30
+#define MISC_FLASH_DMALEN (12*4)
 /** Flash selection register. Write a value to select a flash chip. Also
     is used to reboot the FPGA into the next bitstream by pulling the PROGRAMN pin. */
-#define MISC_FLASH_SEL_REG 0x34
+#define MISC_FLASH_SEL_REG (13*4)
 /** Write this to select cartridge flash */
 #define MISC_FLASH_SEL_CARTFLASH 1
 /** Write this to select internal flash */
@@ -105,37 +111,39 @@
 #define MISC_FLASH_SEL_FPGARELOAD_MAGIC (0xD0F1A5<<8)
 /** Random number register. A read returns a fully random number. Do not read more
     than once every 32 clock cycles for maximum random-ness. */
-#define MISC_RNG_REG 0x38
+#define MISC_RNG_REG (14*4)
 /** SAR ADC register. ToDo: document */
-#define MISC_ADC_CTL_REG 0x30
+#define MISC_ADC_CTL_REG (15*4)
 #define MISC_ADC_CTL_ENA (1<<0)
 #define MISC_ADC_CTL_VALID (1<<1)
 #define MISC_ADC_CTL_DIV(x) (x<<16)
 /** SAR ADC value readout */
-#define MISC_ADC_VAL_REG 0x3C
+#define MISC_ADC_VAL_REG (16*4)
 /** General I/O input register. Bits 29-0 reflect the values of the corresponding lines on the cartridge I/O connector. */
-#define MISC_GENIO_IN_REG 0x40
+#define MISC_GENIO_IN_REG (17*4)
 /** General I/O output register. Bits 29-0 set the values of the cartridge lines that are selected as outputs. */
-#define MISC_GENIO_OUT_REG 0x44
+#define MISC_GENIO_OUT_REG (18*4)
 /** General I/O output enable registers. Set 1 to any of the bits 29-0 to make the corresponding line into an output. */
-#define MISC_GENIO_OE_REG 0x48
+#define MISC_GENIO_OE_REG (19*4)
 /** Write 1 to set register. Any write of 1 will set the corresponding bit in MISC_GENIO_OUT_REG to 1. */
-#define MISC_GENIO_W2S_REG 0x4C
+#define MISC_GENIO_W2S_REG (20*4)
 /** Write 1 to clear register. Any write of 1 will set the corresponding bit in MISC_GENIO_OUT_REG to 0. */
-#define MISC_GENIO_W2C_REG 0x50
+#define MISC_GENIO_W2C_REG (21*4)
 /** Extended I/O input register. The bits here reflect the values of the corresponding lines on the cartridge I/O connector:
    (ToDo: insert mapping here)
    Bit 31 reflects the status of the input-only USB VDET line, which is high when a +5V voltage is on the USB VBUS line.
     */
-#define MISC_GPEXT_IN_REG 0x54
+#define MISC_GPEXT_IN_REG (22*4)
 /** Extended I/O: if a pin is an output, the corresponding bit here will set its value */
-#define MISC_GPEXT_OUT_REG 0x58
+#define MISC_GPEXT_OUT_REG (23*4)
 /** Extended I/O: output enable register */
-#define MISC_GPEXT_OE_REG 0x5C
+#define MISC_GPEXT_OE_REG (24*4)
 /** Extended I/O: write 1 to set output register */
-#define MISC_GPEXT_W2S_REG 0x60
+#define MISC_GPEXT_W2S_REG (25*4)
 /** Extended I/O: write 1 to clear output register */
-#define MISC_GPEXT_W2C_REG 0x64
+#define MISC_GPEXT_W2C_REG (26*4)
+
+/* -------------- LCD interface defines --------------------- */
 
 /** Offset to the LCD controller. This allows you to send commands and data directly to the LCD. Note
     that normally this is not used aside from setting up the LCD; actual graphics are pushed automatically
@@ -167,6 +175,8 @@
 #define LCD_STATUS_ID (1<<1)
 /** Command that is sent before a new frame is transmitted. */
 #define LCD_FB_STARTCMD 0x10
+
+/* -------------- GFX subsystem defines --------------------- */
 
 /** 
 Memory address base of the registers of the graphics subsystem 
@@ -366,6 +376,8 @@ pixel (8,0) of a tile is stored in bits [3:0] of word 1
 pixel (0,1) of a tile is stored in bits [3:0] of word 2
 */
 #define GFX_OFFSET_TILEMEM 0x50010000
+
+/* -------------- USB peripheral defines --------------------- */
 
 /** Offset to USB core. Please refer to the USB IP for info on how
     this can be used.*/

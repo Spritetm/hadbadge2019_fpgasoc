@@ -109,6 +109,9 @@ module soc(
 	`define SLICE_4(v, i) v[4*i+:4]
 
 	parameter integer CPUCNT = 2;
+
+//Enable this to be able to upload IPL code or data  over JTAG.
+//`define WANT_JTAG 1
 `ifdef WANT_JTAG
 	parameter integer MASTERCNT = CPUCNT + 2;
 `else
@@ -231,7 +234,6 @@ module soc(
 		.run(flash_dma_run),
 		.done(flash_dma_memw_done)
 	);
-
 
 `ifdef WANT_JTAG
 	//Final master is to write memory over the JTAG port. It's kinda janky, as JTAG at this point
@@ -795,7 +797,7 @@ module soc(
 	//Flash mostly uses SPI to communicate, but can use QPI for DMA reads.
 	qpimem_iface #(
 		.READCMD('hEb),
-		.READDUMMY(3),
+		.READDUMMY(7),
 		.DUMMYVAL('hf),
 		.CMD_IS_SPI(1)
 	) flash_iface (
@@ -831,10 +833,10 @@ module soc(
 
 	//misc write ops to periphs that have internal register
 	always @(*) begin
-		flash_xfer <= 0;
+		flash_xfer = 0;
 		if (misc_select && mem_wstrb[0]) begin
 			if (mem_addr[5:2]==MISC_REG_FLASH_WDATA) begin
-				flash_xfer <= 1; //also latches spi_wdata of flash
+				flash_xfer = 1; //also latches spi_wdata of flash
 			end
 		end
 	end

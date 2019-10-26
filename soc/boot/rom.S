@@ -237,13 +237,17 @@ s11            0x3	3
 	call load_ipl
 	call run_ipl
 
+	li a2, 8
+	li a1, MISC_OFFSET
+	sw a2, MISC_LED_REG(a1)
+
 jtagwait:
 	li a1, 0x40000000
 	lw a3, 0(a1)
 	li a2, 0xdeadbeef
 	bne a3, a2, jtagwait
 
-	li a2, 8
+	li a2, 9
 	li a1, MISC_OFFSET
 	sw a2, MISC_LED_REG(a1)
 

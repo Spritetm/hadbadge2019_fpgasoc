@@ -55,7 +55,8 @@ always @(posedge clk) begin
 			fifo_wraddr <= 0;
 			fifo_rdaddr <= 0;
 			if (run) begin
-				mem_addr <= dst_addr;
+				mem_addr[31:2] <= dst_addr[31:2];
+				mem_addr[1:0] <= 0;
 				words_left_src <= len;
 				words_left_mem <= len;
 			end
@@ -72,7 +73,7 @@ always @(posedge clk) begin
 						mem_do_wr <= 0;
 						fifo_rdaddr <= fifo_rdaddr + 1;
 						words_left_mem <= words_left_mem - 1;
-						mem_addr <= mem_addr + 4;
+						mem_addr[31:2] <= mem_addr[31:2] + 1;
 					end
 				end else begin
 					if (fifo_rdaddr != fifo_wraddr) begin

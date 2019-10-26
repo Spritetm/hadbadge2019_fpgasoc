@@ -35,6 +35,9 @@ static inline uint8_t flash_send_recv(uint8_t data) {
 #define CMD_ERASE32K 0x52
 #define CMD_ERASE64K 0xD8
 #define CMD_WAKE 0xAB
+#define CMD_VOLATILE_SR_WRITE_EN 0x50
+
+#define FLASH_READ_USE_DMA 1
 
 uint32_t flash_get_id(int flash_sel) {
 	int id=0;
@@ -49,6 +52,25 @@ uint32_t flash_get_id(int flash_sel) {
 }
 
 void flash_read(int flash_sel, uint32_t addr, uint8_t *buff, int len) {
+#if FLASH_READ_USE_DMA
+	//Use DMA
+	MISC_REG(MISC_FLASH_SEL_REG)=(flash_sel==0)?MISC_FLASH_SEL_INTFLASH:MISC_FLASH_SEL_CARTFLASH;
+	while (len>0) {
+		//Transfer max 512 words at a time
+		int xfer_len=(len+3)/4;
+		if (xfer_len>512) xfer_len=512;
+		MISC_REG(MISC_FLASH_DMAADDR)=(uint32_t)buff;
+		MISC_REG(MISC_FLASH_RDADDR)=addr;
+		MISC_REG(MISC_FLASH_DMALEN)=xfer_len; //also starts xfer
+		//wait till xfer is done
+		while((MISC_REG(MISC_FLASH_CTL_REG) & MISC_FLASH_CTL_DMADONE)==0);
+		//subtract work done
+		len-=xfer_len*4;
+		buff+=xfer_len*4;
+		addr+=xfer_len*4;
+	}
+#else
+	//Use manual SPI reads
 	flash_start_xfer(flash_sel);
 	flash_send_recv(CMD_FASTREAD);
 	flash_send_recv(addr>>16);
@@ -59,6 +81,7 @@ void flash_read(int flash_sel, uint32_t addr, uint8_t *buff, int len) {
 		buff[i]=flash_send_recv(0);
 	}
 	flash_end_xfer();
+#endif
 }
 
 uint8_t flash_read_status(int flash_sel, int reg) {
@@ -86,5 +109,17 @@ bool flash_wake(int flash_sel) {
 	flash_start_xfer(flash_sel);
 	flash_send_recv(CMD_WAKE);
 	flash_end_xfer();
+
+#if FLASH_READ_USE_DMA
+	//also enable quad i/o mode
+	//qpi enable needs to write 2 in status register 2
+	flash_start_xfer(flash_sel);
+	flash_send_recv(CMD_VOLATILE_SR_WRITE_EN);
+	flash_end_xfer();
+	flash_start_xfer(flash_sel);
+	flash_send_recv(CMD_WRITESR2);
+	flash_send_recv(2);
+	flash_end_xfer();
+#endif
 	return true;
 }

@@ -40,12 +40,13 @@ FLASH_FREQ=38.8 #MHz
 all: $(PROJ).svf
 
 $(PROJ).json $(PROJ).blif: $(SRC) $(SRC_SYNTH) $(EXTRA_DEPEND)
-	yosys -e ".*(assigned|implicitly).*" \
+	yosys -e ".*(assigned|implicitly).*" -l yosys.log \
 		-p "read -sv -DBADGE_VER=$(BADGE_VER) -DBADGE_V$(BADGE_VER)=1 $(SRC) $(SRC_SYNTH); \
 			  synth_ecp5 -abc9 -top top_fpga -json $(PROJ).json -blif $(PROJ).blif"
 
 %_out_synth.config: %.json clock-constrainsts.py
-	nextpnr-ecp5 --json $< --lpf $(CONSTR) --textcfg $@ --45k --package CABGA381 --speed 8  --pre-pack clock-constrainsts.py --seed 43
+	nextpnr-ecp5 --json $< --lpf $(CONSTR) --textcfg $@ --45k --package CABGA381 --speed 8 \
+			--pre-pack clock-constrainsts.py -l nextpnr.log --freq 48 --seed 41
 
 %_out.config: %_out_synth.config bram_replace/bram_replace$(EXE) rom.hex
 	bram_replace/bram_replace$(EXE) -l 8192 -r $< $@ rom.hex

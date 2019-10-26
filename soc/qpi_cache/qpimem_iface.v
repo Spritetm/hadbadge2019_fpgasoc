@@ -41,13 +41,13 @@ module qpimem_iface #(
 	parameter integer READDUMMY = 7,
 	parameter integer WRITEDUMMY = 0,
 	parameter [3:0] DUMMYVAL = 0,
-	parameter [0:0] CMD_IS_SPI = 0 //Note: THIS IS LIKELY BROKEN if set to 1!
+	parameter [0:0] CMD_IS_SPI = 0
 /*
 	//w25q32:
 	//NOTE: untested/not working. Write is probably impossible to get to work (because it's a flash part).
 	parameter [7:0] READCMD = 'hEb,
 	parameter [7:0] WRITECMD = 'hA5,
-	parameter integer READDUMMY = 3,
+	parameter integer READDUMMY = 7,
 	parameter [3:0] DUMMYVAL = 'hf,
 	parameter integer WRITEDUMMY = 1,
 	parameter [0:0] CMD_IS_SPI = 1
@@ -162,11 +162,10 @@ always @(posedge clk) begin
 			spi_ncs <= 0;
 			spi_oe <= 1;
 			if (CMD_IS_SPI) begin
-				spi_sout <= {command[bitno],3'b0};
+				spi_sout <= {3'h6, command[bitno]};
 				if (bitno == 0) begin
 					state <= STATE_ADDRESS;
 					bitno <= 5;
-					spi_bus_qpi <= 1;
 				end else begin
 					bitno <= bitno - 1;
 				end
@@ -181,11 +180,12 @@ always @(posedge clk) begin
 			end
 		end else if (state == STATE_ADDRESS) begin
 			//Address, in qpi
+			spi_bus_qpi <= 1;
 			spi_sout <= addr[bitno*4+3 -: 4];
 			if (bitno == 0) begin
 				if ((do_read ? READDUMMY : WRITEDUMMY)==0) begin
-						state <= STATE_DATA;
-						bitno <= 7;
+					state <= STATE_DATA;
+					bitno <= 7;
 					if (curr_is_read) begin
 						//nop
 					end else begin
@@ -208,9 +208,9 @@ always @(posedge clk) begin
 			if (bitno==0) begin
 				//end of dummy cycle
 				state <= STATE_DATA;
+				spi_oe <= 0; //abuse one cycle for turnaround
 				if (curr_is_read) begin
 					bitno <= 7;
-					spi_oe <= 0; //abuse one cycle for turnaround
 				end else begin
 					//Make sure we already have the data to shift out.
 					data_shifted <= wdata_be;

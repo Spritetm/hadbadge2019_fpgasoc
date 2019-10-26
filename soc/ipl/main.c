@@ -323,16 +323,8 @@ extern uint32_t *irq_stack_ptr;
 #define IRQ_STACK_SIZE (16*1024)
 void main() {
 	syscall_reinit();
-	uint32_t buf[512];
-	for (int i=0; i<512; i++) buf[i]=0xa5a5a5a5;
-	printf("Flash read start...\n");
 	verilator_start_trace();
-	flash_wake(FLASH_SEL_INT);
-	MISC_REG(MISC_FLASH_DMAADDR)=(uint32_t)buf;
-	MISC_REG(MISC_FLASH_RDADDR)=0;
-	MISC_REG(MISC_FLASH_DMALEN)=511;
-	while((MISC_REG(MISC_FLASH_CTL_REG) & MISC_FLASH_CTL_DMADONE)==0);
-	hexdump(buf, 512*4);
+	//When testing in Verilator, put code that pokes your hardware here.
 
 	//Initialize IRQ stack to be bigger than the bootrom stack
 	uint32_t *int_stack=malloc(IRQ_STACK_SIZE);
