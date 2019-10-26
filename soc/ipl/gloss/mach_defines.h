@@ -31,14 +31,15 @@
     the UART since the last read, or 0xFFFFFFFF when none was. There is no receive
     buffer, so it's possible to miss data if you don't poll frequently enough.
     The debug UART is always configured as 8N1. */
-#define UART_DATA_REG	0x0
-/** UART divisor register. Baud rate used by the UART is 48MHz/UART_DIV_REG.
-    Common rates: 115200 -> 416, 38400 -> 1250, 19200 -> 2500, 9600 -> 5000 */
-#define UART_DIV_REG	0x4
+#define UART_DATA_REG	0x00
+/** UART divisor register. Baud rate used by the UART is 48MHz/(UART_DIV_REG+2).
+    Common rates: 115200 -> 414, 38400 -> 1248, 19200 -> 2498, 9600 -> 4998 */
+#define UART_DIV_REG	0x04
 /** Data register for IrDA UART. Works similar to UART_DATA_REG. */
-#define UART_IRDA_DATA_REG	0x8
-/** Divisor register for IrDA UART. Works similar to UART_DIV_REG */
-#define UART_IRDA_DIV_REG	0xC
+#define UART_IRDA_DATA_REG	0x10
+/** Divisor register for IrDA UART. Baud rate used by IrDA is 48MHz/(16*(UART_IRDA_DIV_REG+2))
+ *  Common rate: 115200 -> 24, 38400 -> 76, 19200 -> 154, 9600 -> 310 */
+#define UART_IRDA_DIV_REG	0x14
 
 /* -------------- Misc register block defines --------------------- */
 
