@@ -47,8 +47,18 @@ static void __INEFFICIENT_delay(int n) {
 }
 
 //Helper function to set a tile on layer a
-static void __tile_a_set(uint8_t x, uint8_t y, uint32_t index) {
+static inline void __tile_a_set(uint8_t x, uint8_t y, uint32_t index) {
 	GFXTILEMAPA[y*GFX_TILEMAP_W+x] = index;
+}
+
+//Helper function to set a tile on layer b
+static inline void __tile_b_set(uint8_t x, uint8_t y, uint32_t index) {
+	GFXTILEMAPB[y*GFX_TILEMAP_W+x] = index;
+}
+
+//Helper function to move tile layer b
+static inline void __tile_b_translate(int dx, int dy) {
+	GFX_REG(GFX_TILEB_OFF)=(dy<<16)+(dx &0xffff);
 }
 
 void main(int argc, char **argv) {
@@ -128,22 +138,22 @@ void main(int argc, char **argv) {
 
 	//Draw the ground on the tilemap, probably inefficient but we're learning here
 	for (uint8_t x=0; x<30; x++) {
-		__tile_a_set(x, FLAPPY_GROUND_Y, FLAPPY_GROUND_INDEX);
+		__tile_b_set(x, FLAPPY_GROUND_Y, FLAPPY_GROUND_INDEX);
 	}
 
 	//Draw a bottom "pipe"
-	__tile_a_set(20,16,FLAPPY_BRICK_INDEX);
-	__tile_a_set(21,16,FLAPPY_BRICK_INDEX+1);
-	__tile_a_set(22,16,FLAPPY_BRICK_INDEX+1);
-	__tile_a_set(23,16,FLAPPY_BRICK_INDEX+2);
-	__tile_a_set(20,17,FLAPPY_BRICK_INDEX);
-	__tile_a_set(21,17,FLAPPY_BRICK_INDEX+1);
-	__tile_a_set(22,17,FLAPPY_BRICK_INDEX+1);
-	__tile_a_set(23,17,FLAPPY_BRICK_INDEX+2);
-	__tile_a_set(20,18,FLAPPY_BRICK_INDEX);
-	__tile_a_set(21,18,FLAPPY_BRICK_INDEX+1);
-	__tile_a_set(22,18,FLAPPY_BRICK_INDEX+1);
-	__tile_a_set(23,18,FLAPPY_BRICK_INDEX+2);
+	__tile_b_set(20,16,FLAPPY_BRICK_INDEX);
+	__tile_b_set(21,16,FLAPPY_BRICK_INDEX+1);
+	__tile_b_set(22,16,FLAPPY_BRICK_INDEX+1);
+	__tile_b_set(23,16,FLAPPY_BRICK_INDEX+2);
+	__tile_b_set(20,17,FLAPPY_BRICK_INDEX);
+	__tile_b_set(21,17,FLAPPY_BRICK_INDEX+1);
+	__tile_b_set(22,17,FLAPPY_BRICK_INDEX+1);
+	__tile_b_set(23,17,FLAPPY_BRICK_INDEX+2);
+	__tile_b_set(20,18,FLAPPY_BRICK_INDEX);
+	__tile_b_set(21,18,FLAPPY_BRICK_INDEX+1);
+	__tile_b_set(22,18,FLAPPY_BRICK_INDEX+1);
+	__tile_b_set(23,18,FLAPPY_BRICK_INDEX+2);
 
 	//The user can still see nothing of this graphics goodness, so let's re-enable the framebuffer and
 	//tile layer A (the default layer for the console). 
@@ -152,7 +162,14 @@ void main(int argc, char **argv) {
 	 GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_LAYEREN_TILEA|GFX_LAYEREN_TILEB;
 
 	//Primary game loop
+	float dy=0;
+	float dx=0;
 	 while((MISC_REG(MISC_BTN_REG) & BUTTON_A)==0) {
+		__tile_b_translate((int)dx, (int)dy);
+
+		dx=dx+1;
+		if (dx > 10000) dx = -10000;
+
 		//Print score at 0,0
 		fprintf(console, "\0330X\0330Y%dm", __score); 
 
