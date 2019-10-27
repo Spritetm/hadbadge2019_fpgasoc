@@ -21,7 +21,7 @@ endif
 
 # Set prefixes and paths to all tools.
 CC := $(CROSS)gcc
-AR := $(CROSS)ar
+AR := $(CROSS)gcc-ar
 LD := $(CROSS)ld
 OBJCOPY := $(CROSS)objcopy
 OBJDUMP := $(CROSS)objdump
