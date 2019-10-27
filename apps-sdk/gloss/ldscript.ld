@@ -99,7 +99,8 @@ PROVIDE ( readdir		= 0x40002088 );
 PROVIDE ( closedir		= 0x4000208C );
 PROVIDE ( _sbrk			= 0x40002090 );
 PROVIDE ( gfx_load_fb_mem = 0x40002094 );
-PROVIDE ( gfx_load_tiles_mem = 0x40002094 );
+PROVIDE ( gfx_load_tiles_mem = 0x40002098 );
+PROVIDE ( user_memfn_set = 0x4000209C );
 
 PROVIDE ( interrupt_vector_table = 0x40000020 );
 PROVIDE ( irq_stack_ptr = 0x400000a0 );

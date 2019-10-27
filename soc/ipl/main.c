@@ -35,6 +35,8 @@
 #include "lodepng/lodepng.h"
 #include "gfx_load.h"
 #include "cache.h"
+#include "memtrace.h"
+#include "user_memfn.h"
 
 extern volatile uint32_t UART[];
 #define UART_REG(i) UART[(i)/4]
@@ -184,13 +186,12 @@ int show_main_menu(char *app_name) {
 		printf("Error opening console!\n");
 	}
 
-	//Initialize the LCD
-	lcd_init(simulated());
 	printf("GFX inited. Yay!!\n");
 
 	printf("Loading bgnd...\n");
 	//This is the Hackaday logo background
 	gfx_load_fb_mem(lcdfb, &GFXPAL[FB_PAL_OFFSET], 4, 512, &_binary_bgnd_png_start, (&_binary_bgnd_png_end-&_binary_bgnd_png_start));
+
 	//Nuke the palette animation indexes to be black.
 	for (int x=0; x<10; x++) GFXPAL[FB_PAL_OFFSET+6+x]=0;
 	//Make sure image is in psram
@@ -214,12 +215,8 @@ int show_main_menu(char *app_name) {
 						"or insert an USB cable to modify the files on the flash. Have fun!"
 						"                       ";
 	int scrpos=0;
-	while(!done) {
-		//We're using the timer as a wdt here. The int is by default set to the panic handler,
-		//so we're dropped there if something hangs.
-		mach_timer_set(48000000*5); //5 sec timeout
-		mach_int_ena(1<<INT_NO_TIMER);
 
+	while(!done) {
 		p++;
 
 		bgnd_pal_state++;
@@ -301,8 +298,8 @@ int show_main_menu(char *app_name) {
 		}
 		old_btn=btn;
 	}
-
-	strcpy(app_name, menu.item[selected]);
+	
+	if (selected>=0) strcpy(app_name, menu.item[selected]);
 	for (int i=0; i<menu.no_items; i++) free(menu.item[i]);
 
 	//Set tilemaps to default 1-to-1 mapping
@@ -312,6 +309,7 @@ int show_main_menu(char *app_name) {
 	GFX_REG(GFX_TILEB_OFF)=(0<<16)+(0&0xffff);
 	GFX_REG(GFX_TILEB_INC_COL)=(0<<16)+(64&0xffff);
 	GFX_REG(GFX_TILEB_INC_ROW)=(64<<16)+(0&0xffff);
+
 
 	//Clear console
 	fprintf(console, "\0330M\033C\0330A"); //Set map to tilemap A, clear tilemap, set attr to 0
@@ -346,6 +344,7 @@ extern uint32_t *irq_stack_ptr;
 #define IRQ_STACK_SIZE (16*1024)
 void main() {
 	syscall_reinit();
+	user_memfn_set(malloc, realloc, free);
 	verilator_start_trace();
 	//When testing in Verilator, put code that pokes your hardware here.
 
@@ -363,17 +362,21 @@ void main() {
 	fs_init();
 	printf("Filesystem inited.\n");
 
+	//Initialize the LCD
+	lcd_init(simulated());
 
 	while(1) {
 		MISC_REG(MISC_LED_REG)=0xfffff;
 		printf("IPL running.\n");
-		char app_name[256]="";
+		char app_name[256]="*na*";
 		show_main_menu(app_name);
 		printf("IPL: starting app %s\n", app_name);
 		usb_msc_off();
 		syscall_reinit();
+		user_memfn_set(NULL, NULL, NULL);
 		start_app(app_name);
 		syscall_reinit();
+		user_memfn_set(malloc, realloc, free);
 		printf("IPL: App %s returned.\n", app_name);
 	}
 }

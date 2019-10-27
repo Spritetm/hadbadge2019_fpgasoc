@@ -16,7 +16,7 @@
 #include <stdlib.h>
 #include "lodepng/lodepng.h"
 #include "gfx_load.h"
-
+#include "user_memfn.h"
 
 int gfx_load_fb_mem(uint8_t *fbmem, uint32_t *palmem, int fbbpp, int pitch, char *pngstart, int pnglen) {
 	unsigned char *decoded=NULL;
@@ -57,7 +57,7 @@ int gfx_load_fb_mem(uint8_t *fbmem, uint32_t *palmem, int fbbpp, int pitch, char
 		}
 	}
 	lodepng_state_cleanup(&st);
-	free(decoded);
+	user_memfn_free(decoded);
 	return 0;
 }
 
@@ -103,6 +103,6 @@ int gfx_load_tiles_mem(uint32_t *tilemem, uint32_t *palettemem, char *pngstart, 
 		}
 	}
 	lodepng_state_cleanup(&st);
-	free(decoded);
+	user_memfn_free(decoded);
 	return 0;
 }

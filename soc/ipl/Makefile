@@ -15,12 +15,12 @@ OBJS += tinyusb/src/class/cdc/cdc_device.o tinyusb/src/class/hid/hid_device.o
 OBJS += dcd_tntusb.o usb_descriptors.o hexdump.o flash.o
 OBJS += fatfs/source/ff.o fatfs/source/ffunicode.o loadapp.o elfload/elfload.o
 OBJS += elfload/elfreloc_riscv.o lodepng.o bgnd.o tileset-default.o
-OBJS += tjftl/tjftl.o fs.o gfx_load.o
-LIBS := gloss/libgloss.a -lm
+OBJS += tjftl/tjftl.o fs.o gfx_load.o user_memfn.o
+LIBS := gloss/libgloss.a
 LDSCRIPT := gloss/ldscript.ld
 
 CFLAGS += -ggdb -I. -Isyscallable -Ilodepng -IUGUI -Iusb -Igloss -Itinyusb/src -Ifatfs/source -I../tinyusb/src -I../
-LDFLAGS += -Wl,-T,$(LDSCRIPT) -Wl,-Map,$(TARGET_MAP) -lgcc -lm -Lgloss
+LDFLAGS += -Wl,-T,$(LDSCRIPT) -Wl,-Map,$(TARGET_MAP) -Lgloss -lm -lgcc
 
 export CC AR LD OBJCOPY CFLAGS ASFLAGS LDFLAGS APPNAME
 
@@ -56,7 +56,7 @@ $(TARGET_BIN): $(TARGET_ELF)
 	$(OBJDUMP) -S $^ > $(APPNAME).disasm
 
 $(TARGET_ELF): $(LIBS) $(OBJS) $(LDSCRIPT)
-	$(CC) -o $@ $(LDFLAGS) $(OBJS) $(LIBS)
+	$(CC) -o $@ $(LDFLAGS) $(OBJS) $(LIBS) 
 
 .PHONY: clean
 clean:

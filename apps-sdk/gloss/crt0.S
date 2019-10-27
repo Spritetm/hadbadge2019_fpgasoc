@@ -7,7 +7,7 @@
 .global _bss_start
 .global _bss_end
 .global _start
-.global main
+.global app_start
 
 //Note: as this is an app, a0-a2 are argc, argv, envp. We want to pass this to the main
 //function proper, so these registers should not be disturbed.
@@ -17,4 +17,4 @@ _start:
 	//Note: that leaves us very little to do here...
 
 	//Jump to C code
-	j main
+	j app_start
