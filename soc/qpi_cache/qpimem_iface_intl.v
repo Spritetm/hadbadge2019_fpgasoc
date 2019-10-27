@@ -94,7 +94,8 @@ parameter STATE_TRANSEND = 8;
 
 assign is_idle = (state == STATE_IDLE) && !do_read && !do_write;
 
-always @(negedge clk) begin
+//Note: technically not sampled anymore.
+always @(*) begin
 	spi_sin_sampled_a <= spi_sin_a;
 	spi_sin_sampled_b <= spi_sin_b;
 end

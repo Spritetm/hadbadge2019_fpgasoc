@@ -147,7 +147,8 @@ reg [7:0] spi_xfer_rdata_shifted;
 assign is_idle = (state == STATE_IDLE) && !do_read && !do_write && !spi_xfer_claim;
 assign spi_xfer_idle = (state == STATE_SPIXFER_CLAIMED) && !do_spi_xfer;
 
-always @(negedge clk) begin
+//Note: technically not sampled anymore
+always @(*) begin
 	spi_sin_sampled <= spi_sin;
 end
 
