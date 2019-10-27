@@ -199,6 +199,7 @@ bool flash_program(int flash_sel, uint32_t addr, const uint8_t *buff, int len) {
 		buff+=in_page_len;
 		len-=in_page_len;
 	}
+	return true;
 }
 
 bool flash_erase_range(int flash_sel, int addr, int len) {
@@ -217,7 +218,7 @@ bool flash_erase_range(int flash_sel, int addr, int len) {
 			cmd=CMD_ERASE4K;
 			erasesize=4*1024;
 		} else {
-			fprintf(stderr, "flash_erase_range: no matching block for addr 0x%X len 0x%X\n", addr, len);
+			//fprintf(stderr, "flash_erase_range: no matching block for addr 0x%X len 0x%X\n", addr, len);
 			//can't erase this
 			return false;
 		}
