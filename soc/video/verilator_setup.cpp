@@ -41,6 +41,14 @@ void tb_write(int addr, int data, bool trace_exempt) {
 	tb->wstrb=0x0;
 }
 
+// SDK-style access
+RegisterPointer GFXREG(GFX_OFFSET_REGS);
+RegisterPointer GFXPAL(GFX_OFFSET_PAL);
+RegisterPointer GFXTILES(GFX_OFFSET_TILEMEM);
+RegisterPointer GFXTILEMAPA(GFX_OFFSET_TILEMAPA);
+RegisterPointer GFXTILEMAPB(GFX_OFFSET_TILEMAPB);
+RegisterPointer GFXSPRITES(GFX_OFFSET_SPRITE);
+
 // Send reset signal to test bench
 void toggle_reset() {
 	tb->reset=1;
@@ -57,19 +65,20 @@ void toggle_reset() {
 // Load a default palette
 void load_default_palette() {
 	// Set first 256 colors of palette to standard VGA colors 
+	// Set second 256 colors to be the same
 	for (int i=0; i<256; i++) {
 		int p;
 		p=vgapal[i*3];
 		p|=vgapal[i*3+1]<<8;
 		p|=vgapal[i*3+2]<<16;
 		p|=(0xff<<24);
-		tb_write(GFX_OFFSET_PAL+(i*4), p);
-		tb_write(GFX_OFFSET_PAL+((i+256)*4), p);
+		GFXPAL[i] = p;
+		GFXPAL[i+256] = p;
 	}
 
-	// Set some of the remaining palette colors
-	tb_write(GFX_OFFSET_PAL+(0x100*4), 0xffff00ff);
-	tb_write(GFX_OFFSET_PAL+((0x1ff)*4), 0x10ff00ff);
+	// Reset some of the second 256 colors
+	GFXPAL[0x100] = 0xffff00ff;
+	GFXPAL[0x1ff] = 0x10ff00ff;
 }
 
 // Set a sprite's position, scale and tile number
@@ -80,8 +89,8 @@ void set_sprite(int no, int x, int y, int sx, int sy, int tileno) {
 	sa=(y<<16)|x;
 	sb=sx|(sy<<8)|(tileno<<16);
 	printf("Sprite %d: %08X %08X\n", no, sa, sb);
-	tb_write(GFX_OFFSET_SPRITE+no*8, sa);
-	tb_write(GFX_OFFSET_SPRITE+no*8+4, sb);
+	GFXSPRITES[no*2] = sa;
+	GFXSPRITES[no*2+1] = sb;
 }
 
 // Load a tile into memory from a 256 char string
@@ -102,9 +111,7 @@ void load_tile(int tile, const char *s) {
 		}
 		eight_pix = (v << 28) | (eight_pix >> 4);
 		if (i % 8 == 7) {
-			uint32_t addr = GFX_OFFSET_TILEMEM+(tile*32+i/8)*4;
-			tb_write(addr, eight_pix);
+			GFXTILES[tile*32+i/8] = eight_pix;
 		}
-
 	}
 }

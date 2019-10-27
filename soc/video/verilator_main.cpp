@@ -26,11 +26,10 @@ void load_tilemap(const char *file) {
 			for (int x=0; x<16; x++) {
 				p>>=4;
 				int c=gdImageGetPixel(im, tx+x, ty+y);
-//				c=x; //HACK
 				p|=((uint64_t)c)<<60ULL;
 			}
-			tb_write(GFX_OFFSET_TILEMEM+(tile*32+y*2+0)*4, p&0xFFFFFFFF, tile>=3);
-			tb_write(GFX_OFFSET_TILEMEM+(tile*32+y*2+1)*4, p>>32ULL, tile>=3);
+			GFXTILES[tile*32+y*2+0] = p&0xFFFFFFFF;
+			GFXTILES[tile*32+y*2+1] = p>>32ULL;
 		}
 
 		tx+=16;
@@ -120,9 +119,8 @@ void setup1() {
 	printf("Buffers inited.\n");
 
 	// Set up sprites: sprite 0 at 5, 5
-	tb_write(GFX_OFFSET_REGS+2*4, 0x8); //ena sprites
+	GFX_REG(GFX_LAYEREN_REG) = 0x8; //ena sprites
 	set_sprite(2, 5, 5, 16, 16, 0);
-
 }
 
 // Setup 2: show the loaded background
@@ -134,14 +132,14 @@ void setup2() {
 		fread(&qpi_mem[512*i], 480, 1, f);
 	}
 	fclose(f);
-	tb_write(GFX_OFFSET_REGS+0, 0);
-	tb_write(GFX_OFFSET_REGS+4, (0 << 16) + 512);
+	GFX_REG(GFX_FBADDR_REG) = 0;
+	GFX_REG(GFX_FBPITCH_REG) = 512;
 
 	// Load a tileset and palette for use by sprites
 	load_default_palette();
 
 	// Enable frame buffer
-	tb_write(GFX_OFFSET_REGS+2*4, 0x10001);
+	GFX_REG(GFX_LAYEREN_REG) = GFX_LAYEREN_FB_8BIT | GFX_LAYEREN_FB;
 }
 
 // Setup 3: Tile layer A
@@ -150,7 +148,7 @@ void setup3() {
 	// Just uses tile 0 everywhere
 	load_tilemap("tileset.png");
 	load_default_palette();
-	tb_write(GFX_OFFSET_REGS+2*4, 0x10002); // tileA
+	GFX_REG(GFX_LAYEREN_REG) = GFX_LAYEREN_TILEA;
 }
 
 // Setup 4: Load a background
@@ -161,9 +159,9 @@ void setup4() {
 	load_default_palette();
 
 	// Set frame buffer at location addr
-	tb_write(GFX_OFFSET_REGS+0, addr);
-	tb_write(GFX_OFFSET_REGS+4, (0 << 16) + width);
-	tb_write(GFX_OFFSET_REGS+2*4, 0x10001); // 8 bit pixels, FB enabled
+	GFX_REG(GFX_FBADDR_REG) = addr;
+	GFX_REG(GFX_FBPITCH_REG) = width;
+	GFX_REG(GFX_LAYEREN_REG) = GFX_LAYEREN_FB_8BIT | GFX_LAYEREN_FB;
 }
 
 // Setup 5: Set tile 0 to be something useful for debugging HDMI horizontal output
@@ -176,7 +174,8 @@ void setup5() {
 	}
 	load_tile(0, s.c_str());
 	load_default_palette();
-	tb_write(GFX_OFFSET_REGS+2*4, 0x10002); // all tile 0
+
+	GFX_REG(GFX_LAYEREN_REG) = GFX_LAYEREN_TILEA; // all tile 0
 }
 
 // Array of all setups - defined in verilator_options.hpp
@@ -191,6 +190,7 @@ setup_fn setups[] = {
 
 int main(int argc, char **argv) {
 	CmdLineOptions options = CmdLineOptions::parse(argc, argv);
+	options.dump();
 	
 	// Initialize Verilators variables
 	Verilated::commandArgs(argc, argv);
