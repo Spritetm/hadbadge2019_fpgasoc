@@ -37,7 +37,7 @@
 
 //Note that this ftl has 1/64th overhead, plus some free blocks for garbage collection.
 
-#define DEBUG 1
+//#define DEBUG 1
 #if DEBUG
 #define TJ_MSG(...) do { printf("TJFTL: "); printf(__VA_ARGS__); } while(0)
 #define TJ_CHECK(x, msg) do { if (!(x)) { printf("TJFTL: check fail: " #x " (%s:%d): %s\n", __FILE__, __LINE__, msg); abort(); }} while (0)
