@@ -147,6 +147,7 @@ int _open(const char *name, int flags, int mode) {
 			fd_entry[i].flags=FD_FLAG_OPEN;
 			fd_entry[i].type=FD_TYPE_FATFS;
 		} else {
+			free(fd_entry[i].fatfcb);
 			i=-1;
 		}
 		remap_fatfs_errors(r);
@@ -343,7 +344,9 @@ char * _sbrk (int nbytes) {
 	heap_ptr += nbytes;
 	if (heap_ptr > &_stack_end) {
 		printf("ERROR: _sbrk (IPL): Malloc is out of memory! (heap_start=%p heap_ptr=%p stack_end=%p\n", &_end, heap_ptr, &_stack_end);
-		abort();
+		//Don't abort as it will just re-enter the IPL with the heap chock full.
+		volatile int *p=0;
+		*p=1;
 	}
 	return base;
 }

@@ -12,7 +12,7 @@ typedef struct {
 	uint32_t x[32]; //note: pc is stored in x[0]. x0 always reads 0 in hw, so we don't need to save that.
 } mach_int_frame_t;
 
-typedef mach_int_frame_t* (*mach_int_handler_p)(mach_int_frame_t *frame);
+typedef mach_int_frame_t* (*mach_int_handler_p)(mach_int_frame_t *frame, int int_no);
 
 extern mach_int_handler_p interrupt_vector_table[32];
 

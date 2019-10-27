@@ -56,7 +56,8 @@ uintptr_t load_new_app(const char *appname, uintptr_t *max_alloc_addr) {
 	el_status r;
 	ctx_wrapper_t wrap={0};
 	wrap.f=fopen(appname, "rb");
-	if (!wrap.f) {
+	if (wrap.f==NULL) {
+		fprintf(stderr, "Failed to open file.\n");
 		perror(appname);
 		return 0;
 	}
