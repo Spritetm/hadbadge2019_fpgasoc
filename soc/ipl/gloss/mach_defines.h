@@ -205,7 +205,15 @@ values are specified in (1/64)th pixel, so e.g. to make the 'real' (0,0)
 pixel map to the 'virtual' (10, 20) pixel, you would set 
 GFX_TILEA_OFF to (640<<16)|1280.
 
-Sprites are still a WiP, you can't use them yet.
+Sprites are defined in their own memory. Each sprite has a position
+on screen and an associated 16x16 tile from the main tile memory. Sprites
+can be scaled, that is, you can set an X and Y size and the sprite will
+scale the 16x16 tile to be that size. Note that palette index 0 in these
+sprites always is transparent. Other palette entries may be transparent
+using alpha values, however this will only apply when a single sprite is 
+placed over a background. If sprites are placed over eachother, if a 
+non-zero palette index pixel is placed, it will always entirely overwrite
+the sprite pixel that was there beforehand.
 
 A note on colors: When compositing the final layers, all tile / FB colors 
 are looked up in the palette memory, resulting in a bunch of RGBA colors. These
