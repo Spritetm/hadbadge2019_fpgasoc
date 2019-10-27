@@ -37,14 +37,15 @@ extern uint32_t GFXTILEMAPB[];
 #define FLAPPY_GROUND_Y 19
 #define FLAPPY_BRICK_INDEX 265
 #define FLAPPY_PIPE_GAP 8
-#define FLAPPY_SPEED 1.5
+#define FLAPPY_SPEED 1.8
 #define FLAPPY_PLAYER_X 8
 
 int m_player_y = 11;
 uint32_t m_score = 0;
-int m_pipe_1_x = 10;
-int m_pipe_2_x = 20;
-int m_pipe_3_x = 30;
+int m_pipe_1_x = 11;
+int m_pipe_2_x = 27;
+int m_pipe_3_x = 43;
+int m_pipe_4_x = 59;
 
 //Borrowed this from lcd.c until a better solution comes along :/
 static void __INEFFICIENT_delay(int n) {
@@ -118,7 +119,7 @@ void main(int argc, char **argv) {
 	//ToDo: loading pngs takes a long time... move over to pcx instead.
 	printf("Loading tiles...\n");
 	int gfx_tiles_err = gfx_load_tiles_mem(GFXTILES, &GFXPAL[0], &_binary_flappy_tileset_png_start, (&_binary_flappy_tileset_png_end-&_binary_flappy_tileset_png_start));
-	printf("Tiles initialized\n");
+	printf("Tiles initialized err=%d\n", gfx_tiles_err);
 
 	
 	//The IPL leaves us with a tileset that has tile 0 to 127 map to ASCII characters, so we do not need to
@@ -137,11 +138,11 @@ void main(int argc, char **argv) {
 	//we tell it to start writing from entry 0.
 	//PAL offset changes the colors that the 16-bit png maps to?
 	gfx_load_fb_mem(fbmem, &GFXPAL[FB_PAL_OFFSET], 4, 512, &_binary_bgnd_png_start, (&_binary_bgnd_png_end-&_binary_bgnd_png_start));
-	// printf("gfx_load_mem: %d\n", i);
 
 	//Flush the memory region to psram so the GFX hw can stream it from there.
 	cache_flush(fbmem, fbmem+FB_WIDTH*FB_HEIGHT);
 
+	//Copied from IPL not sure why yet
 	GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_LAYEREN_TILEB|GFX_LAYEREN_TILEA|GFX_LAYEREN_SPR;
 	GFXPAL[FB_PAL_OFFSET+0x100]=0x00ff00ff; //Note: For some reason, the sprites use this as default bgnd. ToDo: fix this...
 	GFXPAL[FB_PAL_OFFSET+0x1ff]=0x40ff00ff; //so it becomes this instead.
@@ -150,28 +151,15 @@ void main(int argc, char **argv) {
 	while (MISC_REG(MISC_BTN_REG));
 
 	//Set map to tilemap B, clear tilemap, set attr to 0
+	//Not sure yet what attr does, but tilemap be is important as it will have the effect of layering
+	//on top of our scrolling game
 	fprintf(console, "\0331M\033C\0330A"); 
+	//Note that without the newline at the end, all printf's would stay in the buffer.
 
-	//Print some data
-	fprintf(console, "\03324X\0330YFlappy\n"); 
-	fprintf(console, "\03324X\03310YERR: %d\n", gfx_tiles_err);
-	// //Note that without the newline at the end, all printf's would stay in the buffer.
 
-	// cache_flush(fbmem, fbmem+FB_WIDTH*FB_HEIGHT);
-
-	uint8_t i=0;
-	for (uint8_t x=0; x<30; x++) {
-		for (uint8_t y=0;y<9; y++) {
-			GFXTILEMAPA[y*GFX_TILEMAP_W+x] = i++;
-		}
-	}
-
-	//Wait for button press then start game
-	// while((MISC_REG(MISC_BTN_REG) & BUTTON_A)==0);
-	// //Wait until all buttons are released
-	// while (MISC_REG(MISC_BTN_REG));
-	memset(GFXTILEMAPA,0,0x4000); //Clear tilemap a
-	memset(GFXTILEMAPB,0,0x4000); //Clear tilemap b
+	//Clear both tilemaps
+	memset(GFXTILEMAPA,0,0x4000);
+	memset(GFXTILEMAPB,0,0x4000);
 
 	//Draw the ground on the tilemap, probably inefficient but we're learning here
 	//Tilemap is 64 wide. Fille the entire bottom row with grass
@@ -179,9 +167,10 @@ void main(int argc, char **argv) {
 		__tile_a_set(x, FLAPPY_GROUND_Y, FLAPPY_GROUND_INDEX);
 	}
 
-	__create_pipe(m_pipe_1_x, 4);
-	__create_pipe(m_pipe_2_x, 4);
-	__create_pipe(m_pipe_3_x, 4);
+	__create_pipe(m_pipe_1_x, rand()%10);
+	__create_pipe(m_pipe_2_x, rand()%10);
+	__create_pipe(m_pipe_3_x, rand()%10);
+	__create_pipe(m_pipe_4_x, rand()%10);
 
 	//The user can still see nothing of this graphics goodness, so let's re-enable the framebuffer and
 	//tile layer A (the default layer for the console). 
@@ -189,8 +178,9 @@ void main(int argc, char **argv) {
 	//TILEA is where text is printed by default
 	 GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_LAYEREN_TILEA|GFX_LAYEREN_TILEB;
 
-	//Draw the player
-	 __tile_b_set(FLAPPY_PLAYER_X,m_player_y,FLAPPY_BRICK_INDEX);
+	//Draw the player as a brick. Need to use our custome tilemap so we have a real sprite or figure
+	//out how sprites work in the graphics engine
+	 
 
 	//Primary game loop
 	float dy=0;
@@ -198,28 +188,17 @@ void main(int argc, char **argv) {
 	 while((MISC_REG(MISC_BTN_REG) & BUTTON_A)==0) {
 
 		//Move the tile layer b, 1000 seems to equate to 1 tile, use translation for smooth movement
-		//Then shift the tiles over by one so we can imitate unlimited scrolling
 		__tile_a_translate((int)dx, (int)dy);
 		dx=dx+FLAPPY_SPEED;
-		// if (dx > 1000) {
-			// dx = 0;
 
-		// 	m_pipe_1_x--;
-		// 	m_pipe_2_x--;
-		// 	m_pipe_3_x--;
+		__tile_b_set(FLAPPY_PLAYER_X,m_player_y,FLAPPY_BRICK_INDEX);
 
-		// 	GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_LAYEREN_TILEA;
-
-		// 	//Re-create each pipe one tile over
-		// 	__create_pipe(m_pipe_1_x, 4);
-		// 	__create_pipe(m_pipe_2_x, 4);
-		// 	__create_pipe(m_pipe_3_x, 4);
-
-		// 	GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_LAYEREN_TILEA|GFX_LAYEREN_TILEB;
-		// }
+		//TODO detect when a pipe is about to go on screen (it just wrapped around) and randomize its height
 
 		//Print score at 0,0
-		fprintf(console, "\0330X\0330Y%dm", (m_score/1000)); 
+		//NOTE: this seems to be a *very* slow operation. Adding a second fprintf will have a noticeable
+		//slowdown effect. Removing this fprintf will put the game into ludicrous speed mode. Need to fix!
+		fprintf(console, "\0330X\0330Y%dm                     FLAPPY", (m_score/1000)); 
 
 		//Flappy score increases with distance which is simply a function of time
 		m_score++;
