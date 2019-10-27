@@ -1,4 +1,3 @@
-#PROJ=audio
 PROJ=minimal
 DUT=voice
 INCLUDES=oscillator.v dac.v button_number.v lfsr.v amplifier.v envelope.v

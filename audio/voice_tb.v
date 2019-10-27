@@ -10,13 +10,14 @@ localparam SAMPLEFREQ  = 8000000 / 2**SAMPLECLOCK_DIV;  // 31,250 Hz or 32 us
 initial begin
 	$dumpvars(0,test);
 	$display("Go!");
-	/* $monitor(); */
+	$monitor(pitch);
 end
 /* Clocks */
 reg clk = 0;
 reg rst = 0;
 always 
 	#62 clk = !clk; // 8 MHz = 125 ns. Awkward.
+
 
 // import in sample clock module
 wire sample_clock;
@@ -26,7 +27,7 @@ sample_clock #( .SAMPLECLOCK_DIV(SAMPLECLOCK_DIV) ) mysampleclock (
 
 reg gate = 0;
 reg [3:0] voice = 4'b0010;
-reg [15:0] pitch = 22345;
+reg [15:0] pitch = `MIDI_NOTE(60) ;
 wire [BITDEPTH-1:0] out;
 /* Wires, registers, and module here */
 
@@ -45,7 +46,7 @@ voice DUT (
 initial begin
 	// full cycle, attack, sustain, release
 	#10000000 gate = 1;
-	#50000000 pitch=22345;
+	#50000000 pitch=`MIDI_NOTE(61) ;
 	#10000000 voice =4'b0001;
 	#50000000 gate = 0;
 	#50000000 voice = 4'b1000;

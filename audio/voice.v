@@ -16,6 +16,11 @@ module voice #(
 	output [BITDEPTH-1:0] out
 );
 
+`define CALC_INCREMENT(hz) $rtoi(hz * 2**(BITDEPTH+BITFRACTION)/SAMPLEFREQ*2)
+`define MIDI_NOTE(n) $rtoi(440.0 * 2**((n-69)/12)/SAMPLEFREQ*2.0 * 2**(BITDEPTH+BITFRACTION))
+// midi note to pitch increment
+// should probably end up a lookup table?
+
 wire [BITDEPTH-1:0] osc_out;
 oscillator #( .BITDEPTH(BITDEPTH), .BITFRACTION(BITFRACTION)) myosc 
 (
