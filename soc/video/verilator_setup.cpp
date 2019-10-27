@@ -28,7 +28,7 @@ void init_test_bench(bool trace_on) {
 
 // Clock data out to a given register in video subsystem.
 void tb_write(int addr, int data, bool trace_exempt) {
-	tb->addr=addr;
+	tb->addr=addr & 0x1ffffff; // Only top 25 bits used
 	tb->din=data;
 	tb->wstrb=0xf;
 	do {
@@ -63,13 +63,13 @@ void load_default_palette() {
 		p|=vgapal[i*3+1]<<8;
 		p|=vgapal[i*3+2]<<16;
 		p|=(0xff<<24);
-		tb_write(PAL_OFF+(i*4), p);
-		tb_write(PAL_OFF+((i+256)*4), p);
+		tb_write(GFX_OFFSET_PAL+(i*4), p);
+		tb_write(GFX_OFFSET_PAL+((i+256)*4), p);
 	}
 
 	// Set some of the remaining palette colors
-	tb_write(PAL_OFF+(0x100*4), 0xffff00ff);
-	tb_write(PAL_OFF+((0x1ff)*4), 0x10ff00ff);
+	tb_write(GFX_OFFSET_PAL+(0x100*4), 0xffff00ff);
+	tb_write(GFX_OFFSET_PAL+((0x1ff)*4), 0x10ff00ff);
 }
 
 // Set a sprite's position, scale and tile number
@@ -80,8 +80,8 @@ void set_sprite(int no, int x, int y, int sx, int sy, int tileno) {
 	sa=(y<<16)|x;
 	sb=sx|(sy<<8)|(tileno<<16);
 	printf("Sprite %d: %08X %08X\n", no, sa, sb);
-	tb_write(SPRITE_OFF+no*8, sa);
-	tb_write(SPRITE_OFF+no*8+4, sb);
+	tb_write(GFX_OFFSET_SPRITE+no*8, sa);
+	tb_write(GFX_OFFSET_SPRITE+no*8+4, sb);
 }
 
 // Load a tile into memory from a 256 char string
@@ -102,7 +102,7 @@ void load_tile(int tile, const char *s) {
 		}
 		eight_pix = (v << 28) | (eight_pix >> 4);
 		if (i % 8 == 7) {
-			uint32_t addr = TILEMEM_OFF+(tile*32+i/8)*4;
+			uint32_t addr = GFX_OFFSET_TILEMEM+(tile*32+i/8)*4;
 			tb_write(addr, eight_pix);
 		}
 

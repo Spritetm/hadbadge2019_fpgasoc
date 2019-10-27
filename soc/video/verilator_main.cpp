@@ -29,8 +29,8 @@ void load_tilemap(const char *file) {
 //				c=x; //HACK
 				p|=((uint64_t)c)<<60ULL;
 			}
-			tb_write(TILEMEM_OFF+(tile*32+y*2+0)*4, p&0xFFFFFFFF, tile>=3);
-			tb_write(TILEMEM_OFF+(tile*32+y*2+1)*4, p>>32ULL, tile>=3);
+			tb_write(GFX_OFFSET_TILEMEM+(tile*32+y*2+0)*4, p&0xFFFFFFFF, tile>=3);
+			tb_write(GFX_OFFSET_TILEMEM+(tile*32+y*2+1)*4, p>>32ULL, tile>=3);
 		}
 
 		tx+=16;
@@ -120,7 +120,7 @@ void setup1() {
 	printf("Buffers inited.\n");
 
 	// Set up sprites: sprite 0 at 5, 5
-	tb_write(REG_OFF+2*4, 0x8); //ena sprites
+	tb_write(GFX_OFFSET_REGS+2*4, 0x8); //ena sprites
 	set_sprite(2, 5, 5, 16, 16, 0);
 
 }
@@ -134,14 +134,14 @@ void setup2() {
 		fread(&qpi_mem[512*i], 480, 1, f);
 	}
 	fclose(f);
-	tb_write(REG_OFF+0, 0);
-	tb_write(REG_OFF+4, (0 << 16) + 512);
+	tb_write(GFX_OFFSET_REGS+0, 0);
+	tb_write(GFX_OFFSET_REGS+4, (0 << 16) + 512);
 
 	// Load a tileset and palette for use by sprites
 	load_default_palette();
 
 	// Enable frame buffer
-	tb_write(REG_OFF+2*4, 0x10001);
+	tb_write(GFX_OFFSET_REGS+2*4, 0x10001);
 }
 
 // Setup 3: Tile layer A
@@ -150,7 +150,7 @@ void setup3() {
 	// Just uses tile 0 everywhere
 	load_tilemap("tileset.png");
 	load_default_palette();
-	tb_write(REG_OFF+2*4, 0x10002); // tileA
+	tb_write(GFX_OFFSET_REGS+2*4, 0x10002); // tileA
 }
 
 // Setup 4: Load a background
@@ -161,9 +161,9 @@ void setup4() {
 	load_default_palette();
 
 	// Set frame buffer at location addr
-	tb_write(REG_OFF+0, addr);
-	tb_write(REG_OFF+4, (0 << 16) + width);
-	tb_write(REG_OFF+2*4, 0x10001); // 8 bit pixels, FB enabled
+	tb_write(GFX_OFFSET_REGS+0, addr);
+	tb_write(GFX_OFFSET_REGS+4, (0 << 16) + width);
+	tb_write(GFX_OFFSET_REGS+2*4, 0x10001); // 8 bit pixels, FB enabled
 }
 
 // Setup 5: Set tile 0 to be something useful for debugging HDMI horizontal output
@@ -176,7 +176,7 @@ void setup5() {
 	}
 	load_tile(0, s.c_str());
 	load_default_palette();
-	tb_write(REG_OFF+2*4, 0x10002); // all tile 0
+	tb_write(GFX_OFFSET_REGS+2*4, 0x10002); // all tile 0
 }
 
 // Array of all setups - defined in verilator_options.hpp
