@@ -17,10 +17,11 @@ OBJS += fatfs/source/ff.o fatfs/source/ffunicode.o loadapp.o elfload/elfload.o
 OBJS += elfload/elfreloc_riscv.o lodepng.o bgnd.o tileset-default.o
 OBJS += tjftl/tjftl.o fs.o gfx_load.o user_memfn.o
 LIBS := gloss/libgloss.a
+LIBS_TOOLCHAIN := -lm -lgcc
 LDSCRIPT := gloss/ldscript.ld
 
 CFLAGS += -ggdb -I. -Isyscallable -Ilodepng -IUGUI -Iusb -Igloss -Itinyusb/src -Ifatfs/source -I../tinyusb/src -I../
-LDFLAGS += -Wl,-T,$(LDSCRIPT) -Wl,-Map,$(TARGET_MAP) -Lgloss -lm -lgcc
+LDFLAGS += -Wl,-T,$(LDSCRIPT) -Wl,-Map,$(TARGET_MAP) -Lgloss
 
 export CC AR LD OBJCOPY CFLAGS ASFLAGS LDFLAGS APPNAME
 
@@ -56,7 +57,7 @@ $(TARGET_BIN): $(TARGET_ELF)
 	$(OBJDUMP) -S $^ > $(APPNAME).disasm
 
 $(TARGET_ELF): $(LIBS) $(OBJS) $(LDSCRIPT)
-	$(CC) -o $@ $(LDFLAGS) $(OBJS) $(LIBS) 
+	$(CC) -o $@ $(LDFLAGS) $(OBJS) $(LIBS) $(LIBS_TOOLCHAIN)
 
 .PHONY: clean
 clean:
