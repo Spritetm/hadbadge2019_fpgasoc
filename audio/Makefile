@@ -1,5 +1,5 @@
 PROJ=minimal
-DUT=voice
+DUT=oscillator
 INCLUDES=oscillator.v dac.v button_number.v lfsr.v amplifier.v envelope.v
 CONSTR=had19_proto2.lpf
 TRELLIS=/usr/share/trellis
@@ -32,7 +32,7 @@ flash: ${PROJ}.bit
 sim: ${DUT}.v  ${DUT}_tb.v 
 	iverilog -Wall -Wno-timescale -o${DUT} ${DUT}.v ${DUT}_tb.v 
 	vvp ${DUT}
-	# gtkwave dump.vcd config.gtkw 
+	echo gtkwave dump.vcd ${DUT}.gtkw 
 
 .PHONY: prog clean
 .PRECIOUS: ${PROJ}.json ${PROJ}_out.config

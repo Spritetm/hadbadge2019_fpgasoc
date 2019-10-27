@@ -1,14 +1,15 @@
 `include "oscillator.v"
 `include "ar.v"
+`include "scales_rom.v"
 
 module voice #( 
 	parameter BITDEPTH   = 14,
-	parameter BITFRACTION   = 8
+	parameter BITFRACTION   = 6,
+	parameter [1:0] VOICE = 1
 )(
 	input sample_clock,
 	input rst,
-	input [3:0] voice_select,
-  	input [15:0] pitch_increment,
+  	input [6:0] note,
   	input [7:0] envelope_attack,
   	input [7:0] envelope_decay,
 	input gate,
@@ -16,18 +17,20 @@ module voice #(
 	output [BITDEPTH-1:0] out
 );
 
-`define CALC_INCREMENT(hz) $rtoi(hz * 2**(BITDEPTH+BITFRACTION)/SAMPLEFREQ*2)
-`define MIDI_NOTE(n) $rtoi(440.0 * 2**((n-69)/12)/SAMPLEFREQ*2.0 * 2**(BITDEPTH+BITFRACTION))
-// midi note to pitch increment
-// should probably end up a lookup table?
+wire [15:0] pitch_increment;
+midi_note_to_accumulator m (
+	.clk(sample_clock),
+	.reset(rst),
+	.midi_note(note),
+	.increment(pitch_increment)
+);
 
 wire [BITDEPTH-1:0] osc_out;
-oscillator #( .BITDEPTH(BITDEPTH), .BITFRACTION(BITFRACTION)) myosc 
+oscillator #( .BITDEPTH(BITDEPTH), .BITFRACTION(BITFRACTION), .VOICE(VOICE)) myosc 
 (
 	.sample_clock(sample_clock),
 	.rst(rst),
-	.increment(pitch_increment) ,  
-	.voice_select(voice_select), 
+	.increment(pitch_increment),  
 	.out(osc_out)
 );
 

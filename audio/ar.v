@@ -15,6 +15,7 @@ module ar #(
 
 // DANGER: if change bit depth, need to pass that info on to submodules
 
+
 wire [7:0] volume;
 envelope myenv (
 	.sample_clock(sample_clock),

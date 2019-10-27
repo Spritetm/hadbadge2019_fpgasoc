@@ -1,11 +1,11 @@
 `timescale 1ns/1ns
+`include "sample_clock.v"
+`include "scales_rom.v"
+
 module test();
 localparam SAMPLEFREQ = 8000000 / 2**8;
-localparam BD=12;
+localparam BD=14;
 
-reg [15:0] increment;
-wire [BD-1:0] out;
-reg [3:0] voice_select;
 initial begin
 	$dumpvars(0,test);
 	$display("Go!");
@@ -14,33 +14,62 @@ end
 /* Clocks */
 reg clk = 0;
 always 
-	#125 clk = !clk;
+	#62.5 clk = !clk;
 
-reg sample_clock = 0;
 reg rst = 0;
-reg [8:0] sample_count = 0;
+reg sample_clock = 0;
+reg [7:0] sample_count = 0;
 always @(posedge clk) begin
 	sample_count <= sample_count + 1;
 	sample_clock <= sample_count[7];
 end
 
+reg [6:0] note;
+wire [15:0] pitch_increment;
+midi_note_to_accumulator m (
+	.clk(sample_clock),
+	.reset(rst),
+	.midi_note(note),
+	.increment(pitch_increment)
+);
+
+
 /* Wires, registers, and module here */
-oscillator #( .BITDEPTH(12), .BITFRACTION(12)) testsaw (
+wire [BD-1:0] saw;
+wire [BD-1:0] triangle;
+wire [BD-1:0] pulse;
+wire [BD-1:0] sub;
+oscillator #( .BITDEPTH(BD), .BITFRACTION(6), .VOICE(0)) testsaw (
 	.sample_clock(sample_clock),
 	.rst(rst),
-	.increment(increment), 
-.voice_select(voice_select),
-	.out(out)
+	.increment(pitch_increment), 
+	.out(saw)
+);
+
+oscillator #( .BITDEPTH(BD), .BITFRACTION(6), .VOICE(1)) testtri (
+	.sample_clock(sample_clock),
+	.rst(rst),
+	.increment(pitch_increment), 
+	.out(triangle)
+);
+oscillator #( .BITDEPTH(BD), .BITFRACTION(6), .VOICE(2)) testpulse (
+	.sample_clock(sample_clock),
+	.rst(rst),
+	.increment(pitch_increment), 
+	.out(pulse)
+);
+oscillator #( .BITDEPTH(BD), .BITFRACTION(6), .VOICE(3)) testsub (
+	.sample_clock(sample_clock),
+	.rst(rst),
+	.increment(pitch_increment), 
+	.out(sub)
 );
 
 initial begin
-	increment = 0;
-	voice_select = 1;
-	#1000000 increment = 2**4;
-	#3000000 increment = 2**13;
-	#3500000 voice_select=2;
-	#20000000 $finish;
-
+	rst=1;
+	note = 60;
+	#100000 rst=0;
+	#30000000 $finish;
 
 end
 

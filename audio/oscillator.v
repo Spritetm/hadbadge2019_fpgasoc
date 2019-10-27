@@ -2,12 +2,12 @@
 module oscillator 
 #(
 	parameter BITDEPTH   = 14,
-	parameter BITFRACTION   = 8
+	parameter BITFRACTION   = 6,
+	parameter [1:0] VOICE = 0
 ) (
 	input sample_clock,
 	input rst,
 	input [15:0] increment,  
-	input [3:0] voice_select,
 	output reg [BITDEPTH-1:0] out 
 
 );
@@ -15,45 +15,35 @@ localparam TOPBIT     = BITDEPTH+BITFRACTION-1;
 localparam PULSEWIDTH = 2**(BITDEPTH-4);
 localparam MIDPOINT   = 2**(BITDEPTH-1)-1;
 
+localparam SAW   = 2'd0;
+localparam TRI   = 2'd1;
+localparam PULSE = 2'd2;
+localparam SUB   = 2'd3;
 
-reg [TOPBIT:0] accumulator = 0 ;  
+reg [TOPBIT:0] accumulator;  
+reg sub;
 always @(posedge sample_clock) begin 
 	if (rst) begin 
 		accumulator <= 0 ;  
+		out <= MIDPOINT;
+		sub <= 0;
 	end
 	else begin
 		accumulator <= accumulator + increment;
 	end
 end
 
-reg [BITDEPTH-1:0] saw      = MIDPOINT;
-reg [BITDEPTH-1:0] triangle = MIDPOINT;
-reg [BITDEPTH-1:0] square   = 0;
-reg [BITDEPTH-1:0] pulse    = MIDPOINT;
-
+always @(posedge accumulator[TOPBIT])
+	sub <= ~sub;
 
 always @(posedge sample_clock) begin 
-	saw <= accumulator[TOPBIT -: BITDEPTH] ; 
-	triangle <= accumulator[TOPBIT] ? ~accumulator[TOPBIT-1 -: BITDEPTH] : accumulator[TOPBIT-1 -: BITDEPTH];
-
-	pulse <= accumulator[TOPBIT -: BITDEPTH] < PULSEWIDTH ? 2**BITDEPTH-1 : 0 ;
+	case (VOICE)
+		SAW: out <= accumulator[TOPBIT -: BITDEPTH] ; 
+		TRI: out <= accumulator[TOPBIT] ? ~accumulator[TOPBIT-1 -: BITDEPTH] : accumulator[TOPBIT-1 -: BITDEPTH];
+		PULSE: out <= accumulator[TOPBIT -: BITDEPTH] < PULSEWIDTH ? 2**BITDEPTH-1 : 0 ;
+		SUB: out <= sub ? (accumulator[TOPBIT -: BITDEPTH] < PULSEWIDTH ? 2**BITDEPTH-1 : 0 ) : (accumulator[TOPBIT -: BITDEPTH] < PULSEWIDTH ? 0 : 2**BITDEPTH-1) ;
+		default: out <= MIDPOINT;
+	endcase 
 end
-always @(posedge accumulator[TOPBIT]) // suboctave square is so much cooler
-	square <= ~square;
-
-reg [1:0] gain;
-reg [2:0] num_ones = 0;
-// simple submixer
-always @(posedge sample_clock) begin 
-	num_ones = voice_select[0] + voice_select[1] + voice_select[2] + voice_select[3];
-	case (num_ones) 	    
-		1: out <= voice_select[0]*saw   + voice_select[1]*triangle   + voice_select[2] *square   + voice_select[3]*pulse;
-		2: out <= voice_select[0]*saw/2 + voice_select[1]*triangle/2 + voice_select[2] *square/2 + voice_select[3]*pulse/2;
-		3: out <= voice_select[0]*saw/4 + voice_select[1]*triangle/4 + voice_select[2] *square/4 + voice_select[3]*pulse/4 + MIDPOINT/2; // extra offset here?
-		4: out <= voice_select[0]*saw/4 + voice_select[1]*triangle/4 + voice_select[2] *square/4 + voice_select[3]*pulse/4;
-		default: out <= MIDPOINT; 
-	endcase
-end
-
 endmodule
 

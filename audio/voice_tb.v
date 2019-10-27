@@ -10,49 +10,49 @@ localparam SAMPLEFREQ  = 8000000 / 2**SAMPLECLOCK_DIV;  // 31,250 Hz or 32 us
 initial begin
 	$dumpvars(0,test);
 	$display("Go!");
-	$monitor(pitch);
+	/* $monitor(); */
 end
 /* Clocks */
 reg clk = 0;
 reg rst = 0;
 always 
-	#62 clk = !clk; // 8 MHz = 125 ns. Awkward.
+	#62.5 clk = !clk; // 8 MHz = 125 ns. Awkward.
 
+reg sample_clock = 0;
+reg [7:0] sample_count = 0;
+always @(posedge clk) begin
+	sample_count <= sample_count + 1;
+	sample_clock <= sample_count[7];
+end
 
-// import in sample clock module
-wire sample_clock;
-sample_clock #( .SAMPLECLOCK_DIV(SAMPLECLOCK_DIV) ) mysampleclock ( 
-	.clk(clk), .sample_clock(sample_clock) 
-);
-
-reg gate = 0;
-reg [3:0] voice = 4'b0010;
-reg [15:0] pitch = `MIDI_NOTE(60) ;
+reg [6:0] midi;
+reg gate;
 wire [BITDEPTH-1:0] out;
 /* Wires, registers, and module here */
-
-voice DUT (
+voice #(.VOICE(0)) DUT (
 	.sample_clock(sample_clock),
 	.rst(rst),
-	.voice_select(voice),
-  	.pitch_increment(pitch),
+  	.note(midi),
   	.envelope_attack(8'hf0),
-  	.envelope_decay(8'h10),
+  	.envelope_decay(8'h80),
 	.gate(gate),
 	.out(out)
 );
 
-
 initial begin
 	// full cycle, attack, sustain, release
+	rst=1;
+	gate=0;
+	midi = 60;
+	#300000 rst=0;
 	#10000000 gate = 1;
-	#50000000 pitch=`MIDI_NOTE(61) ;
-	#10000000 voice =4'b0001;
+	#50000000 
+	gate = 0;
+	#10000000 
+	midi=68 ;
+	gate = 1;
 	#50000000 gate = 0;
-	#50000000 voice = 4'b1000;
-	#10000000 gate = 1;
-	#50000000 gate = 0;
-	#100000000 $finish;
+	#50000000 $finish;
 end
 
 endmodule // test
