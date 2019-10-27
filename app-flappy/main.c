@@ -36,8 +36,15 @@ extern uint32_t GFXTILEMAPB[];
 #define FLAPPY_GROUND_INDEX 237
 #define FLAPPY_GROUND_Y 19
 #define FLAPPY_BRICK_INDEX 265
+#define FLAPPY_PIPE_GAP 8
+#define FLAPPY_SPEED 1.5
+#define FLAPPY_PLAYER_X 8
 
-uint32_t __score = 0;
+int m_player_y = 11;
+uint32_t m_score = 0;
+int m_pipe_1_x = 10;
+int m_pipe_2_x = 20;
+int m_pipe_3_x = 30;
 
 //Borrowed this from lcd.c until a better solution comes along :/
 static void __INEFFICIENT_delay(int n) {
@@ -56,13 +63,42 @@ static inline void __tile_b_set(uint8_t x, uint8_t y, uint32_t index) {
 	GFXTILEMAPB[y*GFX_TILEMAP_W+x] = index;
 }
 
+//Helper function to move tile layer 1
+static inline void __tile_a_translate(int dx, int dy) {
+	GFX_REG(GFX_TILEA_OFF)=(dy<<16)+(dx &0xffff);
+}
+
 //Helper function to move tile layer b
 static inline void __tile_b_translate(int dx, int dy) {
 	GFX_REG(GFX_TILEB_OFF)=(dy<<16)+(dx &0xffff);
 }
 
+static inline void __create_pipe(int x, int h) {
+	//top pipe
+	for (uint8_t y=0; y<19-h-FLAPPY_PIPE_GAP; y++) {
+		__tile_a_set(x,y,FLAPPY_BRICK_INDEX);
+		__tile_a_set(x+1,y,FLAPPY_BRICK_INDEX+1);
+		__tile_a_set(x+2,y,FLAPPY_BRICK_INDEX+1);
+		__tile_a_set(x+3,y,FLAPPY_BRICK_INDEX+2);
+
+		//Clear column to right of pipe in case of shifting tile
+		__tile_a_set(x+4,y,0);
+	}
+
+	//bottom pipe
+	for (uint8_t y=h+FLAPPY_PIPE_GAP; y<19; y++) {
+		__tile_a_set(x,y,FLAPPY_BRICK_INDEX);
+		__tile_a_set(x+1,y,FLAPPY_BRICK_INDEX+1);
+		__tile_a_set(x+2,y,FLAPPY_BRICK_INDEX+1);
+		__tile_a_set(x+3,y,FLAPPY_BRICK_INDEX+2);
+
+		//Clear column to right of pipe in case of shifting tile
+		__tile_a_set(x+4,y,0);
+	}
+}
+
 void main(int argc, char **argv) {
-//Allocate fb memory
+	//Allocate framebuffer memory
 	fbmem=malloc(320*512/2);
 
 	for (uint8_t i=0; i<16;i++) {
@@ -113,9 +149,10 @@ void main(int argc, char **argv) {
 	//Wait until all buttons are released
 	while (MISC_REG(MISC_BTN_REG));
 
-	fprintf(console, "\0330M\033C\0330A"); //Set map to tilemap A, clear tilemap, set attr to 0
-	fprintf(console, "\033C"); //clear the console. Note '\033' is the escape character.
-	
+	//Set map to tilemap B, clear tilemap, set attr to 0
+	fprintf(console, "\0331M\033C\0330A"); 
+
+	//Print some data
 	fprintf(console, "\03324X\0330YFlappy\n"); 
 	fprintf(console, "\03324X\03310YERR: %d\n", gfx_tiles_err);
 	// //Note that without the newline at the end, all printf's would stay in the buffer.
@@ -137,23 +174,14 @@ void main(int argc, char **argv) {
 	memset(GFXTILEMAPB,0,0x4000); //Clear tilemap b
 
 	//Draw the ground on the tilemap, probably inefficient but we're learning here
-	for (uint8_t x=0; x<30; x++) {
-		__tile_b_set(x, FLAPPY_GROUND_Y, FLAPPY_GROUND_INDEX);
+	//Tilemap is 64 wide. Fille the entire bottom row with grass
+	for (uint8_t x=0; x<64; x++) {
+		__tile_a_set(x, FLAPPY_GROUND_Y, FLAPPY_GROUND_INDEX);
 	}
 
-	//Draw a bottom "pipe"
-	__tile_b_set(20,16,FLAPPY_BRICK_INDEX);
-	__tile_b_set(21,16,FLAPPY_BRICK_INDEX+1);
-	__tile_b_set(22,16,FLAPPY_BRICK_INDEX+1);
-	__tile_b_set(23,16,FLAPPY_BRICK_INDEX+2);
-	__tile_b_set(20,17,FLAPPY_BRICK_INDEX);
-	__tile_b_set(21,17,FLAPPY_BRICK_INDEX+1);
-	__tile_b_set(22,17,FLAPPY_BRICK_INDEX+1);
-	__tile_b_set(23,17,FLAPPY_BRICK_INDEX+2);
-	__tile_b_set(20,18,FLAPPY_BRICK_INDEX);
-	__tile_b_set(21,18,FLAPPY_BRICK_INDEX+1);
-	__tile_b_set(22,18,FLAPPY_BRICK_INDEX+1);
-	__tile_b_set(23,18,FLAPPY_BRICK_INDEX+2);
+	__create_pipe(m_pipe_1_x, 4);
+	__create_pipe(m_pipe_2_x, 4);
+	__create_pipe(m_pipe_3_x, 4);
 
 	//The user can still see nothing of this graphics goodness, so let's re-enable the framebuffer and
 	//tile layer A (the default layer for the console). 
@@ -161,19 +189,39 @@ void main(int argc, char **argv) {
 	//TILEA is where text is printed by default
 	 GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_LAYEREN_TILEA|GFX_LAYEREN_TILEB;
 
+	//Draw the player
+	 __tile_b_set(FLAPPY_PLAYER_X,m_player_y,FLAPPY_BRICK_INDEX);
+
 	//Primary game loop
 	float dy=0;
 	float dx=0;
 	 while((MISC_REG(MISC_BTN_REG) & BUTTON_A)==0) {
-		__tile_b_translate((int)dx, (int)dy);
 
-		dx=dx+1;
-		if (dx > 10000) dx = -10000;
+		//Move the tile layer b, 1000 seems to equate to 1 tile, use translation for smooth movement
+		//Then shift the tiles over by one so we can imitate unlimited scrolling
+		__tile_a_translate((int)dx, (int)dy);
+		dx=dx+FLAPPY_SPEED;
+		// if (dx > 1000) {
+			// dx = 0;
+
+		// 	m_pipe_1_x--;
+		// 	m_pipe_2_x--;
+		// 	m_pipe_3_x--;
+
+		// 	GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_LAYEREN_TILEA;
+
+		// 	//Re-create each pipe one tile over
+		// 	__create_pipe(m_pipe_1_x, 4);
+		// 	__create_pipe(m_pipe_2_x, 4);
+		// 	__create_pipe(m_pipe_3_x, 4);
+
+		// 	GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_LAYEREN_TILEA|GFX_LAYEREN_TILEB;
+		// }
 
 		//Print score at 0,0
-		fprintf(console, "\0330X\0330Y%dm", __score); 
+		fprintf(console, "\0330X\0330Y%dm", (m_score/1000)); 
 
 		//Flappy score increases with distance which is simply a function of time
-		__score++;
+		m_score++;
 	 }
 }
