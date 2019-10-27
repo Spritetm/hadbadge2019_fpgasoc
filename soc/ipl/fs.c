@@ -51,7 +51,10 @@ static flash_part_desc_t part_int={
 static bool tj_flash_read(int addr, uint8_t *buf, int len, void *arg) {
 	flash_part_desc_t *part=(flash_part_desc_t*)arg;
 	addr+=part->start;
-	if (addr+len>part->end) return false;
+	if (addr+len>part->end) {
+		printf("tj_flash_read: read past end %d len %d\n", addr, len);
+		return false;
+	}
 	flash_read(part->flash_sel, addr, buf, len);
 	return true;
 }
@@ -59,14 +62,20 @@ static bool tj_flash_read(int addr, uint8_t *buf, int len, void *arg) {
 static bool tj_flash_erase_32k(int addr, void *arg) {
 	flash_part_desc_t *part=(flash_part_desc_t*)arg;
 	addr+=part->start;
-	if (addr+32768>part->end) return false;
+	if (addr+32768>part->end) {
+		printf("tj_flash_erase_32k: erase past end\n");
+		return false;
+	}
 	return flash_erase_range(part->flash_sel, addr, 32768);
 }
 
 static bool tj_flash_program(int addr, const uint8_t *buf, int len, void *arg) {
 	flash_part_desc_t *part=(flash_part_desc_t*)arg;
 	addr+=part->start;
-	if (addr+len>part->end) return false;
+	if (addr+len>part->end) {
+		printf("tj_flash_program: program past end\n");
+		return false;
+	}
 	return flash_program(part->flash_sel, addr, buf, len);
 }
 
@@ -97,6 +106,7 @@ DRESULT disk_read(BYTE pdrv, BYTE *buff, DWORD sector, UINT count) {
 		sector++;
 		buff+=512;
 	}
+	if (!ok) printf("disk_read: error at sect %d count %d\n", sector, count);
 	return ok?RES_OK:RES_ERROR;
 }
 
@@ -111,6 +121,7 @@ DRESULT disk_write(BYTE pdrv, const BYTE *buff, DWORD sector, UINT count) {
 		sector++;
 		buff+=512;
 	}
+	if (!ok) printf("disk_write: error at sect %d count %d\n", sector, count);
 	return ok?RES_OK:RES_ERROR;
 }
 
@@ -170,6 +181,13 @@ void fs_init() {
 				FS_INT_PART_END-FS_INT_PART_START, FS_INT_TFL_SECT, true);
 	if (!ftl[0]) {
 		printf("Aiee! Couldn't initialize ftl for internal flash!\n");
+		printf("Nuking flash and re-trying...\n");
+		flash_erase_range(FLASH_SEL_INT, FS_INT_PART_START, FS_INT_PART_END-FS_INT_PART_START);
+		ftl[0]=tjftl_init(tj_flash_read, tj_flash_erase_32k, tj_flash_program, &part_int,
+					FS_INT_PART_END-FS_INT_PART_START, FS_INT_TFL_SECT, true);
+		if (!ftl[0]) {
+			printf("Still failed. Flash FUBAR?\n");
+		}
 	}
 	usb_msc_off();
 }
