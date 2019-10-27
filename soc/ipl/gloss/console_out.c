@@ -132,7 +132,7 @@ static void console_write_char(char c) {
 }
 
 
-int console_write(char *data, int len) {
+int console_write(const char *data, int len) {
 	for (int i=0; i<len; i++) console_write_char(data[i]);
 	return len;
 }

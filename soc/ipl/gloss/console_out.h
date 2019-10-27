@@ -1,1 +1,1 @@
-int console_write(char *data, int len);
+int console_write(const char *data, int len);
