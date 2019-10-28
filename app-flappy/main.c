@@ -46,17 +46,21 @@ extern uint32_t GFXTILEMAPB[];
 #define FLAPPY_PIPE_HEIGHT_MAX 9
 #define FLAPPY_SPEED 1.8
 #define FLAPPY_PLAYER_X 8
-#define FLAPPY_GRAVITY 0.7
-#define FLAPPY_JUMP (-1.0)
+#define FLAPPY_GRAVITY 0.9
+#define FLAPPY_JUMP (-2.0)
 #define FLAPPY_BOTTOM_EXTENT 290
 
 int m_player_y = 11;
 float m_player_velocity = 0.0;
 uint32_t m_score = 0;
 int m_pipe_1_x = 11;
+int m_pipe_1_height = 3;
 int m_pipe_2_x = 27;
+int m_pipe_2_height = 3;
 int m_pipe_3_x = 43;
+int m_pipe_3_height = 3;
 int m_pipe_4_x = 59;
+int m_pipe_4_height = 3;
 
 //Borrowed this from lcd.c until a better solution comes along :/
 static void __INEFFICIENT_delay(int n) {
@@ -104,25 +108,29 @@ static inline void __tile_b_translate(int dx, int dy) {
 }
 
 static inline void __create_pipe(int x, int h) {
-	//top pipe
-	for (uint8_t y=0; y<FLAPPY_PIPE_BOTTOM-h-FLAPPY_PIPE_GAP; y++) {
-		__tile_a_set(x,y,FLAPPY_BRICK_INDEX);
-		__tile_a_set(x+1,y,FLAPPY_BRICK_INDEX+1);
-		__tile_a_set(x+2,y,FLAPPY_BRICK_INDEX+1);
-		__tile_a_set(x+3,y,FLAPPY_BRICK_INDEX+2);
-
-		//Clear column to right of pipe in case of shifting tile
-		__tile_a_set(x+4,y,0);
-	}
-
-	//bottom pipe
-	for (uint8_t y=FLAPPY_PIPE_BOTTOM-h; y<FLAPPY_PIPE_BOTTOM; y++) {
-		__tile_a_set(x,y,FLAPPY_BRICK_INDEX);
-		__tile_a_set(x+1,y,FLAPPY_BRICK_INDEX+1);
-		__tile_a_set(x+2,y,FLAPPY_BRICK_INDEX+1);
-		__tile_a_set(x+3,y,FLAPPY_BRICK_INDEX+2);
-
-		//Clear column to right of pipe in case of shifting tile
+	//Generate a full pipe including gap
+	for (uint8_t y=0; y<FLAPPY_PIPE_BOTTOM; y++) {
+		//TOP
+		if (y < FLAPPY_PIPE_BOTTOM-FLAPPY_PIPE_GAP-h) {
+			__tile_a_set(x,y,FLAPPY_BRICK_INDEX);
+			__tile_a_set(x+1,y,FLAPPY_BRICK_INDEX+1);
+			__tile_a_set(x+2,y,FLAPPY_BRICK_INDEX+1);
+			__tile_a_set(x+3,y,FLAPPY_BRICK_INDEX+2);
+		} 
+		//MIDDLE
+		else if (y < FLAPPY_PIPE_BOTTOM-h) {
+			__tile_a_set(x,y,0);
+			__tile_a_set(x+1,y,0);
+			__tile_a_set(x+2,y,0);
+			__tile_a_set(x+3,y,0);
+		} 
+		//BOTTOM
+		else {
+			__tile_a_set(x,y,FLAPPY_BRICK_INDEX);
+			__tile_a_set(x+1,y,FLAPPY_BRICK_INDEX+1);
+			__tile_a_set(x+2,y,FLAPPY_BRICK_INDEX+1);
+			__tile_a_set(x+3,y,FLAPPY_BRICK_INDEX+2);
+		}
 		__tile_a_set(x+4,y,0);
 	}
 }
@@ -197,11 +205,11 @@ void main(int argc, char **argv) {
 		__tile_a_set(x, FLAPPY_GROUND_Y, FLAPPY_GROUND_INDEX);
 	}
 
-	//Generate 4 pipes with random heights
-	__create_pipe(m_pipe_1_x, (rand() % (FLAPPY_PIPE_HEIGHT_MIN - FLAPPY_PIPE_HEIGHT_MAX)) + FLAPPY_PIPE_HEIGHT_MIN);
-	__create_pipe(m_pipe_2_x, (rand() % (FLAPPY_PIPE_HEIGHT_MIN - FLAPPY_PIPE_HEIGHT_MAX)) + FLAPPY_PIPE_HEIGHT_MIN);
-	__create_pipe(m_pipe_3_x, (rand() % (FLAPPY_PIPE_HEIGHT_MIN - FLAPPY_PIPE_HEIGHT_MAX)) + FLAPPY_PIPE_HEIGHT_MIN);
-	__create_pipe(m_pipe_4_x, (rand() % (FLAPPY_PIPE_HEIGHT_MIN - FLAPPY_PIPE_HEIGHT_MAX)) + FLAPPY_PIPE_HEIGHT_MIN);
+	//Generate 4 pipes with fixed heights so it's easy to get started
+	__create_pipe(m_pipe_1_x, 3);
+	__create_pipe(m_pipe_2_x, 7);
+	__create_pipe(m_pipe_3_x, 4);
+	__create_pipe(m_pipe_4_x, 2);
 
 	
 
@@ -220,12 +228,12 @@ void main(int argc, char **argv) {
 	float dx=0;
 	 while((MISC_REG(MISC_BTN_REG) & BUTTON_A)==0) {
 
-		//Move the tile layer b, 1000 seems to equate to 1 tile, use translation for smooth movement
+		//Move the tile layer b, each 1024 of dx is equal to one tile (or 16 pixels)
 		__tile_a_translate((int)dx, (int)dy);
-		dx=dx+FLAPPY_SPEED;
+		dx += FLAPPY_SPEED;
 
 		//Draw the player sprite
-		__sprite_set(0, 50, m_player_y, 32, 32, FLAPPY_PLAYER_INDEX, 0);	
+		__sprite_set(0, 160, m_player_y, 32, 32, FLAPPY_PLAYER_INDEX, 0);	
 
 		if ((m_score % 500) == 0) {
 			m_player_y += m_player_velocity;
@@ -240,10 +248,39 @@ void main(int argc, char **argv) {
 
 		//TODO detect when a pipe is about to go on screen (it just wrapped around) and randomize its height
 
+		//Calculate true x coordinate of pipes
+		int x1 = (((m_pipe_1_x << 10) - (int)dx) & 0xFFFF) >> 6;
+		int x2 = (((m_pipe_1_x << 10) - (int)dx) & 0xFFFF) >> 6;
+		int x3 = (((m_pipe_1_x << 10) - (int)dx) & 0xFFFF) >> 6;
+		int x4 = (((m_pipe_1_x << 10) - (int)dx) & 0xFFFF) >> 6;
+
+		//Detect a pipe about to enter from right side of screen, in this case generate
+		//A new pipe at that same tile x coord so it appears we have infinite scrolling
+		//Screen is 480 wide so 500 is good enough
+		if (x1 == 500) {
+			m_pipe_1_height = (rand() % (FLAPPY_PIPE_HEIGHT_MIN - FLAPPY_PIPE_HEIGHT_MAX)) + FLAPPY_PIPE_HEIGHT_MIN;
+			__create_pipe(m_pipe_1_x, m_pipe_1_height);
+		}
+
+		if (x2 == 500) {
+			m_pipe_2_height = (rand() % (FLAPPY_PIPE_HEIGHT_MIN - FLAPPY_PIPE_HEIGHT_MAX)) + FLAPPY_PIPE_HEIGHT_MIN;
+			__create_pipe(m_pipe_2_x, m_pipe_2_height);
+		}
+
+		if (x3 == 500) {
+			m_pipe_3_height = (rand() % (FLAPPY_PIPE_HEIGHT_MIN - FLAPPY_PIPE_HEIGHT_MAX)) + FLAPPY_PIPE_HEIGHT_MIN;
+			__create_pipe(m_pipe_3_x, m_pipe_3_height);
+		}
+
+		if (x4 == 500) {
+			m_pipe_4_height = (rand() % (FLAPPY_PIPE_HEIGHT_MIN - FLAPPY_PIPE_HEIGHT_MAX)) + FLAPPY_PIPE_HEIGHT_MIN;
+			__create_pipe(m_pipe_4_x, m_pipe_4_height);
+		}
+
 		//Print score at 0,0
 		//NOTE: this seems to be a *very* slow operation. Adding a second fprintf will have a noticeable
 		//slowdown effect. Removing this fprintf will put the game into ludicrous speed mode. Need to fix!
-		fprintf(console, "\0330X\0330Y%dm\03324XFLAPPY", (m_score/1000)); 
+		fprintf(console, "\0330X\0330Y%dm\03324XFLAPPY", (m_score >> 10)); 
 
 		//Flappy score increases with distance which is simply a function of time
 		m_score++;
@@ -256,7 +293,9 @@ void main(int argc, char **argv) {
 
 	 //Print game over
 	 fprintf(console, "\03310X\03310YGAME OVER!\nScore: %dm", (m_score/1000));
-	 __INEFFICIENT_delay(5000);
 
- 	 __button_wait_for_press();
+	 //Wait for user to release whatever buttons they were pressing and to press a new one
+	__button_wait_for_release();
+	__INEFFICIENT_delay(200);
+ 	__button_wait_for_press();
 }
