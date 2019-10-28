@@ -7,6 +7,7 @@
 `include "voice.v" 
 `include "mixer4.v"
 `include "lfsr.v"
+`include "cymbal.v" 
 
 module top( 
 	input clk, 
@@ -39,15 +40,6 @@ wire [BITDEPTH-1:0] osc6_out;
 wire [BITDEPTH-1:0] osc7_out;
 wire [BITDEPTH-1:0] osc8_out;
 
-/* reg [7:0] buttons; */
-/* always @(posedge clk) begin */
-/* 	buttons <= ~btn[7:0]; */
-/* 	gate1 <= buttons[0]; */
-/* 	gate2 <= buttons[1]; */
-/* 	gate3 <= buttons[2]; */
-/* 	gate4 <= buttons[3]; */
-/* 	voice <= buttons[7:4]; */
-/* end */
 
 reg [18:0] slow_counter=0;
 always @(posedge sample_clock) begin
@@ -65,60 +57,70 @@ wire gate1;
 wire gate2;
 wire gate3;
 wire gate4;
+wire gate5;
 
 assign led[5:0] = rando[7:2];
 assign gate1 = slow_counter[15] & slow_counter[12] & slow_counter[13] & slow_counter[14];
 assign gate2 = slow_counter[15] & ~slow_counter[11] & slow_counter[13] & slow_counter[14];
 assign gate3 = slow_counter[15] & slow_counter[12] & ~slow_counter[13] & ~slow_counter[14];
 assign gate4 = ~slow_counter[15] & slow_counter[9] & ~slow_counter[13] & slow_counter[14];
-
+assign gate5 = ~slow_counter[12] & ~slow_counter[13] ;
 
 voice #(.VOICE(VOICETEST)) osc1 (
 	.sample_clock(sample_clock),
 	.rst(rst),
-  	.note(60),
-  	.envelope_attack(8'hf0),
-  	.envelope_decay(rando >> 2),
+	.note(60),
+	.envelope_attack(8'hf0),
+	.envelope_decay(rando >> 2),
 	.gate(gate1),
 	.out(osc1_out)
 );
 voice #(.VOICE(VOICETEST)) osc2 (
 	.sample_clock(sample_clock),
 	.rst(rst),
-  	.note(64),
-  	.envelope_attack(8'hf0),
-  	.envelope_decay(rando),
+	.note(64),
+	.envelope_attack(8'hf0),
+	.envelope_decay(rando),
 	.gate(gate2),
 	.out(osc2_out)
 );
 voice #(.VOICE(VOICETEST)) osc3 (
 	.sample_clock(sample_clock),
 	.rst(rst),
-  	.note(rando >> 1),
-  	.envelope_attack(8'hf0),
-  	.envelope_decay(rando),
+	.note(rando >> 1),
+	.envelope_attack(8'hf0),
+	.envelope_decay(rando),
 	.gate(gate3),
 	.out(osc3_out)
 );
 voice #(.VOICE(VOICETEST)) osc4 (
 	.sample_clock(sample_clock),
 	.rst(rst),
-  	.note(65),
-  	.envelope_attack(8'hf0),
-  	.envelope_decay(rando),
+	.note(65),
+	.envelope_attack(8'hf0),
+	.envelope_decay(rando),
 	.gate(gate4),
 	.out(osc4_out)
 );
 
-voice #(.VOICE(VOICETEST)) osc5 (
+cymbal cymbal1 (
 	.sample_clock(sample_clock),
 	.rst(rst),
-  	.note(59),
-  	.envelope_attack(8'hf0),
-  	.envelope_decay(rando >> 4),
-	.gate(gate1),
+	.envelope_attack(8'hf0),
+	.envelope_decay(rando),
+	.gate(gate5),
 	.out(osc5_out)
 );
+
+/* voice #(.VOICE(VOICETEST)) osc5 ( */
+/* 	.sample_clock(sample_clock), */
+/* 	.rst(rst), */
+/*   	.note(59), */
+/*   	.envelope_attack(8'hf0), */
+/*   	.envelope_decay(rando >> 4), */
+/* 	.gate(gate1), */
+/* 	.out(osc5_out) */
+/* ); */
 voice #(.VOICE(VOICETEST)) osc6 (
 	.sample_clock(sample_clock),
 	.rst(rst),

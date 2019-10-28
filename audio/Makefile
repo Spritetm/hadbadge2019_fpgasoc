@@ -1,6 +1,6 @@
 PROJ=minimal
 DUT=oscillator
-INCLUDES=oscillator.v dac.v button_number.v lfsr.v amplifier.v envelope.v
+INCLUDES=oscillator.v dac.v button_number.v lfsr.v amplifier.v envelope.v cymbal.v
 CONSTR=had19_proto2.lpf
 TRELLIS=/usr/share/trellis
 

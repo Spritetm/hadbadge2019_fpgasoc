@@ -13,9 +13,6 @@ module ar #(
 	output [BITDEPTH-1:0] out
 );
 
-// DANGER: if change bit depth, need to pass that info on to submodules
-
-
 wire [7:0] volume;
 envelope myenv (
 	.sample_clock(sample_clock),
