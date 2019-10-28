@@ -97,12 +97,16 @@ enum
   ITF_NUM_HID,
 #endif
 
+#if CFG_TUD_DFU_RT
+  ITF_NUM_DFU_RT,
+#endif
+
   ITF_NUM_TOTAL
 };
 
 enum
 {
-  CONFIG_TOTAL_LEN = TUD_CONFIG_DESC_LEN + CFG_TUD_CDC*TUD_CDC_DESC_LEN + CFG_TUD_MSC*TUD_MSC_DESC_LEN + CFG_TUD_HID*TUD_HID_DESC_LEN
+  CONFIG_TOTAL_LEN = TUD_CONFIG_DESC_LEN + CFG_TUD_CDC*TUD_CDC_DESC_LEN + CFG_TUD_MSC*TUD_MSC_DESC_LEN + CFG_TUD_HID*TUD_HID_DESC_LEN + CFG_TUD_DFU_RT*TUD_DFU_RT_DESC_LEN
 };
 
 #if CFG_TUSB_MCU == OPT_MCU_LPC175X_6X || CFG_TUSB_MCU == OPT_MCU_LPC177X_8X || CFG_TUSB_MCU == OPT_MCU_LPC40XX
@@ -132,7 +136,12 @@ uint8_t const desc_configuration[] =
 
 #if CFG_TUD_HID
   // Interface number, string index, protocol, report descriptor len, EP In address, size & polling interval
-  TUD_HID_DESCRIPTOR(ITF_NUM_HID, 6, HID_PROTOCOL_NONE, sizeof(desc_hid_report), 0x84, 16, 10)
+  TUD_HID_DESCRIPTOR(ITF_NUM_HID, 6, HID_PROTOCOL_NONE, sizeof(desc_hid_report), 0x84, 16, 10),
+#endif
+
+#if CFG_TUD_DFU_RT
+  // Interface number, string index, attributes, detach timeout, transfer size */
+  TUD_DFU_RT_DESCRIPTOR(ITF_NUM_DFU_RT, 7, 0x0d, 1000, 4096),
 #endif
 };
 
@@ -162,7 +171,8 @@ char const* string_desc_arr [] =
   "0000000000000000",            // 3: Serials, should use chip ID
   "TinyUSB CDC",                 // 4: CDC Interface
   "TinyUSB MSC",                 // 5: MSC Interface
-  "TinyUSB HID"                  // 6: HID
+  "TinyUSB HID",                 // 6: HID
+  "DFU Runtime interface",       // 7: DFU Runtime
 };
 
 static uint16_t _desc_str[32];

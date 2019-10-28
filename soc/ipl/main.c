@@ -414,3 +414,23 @@ void tud_cdc_rx_cb(uint8_t itf) {
 	(void)itf;
 }
 
+// Invoked on DFU_DETACH request to reboot to the bootloader
+void tud_dfu_rt_reboot_to_dfu(void)
+{
+	volatile uint32_t *psram  = (volatile uint32_t *)(MACH_RAM_START);
+	volatile uint32_t *reboot = (volatile uint32_t *)(MISC_OFFSET + MISC_FLASH_SEL_REG);
+
+	// Debug
+	printf("REBOOT\n");
+
+	// Set MAGIC value in PSRAM
+	psram[0] = 0x46464444;
+	psram[1] = 0x21215555;
+	cache_flush((void*)&psram[0], (void*)&psram[2]);
+
+	// Reboot
+	*reboot = 0xD0F1A500;
+
+	// Wait indefinitely
+	while (1);
+}
