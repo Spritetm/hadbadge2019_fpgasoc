@@ -1,18 +1,13 @@
 //tjflt - Tiny Janky / Journalling Flash Translation Layer
 /*
- * Copyright 2019 Jeroen Domburg <jeroen@spritesmods.com>
- * This is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this software.  If not, see <https://www.gnu.org/licenses/>.
+ * Copyright 2019 Jeroen Domburg <jeroen@spritesmods.com>. Licensed under 
+ * the beer-ware license.
+ * ----------------------------------------------------------------------------
+ * "THE BEER-WARE LICENSE" (Revision 42):
+ * <jeroen@spritesmods.com> wrote this file.  As long as you retain this notice you
+ * can do whatever you want with this stuff. If we meet some day, and you think
+ * this stuff is worth it, you can buy me a beer in return. -Jeroen
+ * ----------------------------------------------------------------------------
  */
 
 #include <stdio.h>
