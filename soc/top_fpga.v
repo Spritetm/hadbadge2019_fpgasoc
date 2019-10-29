@@ -127,6 +127,7 @@ module top_fpga(
 	wire flash_oe;
 	wire flash_bus_qpi;
 	wire flash_sclk;
+	wire flash_cs_in;
 	wire [29:0] genio_in;
 	wire [29:0] genio_out;
 	wire [29:0] genio_oe;
@@ -189,7 +190,7 @@ module top_fpga(
 		.psramb_sout(psramb_sout),
 		.psramb_oe(psramb_oe),
 
-		.flash_nce(flash_cs),
+		.flash_nce(flash_cs_in),
 		.flash_sclk(flash_sclk),
 		.flash_sin(flash_sin),
 		.flash_sout(flash_sout),
@@ -262,10 +263,31 @@ module top_fpga(
 		TRELLIS_IO #(.DIR("BIDIR")) psramb_sio_tristate[i] (.I(psramb_sout[i]),.T(!psramb_oe),.B(psramb_sio[i]),.O(psramb_sin[i]));
 	end
 
-	TRELLIS_IO #(.DIR("BIDIR")) flash_tristate_mosi (.I(flash_sout[0]),.T(flash_bus_qpi && !flash_oe),.B(flash_mosi),.O(flash_sin[0]));
-	TRELLIS_IO #(.DIR("BIDIR")) flash_tristate_miso (.I(flash_sout[1]),.T(!flash_bus_qpi || !flash_oe),.B(flash_miso),.O(flash_sin[1]));
-	TRELLIS_IO #(.DIR("BIDIR")) flash_tristate_wp (.I(flash_sout[2]),.T(flash_bus_qpi && !flash_oe),.B(flash_wp),.O(flash_sin[2]));
-	TRELLIS_IO #(.DIR("BIDIR")) flash_tristate_hold (.I(flash_sout[3]),.T(flash_bus_qpi && !flash_oe),.B(flash_hold),.O(flash_sin[3]));
+	//todo: less jank
+	wire rst;
+	assign rst = 0;
+	//Note: Flash I/Os are registered at both output as well as input.
+	wire [3:0] flash_sout_registered;
+	wire [3:0] flash_sin_direct;
+	//Also pipeline OE, as well as CS for usermclk ena
+	reg flash_oe_reg, flash_cs_reg;
+	always @(posedge clk48m) begin
+		flash_oe_reg <= flash_oe;
+		flash_cs_reg <= flash_cs_in;
+	end
+	for (i=0; i<3; i++) begin
+		OFS1P3DX flash_reg_out[i](.CD(rst), .D(flash_sout[i]), .SP(1'b1), .SCLK(clk48m), .Q(flash_sout_registered[i]));
+		IFS1P3DX flash_reg_in[i](.CD(rst), .D(flash_sin_direct[i]), .SP(1'b1), .SCLK(clk48m), .Q(flash_sin[i]));
+	end
+	OFS1P3DX flash_reg_cs(.CD(rst), .D(flash_cs_in), .SP(1'b1), .SCLK(clk48m), .Q(flash_cs));
+	TRELLIS_IO #(.DIR("BIDIR")) flash_tristate_mosi (.I(flash_sout_registered[0]),.T(flash_bus_qpi && !flash_oe_reg),.B(flash_mosi),.O(flash_sin_direct[0]));
+	TRELLIS_IO #(.DIR("BIDIR")) flash_tristate_miso (.I(flash_sout_registered[1]),.T(!flash_bus_qpi || !flash_oe_reg),.B(flash_miso),.O(flash_sin_direct[1]));
+	TRELLIS_IO #(.DIR("BIDIR")) flash_tristate_wp (.I(flash_sout_registered[2]),.T(flash_bus_qpi && !flash_oe_reg),.B(flash_wp),.O(flash_sin_direct[2]));
+	TRELLIS_IO #(.DIR("BIDIR")) flash_tristate_hold (.I(flash_sout_registered[3]),.T(flash_bus_qpi && !flash_oe_reg),.B(flash_hold),.O(flash_sin_direct[3]));
+	USRMCLK usrmclk_inst (
+		.USRMCLKI(flash_sclk),
+		.USRMCLKTS(flash_cs_reg)
+	) /* synthesis syn_noprune=1 */;
 
 `ifdef BADGE_V3
 	for (i=0; i<30; i++) begin
@@ -287,10 +309,6 @@ module top_fpga(
 		TRELLIS_IO #(.DIR("BIDIR")) pmod_tristate[i] (.B(pmod[i]), .I(pmod_out[i]), .O(pmod_in[i]), .T(!pmod_oe[i]));
 	end
 
-	USRMCLK usrmclk_inst (
-		.USRMCLKI(flash_sclk),
-		.USRMCLKTS(flash_cs)
-	) /* synthesis syn_noprune=1 */;
 
 	//Note: JTAG specs say we should sample on the rising edge of TCK. However, the LA readings show that 
 	//this would be cutting it very close wrt sample/hold times... what's wise here?

@@ -72,7 +72,7 @@ module qpimem_iface #(
 	parameter integer READDUMMY = 7,
 	parameter integer WRITEDUMMY = 0,
 	parameter [3:0] DUMMYVAL = 0,
-	parameter [0:0] CMD_IS_SPI = 0
+	parameter [0:0] CMD_IS_SPI = 0,
 /*
 	//w25q32:
 	//NOTE: untested/not working. Write is probably impossible to get to work (because it's a flash part).
@@ -81,8 +81,9 @@ module qpimem_iface #(
 	parameter integer READDUMMY = 7,
 	parameter [3:0] DUMMYVAL = 'hf,
 	parameter integer WRITEDUMMY = 1,
-	parameter [0:0] CMD_IS_SPI = 1
+	parameter [0:0] CMD_IS_SPI = 1,
 */
+	parameter REGISTERED_IO = 1,
 ) (
 	input clk,
 	input rst,
@@ -140,6 +141,8 @@ parameter STATE_SPIXFER_CLAIMED = 5;
 parameter STATE_SPIXFER_DOXFER = 6;
 parameter STATE_SPIXFER_LASTBIT = 7;
 parameter STATE_TRANSEND = 8;
+
+parameter READDUMMY_REAL = READDUMMY + (REGISTERED_IO * 2);
 
 reg [7:0] spi_xfer_wdata_latched;
 reg [7:0] spi_xfer_rdata_shifted;
@@ -216,6 +219,7 @@ always @(posedge clk) begin
 			spi_sout <= addr[bitno*4+3 -: 4];
 			if (bitno == 0) begin
 				if ((do_read ? READDUMMY : WRITEDUMMY)==0) begin
+					//No dummies needed.
 					state <= STATE_DATA;
 					bitno <= 7;
 					if (curr_is_read) begin
@@ -298,6 +302,9 @@ always @(posedge clk) begin
 			spi_xfer_wdata_latched <= {spi_xfer_wdata_latched[6:0], 1'h0};
 			spi_xfer_rdata_shifted <= {spi_xfer_rdata_shifted[6:0], spi_sin_sampled[1]};
 			if (bitno == 0) begin
+				if (REGISTERED_IO) begin
+					bitno <= 2;
+				end
 				state <= STATE_SPIXFER_LASTBIT;
 			end else begin
 				bitno <= bitno - 1;
@@ -306,7 +313,10 @@ always @(posedge clk) begin
 			clk_active <= 0;
 			//sample final input bit, send to output
 			spi_xfer_rdata <= {spi_xfer_rdata_shifted[6:0], spi_sin_sampled[1]};
-			state <= STATE_SPIXFER_CLAIMED;
+			if (bitno == 0) begin
+				state <= STATE_SPIXFER_CLAIMED;
+			end
+			bitno <= bitno - 1;
 		end else begin //state=STATE_TRANSEND
 			spi_ncs <= 1;
 			spi_oe <= 0;
