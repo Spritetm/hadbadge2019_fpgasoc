@@ -12,17 +12,17 @@ unsigned int setup_count();
 // Contains found command line options
 class CmdLineOptions {
 public:
-	CmdLineOptions();
+	CmdLineOptions() {};
 
 	// Option fields - all public
 	// For how many fields to run
-	unsigned int num_fields;
+	unsigned int num_fields = 3;
 
 	// Which setup function to run
 	setup_fn setup = setups[0];
 
 	// Whether we should trace (generates large files)
-	bool trace_on;
+	bool trace_on = false;
 
 	// Factory method: creates from command line
 	static CmdLineOptions parse(int argc, char**argv);
