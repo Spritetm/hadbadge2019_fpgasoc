@@ -7,7 +7,7 @@ TARGET_ELF := $(APPNAME).elf
 TARGET_BIN := $(APPNAME).bin
 TARGET_MAP := $(APPNAME).map
 TARGET_SVF := $(APPNAME).svf
-OBJS = main.o lcd.o UGUI/ugui.o
+OBJS = main.o lcd.o
 OBJS += tinyusb/src/device/usbd.o tinyusb/src/device/usbd_control.o tinyusb/src/tusb.o
 OBJS += tinyusb/src/common/tusb_fifo.o
 OBJS += tinyusb/src/class/msc/msc_device.o tinyusb/src/class/midi/midi_device.o
@@ -15,12 +15,12 @@ OBJS += tinyusb/src/class/cdc/cdc_device.o tinyusb/src/class/hid/hid_device.o
 OBJS += dcd_tntusb.o usb_descriptors.o hexdump.o flash.o
 OBJS += fatfs/source/ff.o fatfs/source/ffunicode.o loadapp.o elfload/elfload.o
 OBJS += elfload/elfreloc_riscv.o lodepng.o bgnd.o tileset-default.o
-OBJS += tjftl/tjftl.o fs.o gfx_load.o user_memfn.o
+OBJS += tjftl/tjftl.o fs.o gfx_load.o user_memfn.o yxml/yxml.o
 LIBS := gloss/libgloss.a
 LIBS_TOOLCHAIN := -lm -lgcc
 LDSCRIPT := gloss/ldscript.ld
 
-CFLAGS += -ggdb -I. -Isyscallable -Ilodepng -IUGUI -Iusb -Igloss -Itinyusb/src -Ifatfs/source -I../tinyusb/src -I../
+CFLAGS += -ggdb -I. -Isyscallable -Ilodepng -IUGUI -Iusb -Igloss -Itinyusb/src -Ifatfs/source -I../tinyusb/src -I../ -Iyxml
 LDFLAGS += -Wl,-T,$(LDSCRIPT) -Wl,-Map,$(TARGET_MAP) -Lgloss
 
 export CC AR LD OBJCOPY CFLAGS ASFLAGS LDFLAGS APPNAME
