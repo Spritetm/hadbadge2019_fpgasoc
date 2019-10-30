@@ -127,6 +127,8 @@ module top_fpga(
 	wire flash_oe;
 	wire flash_bus_qpi;
 	wire flash_sclk;
+	wire flash_cs;
+	wire flash_selected;
 	wire [29:0] genio_in;
 	wire [29:0] genio_out;
 	wire [29:0] genio_oe;
@@ -190,6 +192,7 @@ module top_fpga(
 		.psramb_oe(psramb_oe),
 
 		.flash_nce(flash_cs),
+		.flash_selected(flash_selected),
 		.flash_sclk(flash_sclk),
 		.flash_sin(flash_sin),
 		.flash_sout(flash_sout),
@@ -289,7 +292,7 @@ module top_fpga(
 
 	USRMCLK usrmclk_inst (
 		.USRMCLKI(flash_sclk),
-		.USRMCLKTS(flash_cs)
+		.USRMCLKTS(!flash_selected)
 	) /* synthesis syn_noprune=1 */;
 
 	//Note: JTAG specs say we should sample on the rising edge of TCK. However, the LA readings show that 

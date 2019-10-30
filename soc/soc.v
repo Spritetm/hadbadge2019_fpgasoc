@@ -62,6 +62,7 @@ module soc(
 		output psramb_oe,
 		
 		output flash_nce,
+		output flash_selected,
 		output flash_sclk,
 		input [3:0] flash_sin,
 		output [3:0] flash_sout,
@@ -841,6 +842,7 @@ module soc(
 
 		.spi_clk(flash_sclk),
 		.spi_ncs(flash_nce),
+		.spi_selected(flash_selected),
 		.spi_sout(flash_sout),
 		.spi_sin(flash_sin),
 		.spi_oe(flash_oe),

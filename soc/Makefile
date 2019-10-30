@@ -5,7 +5,7 @@ BADGE_VER ?= 2
 PROJ=soc
 #Seed for nextpnr. Change this to another random value if you happen to run 
 #into a situation that mis-synths or takes extremely long to synth the SoC.
-SEED = 58
+SEED = 59
 
 # Sources
 	# Base
@@ -53,6 +53,10 @@ SRC += $(addprefix qpi_cache/, \
 	qpimem_iface_intl.v \
 	simple_mem.v \
 	simple_mem_words.v \
+)
+
+SRC_SIM += $(addprefix qpi_cache/, \
+	ecp5_ioregs_sim.v \
 )
 
 	# Video
