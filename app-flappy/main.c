@@ -27,17 +27,14 @@ extern volatile uint32_t MISC[];
 extern volatile uint32_t GFXREG[];
 #define GFX_REG(i) GFXREG[(i)/4]
 
-extern uint32_t GFXPAL[];
+//Manually point to sprites memory location
 uint32_t *GFXSPRITES = (uint32_t *)0x5000C000;
-extern uint32_t GFXTILES[];
-extern uint32_t GFXTILEMAPA[];
-extern uint32_t GFXTILEMAPB[];
 
 //Define some tilemap data
 #define FLAPPY_GROUND_INDEX 237
 #define FLAPPY_GROUND_Y 19
 #define FLAPPY_BRICK_INDEX 265
-#define FLAPPY_PLAYER_INDEX 135
+#define FLAPPY_PLAYER_INDEX 256
 
 //Define game parameters
 #define FLAPPY_PIPE_GAP 7
@@ -155,7 +152,10 @@ void main(int argc, char **argv) {
 	//Load up the default tileset and font.
 	//ToDo: loading pngs takes a long time... move over to pcx instead.
 	printf("Loading tiles...\n");
-	int gfx_tiles_err = gfx_load_tiles_mem(GFXTILES, &GFXPAL[0], &_binary_flappy_tileset_png_start, (&_binary_flappy_tileset_png_end-&_binary_flappy_tileset_png_start));
+	int gfx_tiles_err = 
+	gfx_load_tiles_mem(GFXTILES, &GFXPAL[0], 
+		&_binary_flappy_tileset_png_start, 
+		(&_binary_flappy_tileset_png_end - &_binary_flappy_tileset_png_start));
 	printf("Tiles initialized err=%d\n", gfx_tiles_err);
 
 	
@@ -171,8 +171,8 @@ void main(int argc, char **argv) {
 		printf("Error opening console!\n");
 	}
 
-	//Now, use a library function to load the image into the framebuffer memory. This function will also set up the palette entries,
 	//we tell it to start writing from entry 0.
+	//Now, use a library function to load the image into the framebuffer memory. This function will also set up the palette entries,
 	//PAL offset changes the colors that the 16-bit png maps to?
 	gfx_load_fb_mem(fbmem, &GFXPAL[FB_PAL_OFFSET], 4, 512, &_binary_bgnd_png_start, (&_binary_bgnd_png_end-&_binary_bgnd_png_start));
 
@@ -280,7 +280,7 @@ void main(int argc, char **argv) {
 		//Print score at 0,0
 		//NOTE: this seems to be a *very* slow operation. Adding a second fprintf will have a noticeable
 		//slowdown effect. Removing this fprintf will put the game into ludicrous speed mode. Need to fix!
-		fprintf(console, "\0330X\0330Y%dm\03324XFLAPPY", (m_score >> 10)); 
+		fprintf(console, "\0330X\0330Y%dm %d\03324XFLAPPY", (m_score >> 10), gfx_tiles_err); 
 
 		//Flappy score increases with distance which is simply a function of time
 		m_score++;
