@@ -31,10 +31,10 @@ extern volatile uint32_t GFXREG[];
 uint32_t *GFXSPRITES = (uint32_t *)0x5000C000;
 
 //Define some tilemap data
-#define FLAPPY_GROUND_INDEX 237
+#define FLAPPY_GROUND_INDEX 247
 #define FLAPPY_GROUND_Y 19
-#define FLAPPY_BRICK_INDEX 265
-#define FLAPPY_PLAYER_INDEX 256
+#define FLAPPY_BRICK_INDEX 136
+#define FLAPPY_PLAYER_INDEX 184
 
 //Define game parameters
 #define FLAPPY_PIPE_GAP 7
@@ -233,7 +233,7 @@ void main(int argc, char **argv) {
 		dx += FLAPPY_SPEED;
 
 		//Draw the player sprite
-		__sprite_set(0, 160, m_player_y, 32, 32, FLAPPY_PLAYER_INDEX, 0);	
+		__sprite_set(0, FLAPPY_PLAYER_X*16, m_player_y, 32, 32, FLAPPY_PLAYER_INDEX, 0);	
 
 		if ((m_score % 500) == 0) {
 			m_player_y += m_player_velocity;
