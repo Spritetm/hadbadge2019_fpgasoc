@@ -22,8 +22,8 @@ SRC = \
 
 SRC_SYNTH = \
 	mul_18x18_ecp5.v \
-	pll.v \
 	rng.v \
+	sysmgr.v \
 	top_fpga.v \
 	$(NULL)
 

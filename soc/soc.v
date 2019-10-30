@@ -31,7 +31,10 @@
 
 
 module soc(
+		input clk24m,
 		input clk48m,
+		input clk96m,
+		input rst,
 		input clkint, //internal clock of ecp5, <24MHz, used for rng
 		input [7:0] btn, 
 		output [8:0] led,
@@ -112,13 +115,6 @@ module soc(
 
 	reg fpga_reload=0;
 	assign programn = ~fpga_reload;
-	reg [5:0] reset_cnt = 0;
-	reg resetn=0;
-	wire rst = !resetn;
-	always @(posedge clk48m) begin
-		if (!resetn) reset_cnt <= reset_cnt + 1;
-		resetn <= reset_cnt[5];
-	end
 
 	wire mem_ready;
 	wire mem_ren;
@@ -545,7 +541,7 @@ module soc(
 
 	lcdiface lcdiface(
 		.clk(clk48m),
-		.nrst(resetn),
+		.nrst(~rst),
 		.addr(mem_addr[4:2]),
 		.wen(lcd_select && mem_wstrb==4'b1111),
 		.ren(lcd_select && mem_wstrb==4'b0000),

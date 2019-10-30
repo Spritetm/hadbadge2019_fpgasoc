@@ -92,7 +92,10 @@ module top_fpga(
 	wire adc4;
 	assign adc4 = ~adcref4;
 
+	wire clk24m;
 	wire clk48m;
+	wire clk96m;
+	wire rst_soc;
 
 	wire clkint;
 	OSCG #(
@@ -157,8 +160,11 @@ module top_fpga(
 `endif
 
 	soc soc (
+		.clk24m(clk24m),
 		.clk48m(clk48m),
+		.clk96m(clk96m),
 		.clkint(clkint),
+		.rst(rst_soc),
 		.btn(btn),
 		.led(led),
 		.uart_tx(uart_tx),
@@ -237,12 +243,14 @@ module top_fpga(
 		.pmod_oe(pmod_oe)
 	);
 
-
-	pll_8_48 pll(
-		.clki(clk),
-		.clko(clk48m)
+	sysmgr sysmgr_I (
+		.clk_in(clk),
+		.rst_in(1'b0),
+		.clk_24m(clk24m),
+		.clk_48m(clk48m),
+		.clk_96m(clk96m),
+		.rst_out(rst_soc)
 	);
-//	assign clk=clk48m;
 
 	hdmi_encoder hdmi_encoder(
 		.clk_8m(clk),
