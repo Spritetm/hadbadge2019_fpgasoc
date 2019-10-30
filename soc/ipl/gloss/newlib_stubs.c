@@ -1,3 +1,18 @@
+/*
+ * Copyright 2019 Jeroen Domburg <jeroen@spritesmods.com>
+ * This is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This software is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this software.  If not, see <https://www.gnu.org/licenses/>.
+ */
 #include <stdint.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -132,6 +147,7 @@ int _open(const char *name, int flags, int mode) {
 			fd_entry[i].flags=FD_FLAG_OPEN;
 			fd_entry[i].type=FD_TYPE_FATFS;
 		} else {
+			free(fd_entry[i].fatfcb);
 			i=-1;
 		}
 		remap_fatfs_errors(r);
@@ -328,7 +344,9 @@ char * _sbrk (int nbytes) {
 	heap_ptr += nbytes;
 	if (heap_ptr > &_stack_end) {
 		printf("ERROR: _sbrk (IPL): Malloc is out of memory! (heap_start=%p heap_ptr=%p stack_end=%p\n", &_end, heap_ptr, &_stack_end);
-		abort();
+		//Don't abort as it will just re-enter the IPL with the heap chock full.
+		volatile int *p=0;
+		*p=1;
 	}
 	return base;
 }

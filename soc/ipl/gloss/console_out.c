@@ -1,3 +1,18 @@
+/*
+ * Copyright 2019 Jeroen Domburg <jeroen@spritesmods.com>
+ * This is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This software is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Foobar.  If not, see <https://www.gnu.org/licenses/>.
+ */
 
 //Functions here give a way to printf() text to the screen. It uses one of the
 //tile maps (a by default) as a console, and assumes an ASCII charset is loaded into that.
@@ -117,7 +132,7 @@ static void console_write_char(char c) {
 }
 
 
-int console_write(char *data, int len) {
+int console_write(const char *data, int len) {
 	for (int i=0; i<len; i++) console_write_char(data[i]);
 	return len;
 }

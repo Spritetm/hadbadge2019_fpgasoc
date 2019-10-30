@@ -1,4 +1,14 @@
 //tjflt - Tiny Janky / Journalling Flash Translation Layer
+/*
+ * Copyright 2019 Jeroen Domburg <jeroen@spritesmods.com>. Licensed under 
+ * the beer-ware license.
+ * ----------------------------------------------------------------------------
+ * "THE BEER-WARE LICENSE" (Revision 42):
+ * <jeroen@spritesmods.com> wrote this file.  As long as you retain this notice you
+ * can do whatever you want with this stuff. If we meet some day, and you think
+ * this stuff is worth it, you can buy me a beer in return. -Jeroen
+ * ----------------------------------------------------------------------------
+ */
 
 #include <stdio.h>
 #include <stdint.h>
@@ -113,6 +123,9 @@ static bool read_sect(tjftl_t *tj, int blk, int sect_in_blk, uint8_t *buf) {
 static bool write_blkhdr(tjftl_t *tj, int blk, const tjftl_block_t *hdr) {
 	int addr=blk*BLKSZ;
 	bool ret=tj->flash_program(addr, (uint8_t*)hdr, sizeof(tjftl_block_t), tj->flashcb_arg);
+	if (!ret) {
+		TJ_MSG("Write_blkhdr: flash_program failed at addr %d\n", addr);
+	}
 	return ret;
 }
 
@@ -194,8 +207,14 @@ static bool blk_initialize(tjftl_t *tj, int blkno, tjftl_block_t *blkh) {
 	blkh->serial=tj->current_serial;
 	bool ret;
 	ret=tj->flash_erase(blkno*BLKSZ, tj->flashcb_arg);
-	if (!ret) return false;
+	if (!ret) {
+		TJ_MSG("blk_initialize: flash_erase of block %d failed!\n", blkno);
+		return false;
+	}
 	ret=write_blkhdr(tj, blkno, blkh);
+	if (!ret) {
+		TJ_MSG("blk_initialize: write_blkhdr of block %d failed!\n", blkno);
+	}
 	return ret;
 }
 
@@ -413,7 +432,7 @@ bool tjftl_write(tjftl_t *tj, int lba, const uint8_t *buf) {
 	
 //	TJ_MSG("tjfl_write lba %d, current_write_block %d\n", lba, tj->current_write_block);
 	//First, find current version of the block and mark as maybe-superseded.
-	//cache doesn't get a speed bump from non-superseded sectors, so we mark everything as superseded 
+	//cache doesn't get a speed boost from non-superseded sectors, so we mark everything as superseded 
 	//from the start when we initially write the sector.
 #if !CACHE_LBALOC 
 	int blkno, sect_in_blk;
@@ -440,7 +459,10 @@ bool tjftl_write(tjftl_t *tj, int lba, const uint8_t *buf) {
 				//Found an invalid/erased block! Initialize it.
 				TJ_MSG("tjfl_write: %d is invalid or empty: using it\n", blkno);
 				ret=blk_initialize(tj, blkno, &blkh);
-				if (!ret) return false;
+				if (!ret) {
+				TJ_MSG("tjftl_write: Block initialize failed\n");
+					return false;
+				}
 				tj->current_write_block = blkno;
 			} else {
 				//No dice.
@@ -450,11 +472,18 @@ bool tjftl_write(tjftl_t *tj, int lba, const uint8_t *buf) {
 				blkno++;
 				if (blkno>=tj->backing_blks) blkno=0;
 			}
-		} while (tj->current_write_block == -1);
+		} while (tj->current_write_block == -1 && blkno!=find_start);
 	} else {
 		//We already have an active block. Grab its header.
 		ret=read_blkhdr(tj, tj->current_write_block, &blkh);
-		if (!ret) return false;
+		if (!ret) {
+			TJ_MSG("Huh? Read_blkhdr failed for block %d\n", tj->current_write_block);
+			return false;
+		}
+	}
+	if (tj->current_write_block == -1) {
+		TJ_MSG("WtF, no free block found?\n");
+		return false;
 	}
 
 	//We have a currently-active block with some free space when we end up here.
@@ -463,7 +492,10 @@ bool tjftl_write(tjftl_t *tj, int lba, const uint8_t *buf) {
 	TJ_CHECK(free_sec_in_blk!=-1, "block should have free sec");
 //	TJ_MSG("Going to write data to blk %d sec %d\n", tj->current_write_block, free_sec_in_blk);
 	ret=write_sect(tj, tj->current_write_block, free_sec_in_blk, buf);
-	if (!ret) return false;
+	if (!ret) {
+		TJ_MSG("Write sect failed\n");
+		return false;
+	}
 	blkh.bd[free_sec_in_blk].lba=lba;
 	blkh.bd[free_sec_in_blk].lba_inv=~lba;
 #if CACHE_LBALOC
@@ -480,7 +512,10 @@ bool tjftl_write(tjftl_t *tj, int lba, const uint8_t *buf) {
 	}
 #endif
 	ret=write_blkhdr(tj, tj->current_write_block, &blkh);
-	if (!ret) return false;
+	if (!ret) {
+		TJ_MSG("Write block header failed\n");
+		return false;
+	}
 	cache_update(tj, lba, tj->current_write_block, free_sec_in_blk);
 	//see if we used up the current block; if so we need to find a new one next
 	//time. Also check if we need to gc.
@@ -492,7 +527,10 @@ bool tjftl_write(tjftl_t *tj, int lba, const uint8_t *buf) {
 		//Garbage collect if we run out of free blocks, but not if we're already collecting garbage.
 		if (tj->free_blk_cnt<GC_MIN_FREE_BLK_CNT && tj->current_gc_block==-1) {
 			bool r=garbage_collect(tj);
-			if (!r) return false;
+			if (!r) {
+				TJ_MSG("Garbage collect failed.\n");
+				return false;
+			}
 		}
 	}
 	return true;

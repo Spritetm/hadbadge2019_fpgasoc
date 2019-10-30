@@ -1,8 +1,24 @@
+/*
+ * Copyright 2019 Jeroen Domburg <jeroen@spritesmods.com>
+ * This is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This software is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this software.  If not, see <https://www.gnu.org/licenses/>.
+ */
 #include <stdint.h>
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include "gloss/mach_defines.h"
+#include "gloss/mach_interrupt.h"
 #include "gloss/uart.h"
 #include <stdio.h>
 #include <lcd.h>
@@ -19,6 +35,7 @@
 #include "lodepng/lodepng.h"
 #include "gfx_load.h"
 #include "cache.h"
+#include "user_memfn.h"
 
 extern volatile uint32_t UART[];
 #define UART_REG(i) UART[(i)/4]
@@ -168,13 +185,12 @@ int show_main_menu(char *app_name) {
 		printf("Error opening console!\n");
 	}
 
-	//Initialize the LCD
-	lcd_init(simulated());
 	printf("GFX inited. Yay!!\n");
 
 	printf("Loading bgnd...\n");
 	//This is the Hackaday logo background
 	gfx_load_fb_mem(lcdfb, &GFXPAL[FB_PAL_OFFSET], 4, 512, &_binary_bgnd_png_start, (&_binary_bgnd_png_end-&_binary_bgnd_png_start));
+
 	//Nuke the palette animation indexes to be black.
 	for (int x=0; x<10; x++) GFXPAL[FB_PAL_OFFSET+6+x]=0;
 	//Make sure image is in psram
@@ -198,6 +214,7 @@ int show_main_menu(char *app_name) {
 						"or insert an USB cable to modify the files on the flash. Have fun!"
 						"                       ";
 	int scrpos=0;
+
 	while(!done) {
 		p++;
 
@@ -280,8 +297,8 @@ int show_main_menu(char *app_name) {
 		}
 		old_btn=btn;
 	}
-
-	strcpy(app_name, menu.item[selected]);
+	
+	if (selected>=0) strcpy(app_name, menu.item[selected]);
 	for (int i=0; i<menu.no_items; i++) free(menu.item[i]);
 
 	//Set tilemaps to default 1-to-1 mapping
@@ -291,6 +308,7 @@ int show_main_menu(char *app_name) {
 	GFX_REG(GFX_TILEB_OFF)=(0<<16)+(0&0xffff);
 	GFX_REG(GFX_TILEB_INC_COL)=(0<<16)+(64&0xffff);
 	GFX_REG(GFX_TILEB_INC_ROW)=(64<<16)+(0&0xffff);
+
 
 	//Clear console
 	fprintf(console, "\0330M\033C\0330A"); //Set map to tilemap A, clear tilemap, set attr to 0
@@ -312,33 +330,52 @@ void start_app(char *app) {
 	maincall(0, NULL);
 }
 
+static void
+usb_setup_serial_no(void)
+{
+	extern char const* string_desc_arr[];
+	uint64_t serial = flash_get_uid(FLASH_SEL_INT);
+	sprintf((void*)string_desc_arr[3], "%016llx", serial);
+}
+
 extern uint32_t *irq_stack_ptr;
 
 #define IRQ_STACK_SIZE (16*1024)
 void main() {
 	syscall_reinit();
+	user_memfn_set(malloc, realloc, free);
+	verilator_start_trace();
+	//When testing in Verilator, put code that pokes your hardware here.
+
 	//Initialize IRQ stack to be bigger than the bootrom stack
 	uint32_t *int_stack=malloc(IRQ_STACK_SIZE);
 	irq_stack_ptr=int_stack+(IRQ_STACK_SIZE/sizeof(uint32_t));
 
 	//Initialize USB subsystem
 	printf("IPL main function.\n");
+	usb_setup_serial_no();
 	tusb_init();
 	printf("USB inited.\n");
 	
 	//Initialize filesystem (fatfs, flash translation layer)
 	fs_init();
 	printf("Filesystem inited.\n");
+
+	//Initialize the LCD
+	lcd_init(simulated());
+
 	while(1) {
 		MISC_REG(MISC_LED_REG)=0xfffff;
 		printf("IPL running.\n");
-		char app_name[256];
+		char app_name[256]="*na*";
 		show_main_menu(app_name);
 		printf("IPL: starting app %s\n", app_name);
 		usb_msc_off();
 		syscall_reinit();
+		user_memfn_set(NULL, NULL, NULL);
 		start_app(app_name);
 		syscall_reinit();
+		user_memfn_set(malloc, realloc, free);
 		printf("IPL: App %s returned.\n", app_name);
 	}
 }
@@ -376,3 +413,4 @@ void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts) {
 void tud_cdc_rx_cb(uint8_t itf) {
 	(void)itf;
 }
+

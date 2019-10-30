@@ -2,10 +2,40 @@
 Qpi interface. Note that this code assumes the chip already is in whatever state it needs to be to 
 accept read/write commands over a qpi interface, e.g. by having a microcontroller or state machine bitbang 
 the lines manually.
+*/
+/*
+ * Copyright (C) 2019  Jeroen Domburg <jeroen@spritesmods.com>
+ * All rights reserved.
+ *
+ * BSD 3-clause, see LICENSE.bsd
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *     * Redistributions of source code must retain the above copyright
+ *       notice, this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in the
+ *       documentation and/or other materials provided with the distribution.
+ *     * Neither the name of the <organization> nor the
+ *       names of its contributors may be used to endorse or promote products
+ *       derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
-Instructions needed:
-ly68l6400: 0x35 <- goto qio mode
-w25q32: 0x50, 0x31 0x02 <- enable qio mode
+
+/*
+This has both an interface for 'automated' QPI reading/writing, currently used by the PSRAM, as well as 
+a method of sending user SPI commands, intended for flash writing and 'misc'.
 
 How to use:
 - Wait until is_idle is 1
@@ -19,21 +49,6 @@ Note:
 - Do_read/do_write should stay active as long as there's data to read/write. If it goes inactive,
   the current word will finish writing.
 - This code needs at least one dummy cycle on read.
-
-*WIP notes*
-Modifications for flash memory:
-Flash memory should already work well for the read scenario: poke do_read, hw auto-get bytes on next_word.
-For the write scenario, we need:
-- Set write enable latch (cmd 0x06)
-- Sector erase (cmd 0x20, address in SPI-mode)
-- Read status register 1 until non-busy (cmd 0x05)
-- Page program (can be SPI, 0x02)
-- Read SR1
-- Done!
-
-All of this can be done in SPI. (Page program is so slow that qpi doesn't improve things at
-our clock speed.) Means, we don't have to do qpi stuff and can just take a byte, push it out of MOSI,
-grab a byte from MISO at the time and return that.
 
 Wrt upgrading speed to 2x memory bus clock using a 2nd tap from the same PLL:
 (on needing domain-crossing flipflops)
@@ -57,13 +72,13 @@ module qpimem_iface #(
 	parameter integer READDUMMY = 7,
 	parameter integer WRITEDUMMY = 0,
 	parameter [3:0] DUMMYVAL = 0,
-	parameter [0:0] CMD_IS_SPI = 0 //Note: THIS IS LIKELY BROKEN if set to 1!
+	parameter [0:0] CMD_IS_SPI = 0
 /*
 	//w25q32:
 	//NOTE: untested/not working. Write is probably impossible to get to work (because it's a flash part).
 	parameter [7:0] READCMD = 'hEb,
 	parameter [7:0] WRITECMD = 'hA5,
-	parameter integer READDUMMY = 3,
+	parameter integer READDUMMY = 7,
 	parameter [3:0] DUMMYVAL = 'hf,
 	parameter integer WRITEDUMMY = 1,
 	parameter [0:0] CMD_IS_SPI = 1
@@ -132,7 +147,8 @@ reg [7:0] spi_xfer_rdata_shifted;
 assign is_idle = (state == STATE_IDLE) && !do_read && !do_write && !spi_xfer_claim;
 assign spi_xfer_idle = (state == STATE_SPIXFER_CLAIMED) && !do_spi_xfer;
 
-always @(negedge clk) begin
+//Note: technically not sampled anymore
+always @(*) begin
 	spi_sin_sampled <= spi_sin;
 end
 
@@ -178,11 +194,10 @@ always @(posedge clk) begin
 			spi_ncs <= 0;
 			spi_oe <= 1;
 			if (CMD_IS_SPI) begin
-				spi_sout <= {command[bitno],3'b0};
+				spi_sout <= {3'h6, command[bitno]};
 				if (bitno == 0) begin
 					state <= STATE_ADDRESS;
 					bitno <= 5;
-					spi_bus_qpi <= 1;
 				end else begin
 					bitno <= bitno - 1;
 				end
@@ -197,11 +212,12 @@ always @(posedge clk) begin
 			end
 		end else if (state == STATE_ADDRESS) begin
 			//Address, in qpi
+			spi_bus_qpi <= 1;
 			spi_sout <= addr[bitno*4+3 -: 4];
 			if (bitno == 0) begin
 				if ((do_read ? READDUMMY : WRITEDUMMY)==0) begin
-						state <= STATE_DATA;
-						bitno <= 7;
+					state <= STATE_DATA;
+					bitno <= 7;
 					if (curr_is_read) begin
 						//nop
 					end else begin
@@ -224,9 +240,9 @@ always @(posedge clk) begin
 			if (bitno==0) begin
 				//end of dummy cycle
 				state <= STATE_DATA;
+				spi_oe <= 0; //abuse one cycle for turnaround
 				if (curr_is_read) begin
 					bitno <= 7;
-					spi_oe <= 0; //abuse one cycle for turnaround
 				end else begin
 					//Make sure we already have the data to shift out.
 					data_shifted <= wdata_be;

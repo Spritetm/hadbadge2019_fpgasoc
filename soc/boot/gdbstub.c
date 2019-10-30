@@ -1,4 +1,5 @@
 // Copyright 2015-2016 Espressif Systems (Shanghai) PTE LTD
+// Copyright 2019 Jeroen Domburg
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -405,7 +406,19 @@ static int gdbReadCommand(GdbRegFile *frame) {
 	}
 }
 
+const char *int_desc[]={
+		"timer", "illegalinst", "unalig", "buserr", "usb", "unk", "unk", "unk",
+		"unk", "unk", "unk", "unk", "unk", "unk", "unk", "unk",
+		"unk", "unk", "unk", "unk", "unk", "unk", "unk", "unk",
+		"unk", "unk", "unk", "unk", "unk", "unk", "unk", "unk",
+	};
+
 GdbRegFile *gdb_panic_handler(GdbRegFile *frame, uint32_t reason) {
+	gdbPacketStr("\r\n!!! Flagrant System Error! Badge SoC over. Panic handler = very yes !!!\r\n\r\nInterrupt 0x");
+	gdbPacketHex(reason, 8);
+	gdbPacketStr(" (");
+	if (reason<32) gdbPacketStr(int_desc[reason]);
+	gdbPacketStr(") was called and we didn't like it one bit.\r\nThrow gdb at this serial port to know more.\r\n");
 	sendReason(frame);
 	while(gdbReadCommand(frame)!=ST_CONT);
 	LED[0]=0x3A;

@@ -21,6 +21,7 @@ uint8_t *fbmem;
 void main(int argc, char **argv) {
 	//We're running in app context. We have full control over the badge and can do with the hardware what we want. As
 	//soon as main() returns, however, we will go back to the IPL.
+	printf("Hello World app: main running\n");
 	
 	//Blank out fb while we're loading stuff by disabling all layers. This just shows the background color.
 	GFX_REG(GFX_BGNDCOL_REG)=0x202020; //a soft gray
@@ -29,18 +30,19 @@ void main(int argc, char **argv) {
 	//First, allocate some memory for the background framebuffer. We're gonna dump a fancy image into it. The image is
 	//going to be 8-bit, so we allocate 1 byte per pixel.
 	fbmem=calloc(FB_WIDTH,FB_HEIGHT);
+	printf("Hello World: framebuffer at %p\n", fbmem);
 	
 	//Tell the GFX hardware to use this, and its pitch. We also tell the GFX hardware to use palette entries starting
-	//from 0 for the frame buffer.
-	GFX_REG(GFX_FBPITCH_REG)=(0<<GFX_FBPITCH_PAL_OFF)|(FB_WIDTH<<GFX_FBPITCH_PITCH_OFF);
+	//from 128 for the frame buffer; the tiles left by the IPL will use palette entries 0-16 already.
+	GFX_REG(GFX_FBPITCH_REG)=(128<<GFX_FBPITCH_PAL_OFF)|(FB_WIDTH<<GFX_FBPITCH_PITCH_OFF);
 	//Set up the framebuffer address
 	GFX_REG(GFX_FBADDR_REG)=((uint32_t)fbmem);
 
 	//Now, use a library function to load the image into the framebuffer memory. This function will also set up the palette entries,
-	//we tell it to start writing from entry 0.
+	//we tell it to start writing from entry 128.
 	int png_size=(&_binary_bgnd_png_end-&_binary_bgnd_png_start);
-	int i=gfx_load_fb_mem(fbmem, &GFXPAL[0], 8, FB_WIDTH, &_binary_bgnd_png_start, png_size);
-	printf("gfx_load_mem: %d\n", i);
+	int i=gfx_load_fb_mem(fbmem, &GFXPAL[128], 8, FB_WIDTH, &_binary_bgnd_png_start, png_size);
+	if (i) printf("gfx_load_fb_mem: error %d\n", i);
 
 	//Flush the memory region to psram so the GFX hw can stream it from there.
 	cache_flush(fbmem, fbmem+FB_WIDTH*FB_HEIGHT);
@@ -65,9 +67,12 @@ void main(int argc, char **argv) {
 	//8-bit.
 	GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB_8BIT|GFX_LAYEREN_FB|GFX_LAYEREN_TILEA;
 
+	
+	printf("Hello World ready. Press a button to exit.\n");
 	//Wait until all buttons are released
 	while (MISC_REG(MISC_BTN_REG)) ;
 
 	//Wait until button A is pressed
 	while ((MISC_REG(MISC_BTN_REG) & BUTTON_A)==0) ;
+	printf("Hello World done. Bye!\n");
 }

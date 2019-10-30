@@ -1,5 +1,20 @@
 //Flash reading and programming routines.
 //Note: Hard-assumes a 256-byte page and a 4K minimal erase size.
+/*
+ * Copyright 2019 Jeroen Domburg <jeroen@spritesmods.com>
+ * This is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This software is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this software.  If not, see <https://www.gnu.org/licenses/>.
+ */
 
 #include "stdio.h"
 #include "flash.h"
@@ -41,6 +56,7 @@ static inline uint8_t flash_send_recv(uint8_t data) {
 #define CMD_ERASE32K 0x52
 #define CMD_ERASE64K 0xD8
 #define CMD_WAKE 0xAB
+#define CMD_VOLATILE_SR_WRITE_EN 0x50
 
 uint32_t flash_get_id(int flash_sel) {
 	int id=0;
@@ -67,6 +83,25 @@ uint64_t flash_get_uid(int flash_sel) {
 }
 
 void flash_read(int flash_sel, uint32_t addr, uint8_t *buff, int len) {
+#if 1
+	//Use DMA
+	MISC_REG(MISC_FLASH_SEL_REG)=(flash_sel==0)?MISC_FLASH_SEL_INTFLASH:MISC_FLASH_SEL_CARTFLASH;
+	while (len>0) {
+		//Transfer max 512 words at a time
+		int xfer_len=(len+3)/4;
+		if (xfer_len>512) xfer_len=512;
+		MISC_REG(MISC_FLASH_DMAADDR)=(uint32_t)buff;
+		MISC_REG(MISC_FLASH_RDADDR)=addr;
+		MISC_REG(MISC_FLASH_DMALEN)=xfer_len; //also starts xfer
+		//wait till xfer is done
+		while((MISC_REG(MISC_FLASH_CTL_REG) & MISC_FLASH_CTL_DMADONE)==0);
+		//subtract work done
+		len-=xfer_len*4;
+		buff+=xfer_len*4;
+		addr+=xfer_len*4;
+	}
+#else
+	//Use manual SPI reads
 	flash_start_xfer(flash_sel);
 	flash_send_recv(CMD_FASTREAD);
 	flash_send_recv(addr>>16);
@@ -77,6 +112,7 @@ void flash_read(int flash_sel, uint32_t addr, uint8_t *buff, int len) {
 		buff[i]=flash_send_recv(0);
 	}
 	flash_end_xfer();
+#endif
 }
 
 uint8_t flash_read_status(int flash_sel, int reg) {
@@ -106,9 +142,19 @@ bool flash_write_enable(int flash_sel) {
 	return true;
 }
 
+//We also enable qpi here.
 bool flash_wake(int flash_sel) {
 	flash_start_xfer(flash_sel);
 	flash_send_recv(CMD_WAKE);
+	flash_end_xfer();
+
+	//qpi enable needs to write 2 in status register 2
+	flash_start_xfer(flash_sel);
+	flash_send_recv(CMD_VOLATILE_SR_WRITE_EN);
+	flash_end_xfer();
+	flash_start_xfer(flash_sel);
+	flash_send_recv(CMD_WRITESR2);
+	flash_send_recv(2);
 	flash_end_xfer();
 	return true;
 }
@@ -153,6 +199,7 @@ bool flash_program(int flash_sel, uint32_t addr, const uint8_t *buff, int len) {
 		buff+=in_page_len;
 		len-=in_page_len;
 	}
+	return true;
 }
 
 bool flash_erase_range(int flash_sel, int addr, int len) {
@@ -171,7 +218,7 @@ bool flash_erase_range(int flash_sel, int addr, int len) {
 			cmd=CMD_ERASE4K;
 			erasesize=4*1024;
 		} else {
-			fprintf(stderr, "flash_erase_range: no matching block for addr 0x%X len 0x%X\n", addr, len);
+			//fprintf(stderr, "flash_erase_range: no matching block for addr 0x%X len 0x%X\n", addr, len);
 			//can't erase this
 			return false;
 		}

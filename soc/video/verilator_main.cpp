@@ -1,53 +1,17 @@
+#include <string>
 #include <stdlib.h>
-#include "Vvid.h"
 #include <verilated.h>
-#include <verilated_vcd_c.h>
+
+#include "verilator_setup.hpp"
+#include "verilator_options.hpp"
 #include "video_renderer.hpp"
 #include <gd.h>
 #include <stdint.h>
-#include "vgapal.h"
-
-uint64_t ts=0;
-double sc_time_stamp() {
-	return ts;
-}
 
 
-void tb_write(Vvid *tb, VerilatedVcdC *trace, int addr, int data) {
-	tb->addr=addr;
-	tb->din=data;
-	tb->wstrb=0xf;
-	do {
-		tb->eval();
-		tb->clk=1;
-		tb->eval();
-		if (trace) trace->dump(ts++);
-		tb->clk=0;
-		tb->eval();
-		if (trace) trace->dump(ts++);
-	} while (tb->ready==0);
-	tb->wstrb=0x0;
-}
-
-#define REG_OFF 0x0000
-#define PAL_OFF 0x2000
-#define TILEMAPA_OFF 0x4000
-#define TILEMAPB_OFF 0x8000
-#define SPRITE_OFF 0xC000
-#define TILEMEM_OFF 0x10000
-
-void set_sprite(Vvid *tb, VerilatedVcdC *trace, int no, int x, int y, int sx, int sy, int tileno) {
-	uint32_t sa, sb;
-	x+=64;
-	y+=64;
-	sa=(y<<16)|x;
-	sb=sx|(sy<<8)|(tileno<<16);
-	printf("Sprite %d: %08X %08X\n", no, sa, sb);
-	tb_write(tb, trace, SPRITE_OFF+no*8, sa);
-	tb_write(tb, trace, SPRITE_OFF+no*8+4, sb);
-}
-
-void load_tilemap(Vvid *tb, VerilatedVcdC *trace, char *file) {
+// Iterate over each 16x16 pixel block of a rectangular PNG file,
+// loading tile memory.
+void load_tilemap(const char *file) {
 	FILE *f=fopen(file, "r");
 	if (file==NULL) {
 		perror(file);
@@ -65,10 +29,10 @@ void load_tilemap(Vvid *tb, VerilatedVcdC *trace, char *file) {
 //				c=x; //HACK
 				p|=((uint64_t)c)<<60ULL;
 			}
-			tb_write(tb, tile<3?trace:NULL, TILEMEM_OFF+(tile*32+y*2+0)*4, p&0xFFFFFFFF);
-			tb_write(tb, tile<3?trace:NULL, TILEMEM_OFF+(tile*32+y*2+1)*4, p>>32ULL);
+			tb_write(TILEMEM_OFF+(tile*32+y*2+0)*4, p&0xFFFFFFFF, tile>=3);
+			tb_write(TILEMEM_OFF+(tile*32+y*2+1)*4, p>>32ULL, tile>=3);
 		}
-		
+
 		tx+=16;
 		if (tx>=gdImageSX(im)) {
 			tx=0;
@@ -82,7 +46,7 @@ void load_tilemap(Vvid *tb, VerilatedVcdC *trace, char *file) {
 	for (int y=0; y<64; y++) {
 		tile=y*(gdImageSX(im)/16);
 		for (int x=0; x<64; x+=2) {
-//			tb_write(tb, trace, TILEMAPA_OFF+pos*4, ((tile+1)<<16)|tile);
+//			tb_write(TILEMAPA_OFF+pos*4, ((tile+1)<<16)|tile);
 			pos++;
 			tile+=2;
 		}
@@ -92,6 +56,8 @@ void load_tilemap(Vvid *tb, VerilatedVcdC *trace, char *file) {
 	fclose(f);
 }
 
+// Simulates a 1MB block of flash memory that takes 4 cycles to produce a result.
+// Used by video memory controller.
 int qpi_cur_adr;
 int qpi_state=0;
 uint8_t qpi_mem[1024*1024];
@@ -126,62 +92,128 @@ void qpi_eval(int clk, int qpi_addr, int qpi_do_read, int *qpi_is_idle, int *qpi
 	}
 }
 
-int main(int argc, char **argv) {
-	// Initialize Verilators variables
-	Verilated::commandArgs(argc, argv);
-	Verilated::traceEverOn(true);
+// Loads an image from a png file into qpi memory at 8 bits resolution
+// Returns the width of the image
+unsigned load_png_to_qpi(const char *file, size_t addr) {
+	FILE *f=fopen(file, "r");
+	if (file==NULL) {
+		perror(file);
+		exit(1);
+	}
+	gdImagePtr im=gdImageCreateFromPng(f);
+	unsigned sx = gdImageSX(im);
+	unsigned sy = gdImageSY(im);
+	for (unsigned y = 0; y < sy; y++) {
+		for (int x = 0; x < sx; x++) {
+			qpi_mem[addr++] = (uint8_t) gdImageGetPixel(im, x, y);
+		}
+	}
 
-	// Create an instance of our module under test
-	Vvid *tb = new Vvid;
-	//Create trace
-	VerilatedVcdC *trace = new VerilatedVcdC;
-	tb->trace(trace, 99);
-	trace->open("vidtrace.vcd");
+	return sx;
+}
 
-	Video_renderer *vid=new Video_renderer(true);
+// Setup classic: the orignal-ish setup
+void setup1() {
+	// Load a tileset and palette for use by sprites
+	load_tilemap("tileset.png");
+	load_default_palette();
+	printf("Buffers inited.\n");
 
+	// Set up sprites: sprite 0 at 5, 5
+	tb_write(REG_OFF+2*4, 0x8); //ena sprites
+	set_sprite(2, 5, 5, 16, 16, 0);
+
+}
+
+// Setup 2: show the loaded background
+void setup2() {
+	// Load background.raw file into simulated flash
 	FILE *f=fopen("background.raw", "r");
 	if (!f) perror("raw fb data");
 	for (int i=0; i<320; i++) {
 		fread(&qpi_mem[512*i], 480, 1, f);
 	}
 	fclose(f);
+	tb_write(REG_OFF+0, 0);
+	tb_write(REG_OFF+4, (0 << 16) + 512);
 
-	tb->reset=1;
-	tb->ren=0;
-	for (int i=0; i<16; i++) {
-		tb->clk = 1;
-		tb->eval();
-		trace->dump(ts++);
-		tb->clk = 0;
-		tb->eval();
-		trace->dump(ts++);
-		if (i==8) tb->reset=0;
+	// Load a tileset and palette for use by sprites
+	load_default_palette();
+
+	// Enable frame buffer
+	tb_write(REG_OFF+2*4, 0x10001);
+}
+
+// Setup 3: Tile layer A
+void setup3() {
+	// Load a tileset and palette
+	// Just uses tile 0 everywhere
+	load_tilemap("tileset.png");
+	load_default_palette();
+	tb_write(REG_OFF+2*4, 0x10002); // tileA
+}
+
+// Setup 4: Load a background
+void setup4() {
+	// Load a tileset and palette
+	unsigned addr = 0x12340;
+	unsigned width = load_png_to_qpi("../ipl/bgnd.png", addr);
+	load_default_palette();
+
+	// Set frame buffer at location addr
+	tb_write(REG_OFF+0, addr);
+	tb_write(REG_OFF+4, (0 << 16) + width);
+	tb_write(REG_OFF+2*4, 0x10001); // 8 bit pixels, FB enabled
+}
+
+// Setup 5: Set tile 0 to be something useful for debugging HDMI horizontal output
+// and use it to tile the whole window
+void setup5() {
+	// load a tile composed of 1 pixel wide green and black vertical stripes
+	std::string s = "2 ";
+	for (int i = 0; i < 7; i++) {
+		s = s + s;
 	}
+	load_tile(0, s.c_str());
+	load_default_palette();
+	tb_write(REG_OFF+2*4, 0x10002); // all tile 0
+}
+
+// Array of all setups - defined in verilator_options.hpp
+setup_fn setups[] = {
+	setup1,
+	setup2,
+	setup3,
+	setup4,
+	setup5,
+	NULL
+};
+
+int main(int argc, char **argv) {
+	CmdLineOptions options = CmdLineOptions::parse(argc, argv);
 	
-	for (int i=0; i<256; i++) {
-		int p;
-		p=vgapal[i*3];
-		p|=vgapal[i*3+1]<<8;
-		p|=vgapal[i*3+2]<<16;
-		p|=(0xff<<24);
-		tb_write(tb, trace, PAL_OFF+(i*4), p);
-		tb_write(tb, trace, PAL_OFF+((i+256)*4), p);
-	}
+	// Initialize Verilators variables
+	Verilated::commandArgs(argc, argv);
+	Verilated::traceEverOn(true);
 
-//	tb_write(tb, trace, PAL_OFF+(0x100*4), 0xffff00ff);
-	tb_write(tb, trace, PAL_OFF+((0x1ff)*4), 0x10ff00ff);
+	// Create an instance of our module under test
+	// Vvid contains a line renderer and video memory controller wired together
+	init_test_bench(options.trace_on);
 
+	// Video renderer - shows HDMI output in GUI and simulates hdmi-encoder.v
+	Video_renderer *vid=new Video_renderer(true);
 
-	load_tilemap(tb, trace, "tileset.png");
-	printf("Buffers inited.\n");
-	tb_write(tb, trace,REG_OFF+2*4, 0x8); //ena sprites
-//	for (int i=0; i<10; i++) {
-//		set_sprite(tb, trace, i*2, i*32+64, 64, i*2+1, i*2+1, 0);
-//	}
-	set_sprite(tb, trace, 2, 0, 0, 16, 16, 8);
-	set_sprite(tb, trace, 3, 470, 16, 64, 16, 8);
+	// Toggle reset signal.
+	// We do this before setup as reset resets many of the line_render's registers
+	toggle_reset();
 
+	// Call the selected setup
+	options.setup();
+
+	// Main display loop
+	// Runs two clocks
+	// 1. tb->clk is the base system clock
+	// 2. tb->pixelclk runs about 1/4 the speed of the system clock
 	int fetch_next=0;
 	int next_line=0;
 	int next_field=0;
@@ -189,35 +221,47 @@ int main(int argc, char **argv) {
 	int qpi_is_idle=0, qpi_next_word=0;
 	uint32_t qpi_rdata=0;
 	int layer=0;
-	while(1) {
+
+	// Main loop - count fields
+	int field = 0;
+	while (field < options.num_fields) {
+		// Toggle main clock high
 		tb->pixelclk = (pixelclk_pos>0.5)?1:0;
 		tb->clk = !tb->clk;
+
+		// Drive memory
 		qpi_eval(tb->clk, tb->qpi_addr, tb->qpi_do_read, &qpi_is_idle, &qpi_next_word, &qpi_rdata);
 		tb->qpi_rdata=qpi_rdata;
 		tb->qpi_is_idle=qpi_is_idle;
 		tb->qpi_next_word=qpi_next_word;
-		tb->eval();
-		trace->dump(ts++);
-		tb->clk = !tb->clk;
-		tb->eval();
-		trace->dump(ts++);
+		tb_step();
 
+		// Set main clock low
+		tb->clk = !tb->clk;
+		tb_step();
+
+		// Drive video output based on pixel clock
 		pixelclk_pos=pixelclk_pos+0.26;
 		if (pixelclk_pos>1.0) {
 			pixelclk_pos-=1.0;
 			vid->next_pixel(tb->red, tb->green, tb->blue, &fetch_next, &next_line, &next_field);
 			tb->fetch_next=fetch_next;
-//			if (tb->next_field==0 && next_field==1) {
-//				layer=(layer+1)&0xf;
-//				tb_write(tb, trace,REG_OFF+2*4, 0x10000|layer);
-//				printf("Layer: %x\n", layer);
-//			}
+			// Count fields
+			if (tb->next_field==1 && next_field==0) {
+				printf("Finished field: %d\n", field);
+				field++;
+			}
 			tb->next_field=next_field;
 			tb->next_line=next_line;
 		}
 	}
-	trace->flush();
 
-	trace->close();
+	if (trace) {
+		trace->flush();
+		trace->close();
+	}
+
+	printf("Press ENTER to exit\n");
+	getc(stdin);
 	exit(EXIT_SUCCESS);
 }

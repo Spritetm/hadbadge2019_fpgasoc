@@ -1,3 +1,18 @@
+/*
+ * Copyright 2019 Jeroen Domburg <jeroen@spritesmods.com>
+ * This is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This software is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Foobar.  If not, see <https://www.gnu.org/licenses/>.
+ */
 
 #include "custom_ops.S"
 
@@ -77,6 +92,12 @@ lp:
 	
 	// arg0 = address of regs
 	addi a0, s2, 0
+
+	//arg1 = interrupt we responded to. Calculate this from the pos in the int hdl table (s1)
+	lui a1, %hi(irq_table)
+	addi a1, a1, %lo(irq_table)
+	sub a1, s1, a1
+	srli a1, a1, 2
 
 	//Load and call handler.
 	lw a3, 0(s1)

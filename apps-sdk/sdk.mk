@@ -1,18 +1,7 @@
 #Include local settings for entire project, if they exist
 -include ../local-settings.mk
 
-#Set prefixes and paths to all tools.
-ifeq ("$(RISCV_TOOLCHAIN_PATH)", "")
-PREFIX := riscv64-unknown-elf-
-else
-PREFIX := $(RISCV_TOOLCHAIN_PATH)/riscv64-unknown-elf-
-endif
-CC := $(PREFIX)gcc
-AR := $(PREFIX)ar
-LD := $(PREFIX)ld
-OBJCOPY := $(PREFIX)objcopy
-OBJDUMP := $(PREFIX)objdump
-SIZE := $(PREFIX)size
+include ../toolchain-settings.mk
 
 #Name of what we're trying to build.
 TARGET_ELF := $(APPNAME).elf
@@ -29,11 +18,11 @@ BUILD_DIR_SDK := $(BUILD_DIR)/apps-sdk
 
 #Ipl gloss is in include path because mach_defines.h
 INCLUDEDIRS += $(APPSSDK_DIR) $(APPSSDK_DIR)/gloss $(APPSSDK_DIR)/../soc/ipl/gloss $(APPSSDK_DIR)/../soc/ipl/syscallable/
-CFLAGS += -Os -ggdb $(addprefix -I,$(INCLUDEDIRS)) -march=rv32im -mabi=ilp32
-LDFLAGS +=  -march=rv32im -mabi=ilp32 -Wl,-Bstatic -Wl,--gc-sections -Wl,-T,$(LDSCRIPT) -Wl,-Map,$(TARGET_MAP) -lgcc -lm -nostartfiles -Wl,-melf32lriscv
+CFLAGS += -ggdb $(addprefix -I,$(INCLUDEDIRS))
+LDFLAGS += -ggdb -Wl,-T,$(LDSCRIPT) -Wl,-Map,$(TARGET_MAP) -lgcc -lm
 DEPFLAGS := -MMD -MP 
 
-export PREFIX CC AR LD OBJCOPY CFLAGS LDFLAGS APPNAME
+export CC AR LD OBJCOPY CFLAGS LDFLAGS APPNAME
 
 #By default, we'll build the elf file.
 default: $(TARGET_ELF)
@@ -48,7 +37,7 @@ endif
 
 #Define objects used for the SDK itself here and the libs they're supposed to make.
 #Note that all objects in a subdir are packed in the lib name in the same subdir.
-SDK_OBJS := gloss/crt0.o
+SDK_OBJS := gloss/crt0.o gloss/app_start.o
 SDK_LIBS := gloss/libgloss.a
 
 LIBS += $(addprefix $(BUILD_DIR_SDK)/,$(SDK_LIBS))
@@ -131,10 +120,10 @@ $(TARGET_ELF): $(LIBS) $(OBJS_BUILDDIR) $(LDSCRIPT)
 	$(vecho) LD $@
 	$(Q)$(CC) -o $@ $(LIBPATHS) $(OBJS_BUILDDIR) $(LIBREFS) $(LDFLAGS) 
 	$(vecho) SYM $@
-	$(Q)$(PREFIX)objcopy --only-keep-debug $@ $(TARGET_SYM)
+	$(Q)$(OBJCOPY) --only-keep-debug $@ $(TARGET_SYM)
 	$(vecho) STRIP $@
-	$(Q)$(PREFIX)strip --strip-debug --strip-unneeded $@
-	$(Q)$(PREFIX)objcopy --add-gnu-debuglink=$(TARGET_SYM) $@
+	$(Q)$(STRIP) --strip-debug --strip-unneeded $@
+	$(Q)$(OBJCOPY) --add-gnu-debuglink=$(TARGET_SYM) $@
 
 #Clean all targets. Should leave an empty build dir tree.
 .PHONY: clean
@@ -147,9 +136,9 @@ clean:
 
 
 gdb:
-	$(PREFIX)gdb -b 115200 -ex "target remote /dev/ttyUSB0" \
-			-ex "set confirm off" -ex "add-symbol-file $(APPSSDK_DIR)/../soc/ipl/ipl.elf 0x40002000" \
-			-ex "add-symbol-file $(APPSSDK_DIR)/../soc/boot/rom.elf 0x40000000" -ex "set confirm on" $(APPNAME).elf
+	$(GDB)  -b 115200 -ex "target remote /dev/ttyUSB0" \
+		-ex "set confirm off" -ex "add-symbol-file $(APPSSDK_DIR)/../soc/ipl/ipl.elf 0x40002000" \
+		-ex "add-symbol-file $(APPSSDK_DIR)/../soc/boot/rom.elf 0x40000000" -ex "set confirm on" $(APPNAME).elf
 
 
 #Include auto-generated dependencies, if exist.

@@ -1,0 +1,10 @@
+Most of the files in this repo have an explicit license, depending where they come from. If not, assume:
+
+- All hardware description (Verilog) files are licensed under the 3-clause BSD license, see LICENSE.bsd
+- All software source code (C, C++, ...) files are licensed under the GPLv3, see LICENSE.gplv3
+
+Specifically:
+- soc/usb, the USB hardware definitions, are under LGPLv3, See LICENSE.lgplv3
+- Parts of soc/hdmi are under MIT, see LICENSE.mit
+- tjfl is under the beer-ware license, see LICENSE.beerware
+- FatFS comes with its own license, see LICENSE.fatfs

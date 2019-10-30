@@ -1,3 +1,18 @@
+/*
+ * Copyright 2019 Jeroen Domburg <jeroen@spritesmods.com>
+ * This is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This software is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Foobar.  If not, see <https://www.gnu.org/licenses/>.
+ */
 
 #include "custom_ops.S"
 
@@ -69,10 +84,11 @@ do_reset:
 	lw a2,MISC_CPU_NO(a1)
 	bne a2, zero, secondcpu
 
-	//Set up UART divider
+	//Set up UART divider for 115200
 	li a1, UART_OFFSET
-	li a2, 416 //115200 with a clock of 48MHz
+	li a2, 414
 	sw a2, UART_DIV_REG(a1)
+	li a2, 24
 	sw a2, UART_IRDA_DIV_REG(a1)
 
 
@@ -82,6 +98,7 @@ do_reset:
 	lw a2, MISC_SOC_VER(a2)
 	srli a2, a2, 15 //mask out 15th bit
 	andi a2, a2, 1
+	andi a2, a2, 0
 	beq a2, zero, is_real_badge
 
 	li a2, MISC_OFFSET
@@ -237,13 +254,17 @@ s11            0x3	3
 	call load_ipl
 	call run_ipl
 
+	li a2, 8
+	li a1, MISC_OFFSET
+	sw a2, MISC_LED_REG(a1)
+
 jtagwait:
 	li a1, 0x40000000
 	lw a3, 0(a1)
 	li a2, 0xdeadbeef
 	bne a3, a2, jtagwait
 
-	li a2, 8
+	li a2, 9
 	li a1, MISC_OFFSET
 	sw a2, MISC_LED_REG(a1)
 

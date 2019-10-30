@@ -1,7 +1,22 @@
+/*
+ * Copyright 2019 Jeroen Domburg <jeroen@spritesmods.com>
+ * This is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This software is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this software.  If not, see <https://www.gnu.org/licenses/>.
+ */
 #include <stdlib.h>
 #include "lodepng/lodepng.h"
 #include "gfx_load.h"
-
+#include "user_memfn.h"
 
 int gfx_load_fb_mem(uint8_t *fbmem, uint32_t *palmem, int fbbpp, int pitch, char *pngstart, int pnglen) {
 	unsigned char *decoded=NULL;
@@ -42,7 +57,7 @@ int gfx_load_fb_mem(uint8_t *fbmem, uint32_t *palmem, int fbbpp, int pitch, char
 		}
 	}
 	lodepng_state_cleanup(&st);
-	free(decoded);
+	user_memfn_free(decoded);
 	return 0;
 }
 
@@ -88,6 +103,6 @@ int gfx_load_tiles_mem(uint32_t *tilemem, uint32_t *palettemem, char *pngstart, 
 		}
 	}
 	lodepng_state_cleanup(&st);
-	free(decoded);
+	user_memfn_free(decoded);
 	return 0;
 }

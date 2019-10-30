@@ -1,3 +1,19 @@
+/*
+ * Copyright 2019 Jeroen Domburg <jeroen@spritesmods.com>
+ * This is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This software is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this software.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 #include <stdlib.h>
 #include "Vsoc.h"
 #include <verilated.h>
@@ -85,6 +101,7 @@ int main(int argc, char **argv) {
 		tb->irda_rx=tb->irda_tx;
 		tb->adc4=tb->adcrefout?0:1;
 		tb->clk48m = 1;
+		tb->flash_sin = ts&0xf;
 		tb->eval();
 		tb->psrama_sin=sina;
 		tb->psramb_sin=sinb;
@@ -98,7 +115,7 @@ int main(int argc, char **argv) {
 		tb->psrama_sin = sina;
 		tb->psramb_sin = sinb;
 		if (do_trace) trace->dump(tracepos*21+10);
-		do_trace = tb->trace_en;
+//		do_trace = tb->trace_en;
 		if (vid && pixel_clk) {
 			vid->next_pixel(tb->vid_red, tb->vid_green, tb->vid_blue, &fetch_next, &next_line, &next_field);
 			tb->vid_fetch_next=fetch_next;
