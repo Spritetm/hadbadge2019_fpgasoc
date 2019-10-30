@@ -1,5 +1,5 @@
 `timescale 1ns/1ns
-`include "sample_clock.v"
+/* `include "sample_clock.v" */
 module test();
 
 localparam BITDEPTH    = 14;

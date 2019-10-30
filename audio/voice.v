@@ -1,6 +1,6 @@
-`include "oscillator.v"
-`include "ar.v"
-`include "scales_rom.v"
+/* `include "oscillator.v" */
+/* `include "ar.v" */
+/* `include "scales_rom.v" */
 
 module voice #( 
 	parameter BITDEPTH   = 14,
@@ -34,7 +34,6 @@ oscillator #( .BITDEPTH(BITDEPTH), .BITFRACTION(BITFRACTION), .VOICE(VOICE)) myo
 	.out(osc_out)
 );
 
-wire [BITDEPTH-1:0] out;
 ar myar (
 	.sample_clock(sample_clock),
 	.rst(rst),

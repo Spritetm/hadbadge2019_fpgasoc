@@ -7,12 +7,13 @@ module midi_note_to_accumulator (
 
 reg [15:0] lut[0:127];
 
-initial begin
-	$readmemh("scales.hex", lut);
-end
+/* initial begin */
+/* 	$readmemh("scales.hex", lut); */
+/* end */
 
 reg [6:0] note_latch;
-assign increment = lut[note_latch];
+/* assign increment = lut[note_latch]; */
+assign increment = 13387;
 
 always @(posedge clk) begin
 	if (reset) begin

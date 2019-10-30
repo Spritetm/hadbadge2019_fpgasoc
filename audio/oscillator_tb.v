@@ -1,6 +1,6 @@
 `timescale 1ns/1ns
-`include "sample_clock.v"
-`include "scales_rom.v"
+/* `include "sample_clock.v" */
+/* `include "scales_rom.v" */
 
 module test();
 localparam SAMPLEFREQ = 8000000 / 2**8;

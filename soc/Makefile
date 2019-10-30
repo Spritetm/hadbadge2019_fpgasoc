@@ -118,6 +118,18 @@ SRC += $(addprefix pic/, \
 	pic_wrapper.v \
 	risc16f84_clk2x.v \
 )
+	# Synth
+SRC += $(addprefix audio/, \
+       	synth_interface.v \
+       	dac.v             \
+       	voice.v           \
+       	oscillator.v      \
+       	ar.v              \
+       	scales_rom.v      \
+	amplifier.v      \
+	envelope.v       \
+)
+
 
 	# HDMI
 SRC_SYNTH += $(addprefix hdmi/, \
@@ -129,7 +141,7 @@ SRC_SYNTH += $(addprefix hdmi/, \
 	vga.v \
 )
 
-EXTRA_DEPEND=rom_random_seeds0x123456.hex pic/rom_initial.hex
+EXTRA_DEPEND=rom_random_seeds0x123456.hex pic/rom_initial.hex audio/scales.hex
 BRAMFILE=rom.hex
 CONSTR=$(word $(BADGE_VER), had19_proto1.lpf had19_proto2.lpf had19_proto3.lpf had19_prod.lpf)
 TRELLIS=/usr/share/trellis

@@ -2,12 +2,12 @@
 // state of the synth chain, and it's also good for the back-and-forth with
 // simulation.  
 
-`include "dac.v"
-`include "sample_clock.v"
-`include "voice.v" 
-`include "mixer4.v"
-`include "lfsr.v"
-`include "cymbal.v" 
+/* `include "dac.v" */
+/* `include "sample_clock.v" */
+/* `include "voice.v" */ 
+/* `include "mixer4.v" */
+/* `include "lfsr.v" */
+/* `include "cymbal.v" */ 
 
 module top( 
 	input clk, 

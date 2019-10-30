@@ -1,9 +1,9 @@
-`include "dac.v"
-`include "button_number.v"
-`include "oscillator.v"
-`include "lfsr.v"
-`include "amplifier.v"
-`include "envelope.v"
+/* `include "dac.v" */
+/* `include "button_number.v" */
+/* `include "oscillator.v" */
+/* `include "lfsr.v" */
+/* `include "amplifier.v" */
+/* `include "envelope.v" */
 
 module top( 
 	input clk, 

@@ -1,5 +1,5 @@
-`include "amplifier.v"
-`include "envelope.v"
+/* `include "amplifier.v" */
+/* `include "envelope.v" */
 
 module ar #(
 	parameter BITDEPTH = 14

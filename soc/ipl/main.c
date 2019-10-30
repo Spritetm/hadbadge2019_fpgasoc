@@ -409,13 +409,22 @@ usb_setup_serial_no(void)
 
 extern uint32_t *irq_stack_ptr;
 
+extern volatile uint32_t UART[];
+extern volatile uint32_t SYNTH[];
+#define SYNTHREG(i) SYNTH[i/4]
+#define UARTREG(i) UART[i/4]
 #define IRQ_STACK_SIZE (16*1024)
+
 void main() {
 	syscall_reinit();
 	user_memfn_set(malloc, realloc, free);
 	verilator_start_trace();
 	//When testing in Verilator, put code that pokes your hardware here.
-
+    SYNTHREG(0x10) = 0x0BADCAFE;	
+	UART[0x0]='a';
+	UART[0x0]='\n';
+	printf("\nHOWDY!\n");
+	
 	//Initialize IRQ stack to be bigger than the bootrom stack
 	uint32_t *int_stack=malloc(IRQ_STACK_SIZE);
 	irq_stack_ptr=int_stack+(IRQ_STACK_SIZE/sizeof(uint32_t));

@@ -409,3 +409,8 @@ pixel (0,1) of a tile is stored in bits [3:0] of word 2
 #define USB_DATA_BASE_RX (USB_CORE_OFFSET+USB_RXMEM)
 #define USB_DATA_BASE_TX (USB_CORE_OFFSET+USB_TXMEM)
 
+/* ---------------- Audio Synthesizer Defines ----------------- */
+
+#define SYNTH_OFFSET 0x80000000
+
+
