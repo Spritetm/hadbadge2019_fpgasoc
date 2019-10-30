@@ -10,9 +10,6 @@ unsigned int setup_count() {
 	return i;
 }
 
-CmdLineOptions::CmdLineOptions():
-	num_fields(3), trace_on(false) {}
-
 void CmdLineOptions::dump() {
 	printf("CmdLineOptions{%u, %s}", num_fields, trace_on ? "true" : "false");
 }

@@ -3,6 +3,7 @@
 #include <verilated.h>
 
 #include "verilator_setup.hpp"
+#include "verilator_examples.hpp"
 #include "verilator_options.hpp"
 #include "video_renderer.hpp"
 #include <gd.h>
@@ -178,6 +179,10 @@ void setup5() {
 	GFX_REG(GFX_LAYEREN_REG) = GFX_LAYEREN_TILEA; // all tile 0
 }
 
+void setup6() {
+	frame_buffer_example1();
+}
+
 // Array of all setups - defined in verilator_options.hpp
 setup_fn setups[] = {
 	setup1,
@@ -185,12 +190,13 @@ setup_fn setups[] = {
 	setup3,
 	setup4,
 	setup5,
+	setup6,
 	NULL
 };
 
 int main(int argc, char **argv) {
 	CmdLineOptions options = CmdLineOptions::parse(argc, argv);
-	options.dump();
+	//options.dump();
 	
 	// Initialize Verilators variables
 	Verilated::commandArgs(argc, argv);

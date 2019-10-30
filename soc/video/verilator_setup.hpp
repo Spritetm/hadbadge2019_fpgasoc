@@ -14,17 +14,23 @@ extern Vvid *tb;
 // trace is non-null if verilator tracing is on
 extern VerilatedVcdC *trace;
 
+// Simulated PSRAM - 1M only
+extern uint8_t qpi_mem[];
+
 // Evaluate model, advance time and optionally trace
 void tb_step(bool trace_exempt=false);
 
 // Create the test bench
 void init_test_bench(bool trace_on);
 
-// Clock data out to a given register in video subsystem.
+// Clock data out to a given address in video subsystem.
 // This clocks the video testbench main clock without also updating pixelclk.
 // For this reason, updates made while system is processing main loop may not
 // be properly interpreted.
 void tb_write(int addr, int data, bool trace_exempt=false);
+
+// Read from the given address in the video subsystem
+uint32_t tb_read(int addr, bool trace_exempt=false);
 
 // In sdk.h, the SDK uses the following definitions to provide access to
 // registers, palette, tile memory and tile maps A & B. Most access is via 
@@ -49,8 +55,10 @@ class RegisterReference {
 public:
 	RegisterReference(uint64_t addr): addr(addr & ~3ULL) {}
 
-	// Read memory not implemented
-	// operator uint32_t const ();
+	// Read memory
+	operator uint32_t const () {
+		return tb_read(addr);
+	}
 
 	// Write memory
 	RegisterReference& operator=(uint32_t value) {
@@ -88,7 +96,7 @@ private:
 };
 
 extern RegisterPointer GFXREG;
-#define GFX_REG(i) GFXREG[(i)/4]
+#define GFX_REG(i) (GFXREG[(i)/4])
 
 extern RegisterPointer GFXPAL;
 extern RegisterPointer GFXTILES;
@@ -96,8 +104,6 @@ extern RegisterPointer GFXTILEMAPA;
 extern RegisterPointer GFXTILEMAPB;
 // Sprites not actually defined in sdk.h or ldscript.ld, yet
 extern RegisterPointer GFXSPRITES; 
-
-
 
 // Send reset signal to test bench
 void toggle_reset();

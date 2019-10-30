@@ -41,6 +41,19 @@ void tb_write(int addr, int data, bool trace_exempt) {
 	tb->wstrb=0x0;
 }
 
+uint32_t tb_read(int addr, bool trace_exempt) {
+	tb->addr=addr & 0x1ffffff; // Only top 25 bits used
+	tb->ren=1;
+	tb->eval();
+	tb->clk=1;
+	tb_step(trace_exempt);
+	tb->clk=0;
+	tb_step(trace_exempt);	
+	uint32_t result = tb->dout;
+	tb->ren=0;
+	return result;
+}
+
 // SDK-style access
 RegisterPointer GFXREG(GFX_OFFSET_REGS);
 RegisterPointer GFXPAL(GFX_OFFSET_PAL);
