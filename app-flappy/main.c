@@ -27,31 +27,61 @@ extern volatile uint32_t MISC[];
 extern volatile uint32_t GFXREG[];
 #define GFX_REG(i) GFXREG[(i)/4]
 
-extern uint32_t GFXPAL[];
-extern uint32_t GFXTILES[];
-extern uint32_t GFXTILEMAPA[];
-extern uint32_t GFXTILEMAPB[];
+//Manually point to sprites memory location
+uint32_t *GFXSPRITES = (uint32_t *)0x5000C000;
 
 //Define some tilemap data
-#define FLAPPY_GROUND_INDEX 237
+#define FLAPPY_GROUND_INDEX 247
 #define FLAPPY_GROUND_Y 19
-#define FLAPPY_BRICK_INDEX 265
-#define FLAPPY_PIPE_GAP 8
+#define FLAPPY_BRICK_INDEX 136
+#define FLAPPY_PLAYER_INDEX 184
+
+//Define game parameters
+#define FLAPPY_PIPE_GAP 7
+#define FLAPPY_PIPE_BOTTOM 19
+#define FLAPPY_PIPE_HEIGHT_MIN 2
+#define FLAPPY_PIPE_HEIGHT_MAX 9
 #define FLAPPY_SPEED 1.8
 #define FLAPPY_PLAYER_X 8
+#define FLAPPY_GRAVITY 0.9
+#define FLAPPY_JUMP (-2.0)
+#define FLAPPY_BOTTOM_EXTENT 290
 
 int m_player_y = 11;
+float m_player_velocity = 0.0;
 uint32_t m_score = 0;
 int m_pipe_1_x = 11;
+int m_pipe_1_height = 3;
 int m_pipe_2_x = 27;
+int m_pipe_2_height = 3;
 int m_pipe_3_x = 43;
+int m_pipe_3_height = 3;
 int m_pipe_4_x = 59;
+int m_pipe_4_height = 3;
 
 //Borrowed this from lcd.c until a better solution comes along :/
 static void __INEFFICIENT_delay(int n) {
 	for (int i=0; i<n; i++) {
 		for (volatile int t=0; t<(1<<11); t++);
 	}
+}
+
+
+//Wait until all buttons are released
+static inline void __button_wait_for_press() {
+	while (MISC_REG(MISC_BTN_REG) == 0);
+}
+
+//Wait until all buttons are released
+static inline void __button_wait_for_release() {
+	while (MISC_REG(MISC_BTN_REG));
+}
+
+static inline void __sprite_set(int index, int x, int y, int size_x, int size_y, int tile_index, int palstart) {
+	x+=64;
+	y+=64;
+	GFXSPRITES[index*2]=(y<<16)|x;
+	GFXSPRITES[index*2+1]=size_x|(size_y<<8)|(tile_index<<16)|((palstart/4)<<25);
 }
 
 //Helper function to set a tile on layer a
@@ -75,25 +105,29 @@ static inline void __tile_b_translate(int dx, int dy) {
 }
 
 static inline void __create_pipe(int x, int h) {
-	//top pipe
-	for (uint8_t y=0; y<19-h-FLAPPY_PIPE_GAP; y++) {
-		__tile_a_set(x,y,FLAPPY_BRICK_INDEX);
-		__tile_a_set(x+1,y,FLAPPY_BRICK_INDEX+1);
-		__tile_a_set(x+2,y,FLAPPY_BRICK_INDEX+1);
-		__tile_a_set(x+3,y,FLAPPY_BRICK_INDEX+2);
-
-		//Clear column to right of pipe in case of shifting tile
-		__tile_a_set(x+4,y,0);
-	}
-
-	//bottom pipe
-	for (uint8_t y=h+FLAPPY_PIPE_GAP; y<19; y++) {
-		__tile_a_set(x,y,FLAPPY_BRICK_INDEX);
-		__tile_a_set(x+1,y,FLAPPY_BRICK_INDEX+1);
-		__tile_a_set(x+2,y,FLAPPY_BRICK_INDEX+1);
-		__tile_a_set(x+3,y,FLAPPY_BRICK_INDEX+2);
-
-		//Clear column to right of pipe in case of shifting tile
+	//Generate a full pipe including gap
+	for (uint8_t y=0; y<FLAPPY_PIPE_BOTTOM; y++) {
+		//TOP
+		if (y < FLAPPY_PIPE_BOTTOM-FLAPPY_PIPE_GAP-h) {
+			__tile_a_set(x,y,FLAPPY_BRICK_INDEX);
+			__tile_a_set(x+1,y,FLAPPY_BRICK_INDEX+1);
+			__tile_a_set(x+2,y,FLAPPY_BRICK_INDEX+1);
+			__tile_a_set(x+3,y,FLAPPY_BRICK_INDEX+2);
+		} 
+		//MIDDLE
+		else if (y < FLAPPY_PIPE_BOTTOM-h) {
+			__tile_a_set(x,y,0);
+			__tile_a_set(x+1,y,0);
+			__tile_a_set(x+2,y,0);
+			__tile_a_set(x+3,y,0);
+		} 
+		//BOTTOM
+		else {
+			__tile_a_set(x,y,FLAPPY_BRICK_INDEX);
+			__tile_a_set(x+1,y,FLAPPY_BRICK_INDEX+1);
+			__tile_a_set(x+2,y,FLAPPY_BRICK_INDEX+1);
+			__tile_a_set(x+3,y,FLAPPY_BRICK_INDEX+2);
+		}
 		__tile_a_set(x+4,y,0);
 	}
 }
@@ -118,7 +152,10 @@ void main(int argc, char **argv) {
 	//Load up the default tileset and font.
 	//ToDo: loading pngs takes a long time... move over to pcx instead.
 	printf("Loading tiles...\n");
-	int gfx_tiles_err = gfx_load_tiles_mem(GFXTILES, &GFXPAL[0], &_binary_flappy_tileset_png_start, (&_binary_flappy_tileset_png_end-&_binary_flappy_tileset_png_start));
+	int gfx_tiles_err = 
+	gfx_load_tiles_mem(GFXTILES, &GFXPAL[0], 
+		&_binary_flappy_tileset_png_start, 
+		(&_binary_flappy_tileset_png_end - &_binary_flappy_tileset_png_start));
 	printf("Tiles initialized err=%d\n", gfx_tiles_err);
 
 	
@@ -134,8 +171,8 @@ void main(int argc, char **argv) {
 		printf("Error opening console!\n");
 	}
 
-	//Now, use a library function to load the image into the framebuffer memory. This function will also set up the palette entries,
 	//we tell it to start writing from entry 0.
+	//Now, use a library function to load the image into the framebuffer memory. This function will also set up the palette entries,
 	//PAL offset changes the colors that the 16-bit png maps to?
 	gfx_load_fb_mem(fbmem, &GFXPAL[FB_PAL_OFFSET], 4, 512, &_binary_bgnd_png_start, (&_binary_bgnd_png_end-&_binary_bgnd_png_start));
 
@@ -147,8 +184,7 @@ void main(int argc, char **argv) {
 	GFXPAL[FB_PAL_OFFSET+0x100]=0x00ff00ff; //Note: For some reason, the sprites use this as default bgnd. ToDo: fix this...
 	GFXPAL[FB_PAL_OFFSET+0x1ff]=0x40ff00ff; //so it becomes this instead.
 
-	//Wait until all buttons are released
-	while (MISC_REG(MISC_BTN_REG));
+	__button_wait_for_release();
 
 	//Set map to tilemap B, clear tilemap, set attr to 0
 	//Not sure yet what attr does, but tilemap be is important as it will have the effect of layering
@@ -160,6 +196,8 @@ void main(int argc, char **argv) {
 	//Clear both tilemaps
 	memset(GFXTILEMAPA,0,0x4000);
 	memset(GFXTILEMAPB,0,0x4000);
+	//Clear sprites that IPL may have loaded
+	memset(GFXSPRITES,0,0x4000);
 
 	//Draw the ground on the tilemap, probably inefficient but we're learning here
 	//Tilemap is 64 wide. Fille the entire bottom row with grass
@@ -167,16 +205,19 @@ void main(int argc, char **argv) {
 		__tile_a_set(x, FLAPPY_GROUND_Y, FLAPPY_GROUND_INDEX);
 	}
 
-	__create_pipe(m_pipe_1_x, rand()%10);
-	__create_pipe(m_pipe_2_x, rand()%10);
-	__create_pipe(m_pipe_3_x, rand()%10);
-	__create_pipe(m_pipe_4_x, rand()%10);
+	//Generate 4 pipes with fixed heights so it's easy to get started
+	__create_pipe(m_pipe_1_x, 3);
+	__create_pipe(m_pipe_2_x, 7);
+	__create_pipe(m_pipe_3_x, 4);
+	__create_pipe(m_pipe_4_x, 2);
+
+	
 
 	//The user can still see nothing of this graphics goodness, so let's re-enable the framebuffer and
 	//tile layer A (the default layer for the console). 
 	//Normal FB enabled (vice 8 bit) because background is loaded into the framebuffer above in 4 bit mode. 
 	//TILEA is where text is printed by default
-	 GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_LAYEREN_TILEA|GFX_LAYEREN_TILEB;
+	 GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_LAYEREN_TILEA|GFX_LAYEREN_TILEB|GFX_LAYEREN_SPR;
 
 	//Draw the player as a brick. Need to use our custome tilemap so we have a real sprite or figure
 	//out how sprites work in the graphics engine
@@ -187,20 +228,74 @@ void main(int argc, char **argv) {
 	float dx=0;
 	 while((MISC_REG(MISC_BTN_REG) & BUTTON_A)==0) {
 
-		//Move the tile layer b, 1000 seems to equate to 1 tile, use translation for smooth movement
+		//Move the tile layer b, each 1024 of dx is equal to one tile (or 16 pixels)
 		__tile_a_translate((int)dx, (int)dy);
-		dx=dx+FLAPPY_SPEED;
+		dx += FLAPPY_SPEED;
 
-		__tile_b_set(FLAPPY_PLAYER_X,m_player_y,FLAPPY_BRICK_INDEX);
+		//Draw the player sprite
+		__sprite_set(0, FLAPPY_PLAYER_X*16, m_player_y, 32, 32, FLAPPY_PLAYER_INDEX, 0);	
+
+		if ((m_score % 500) == 0) {
+			m_player_y += m_player_velocity;
+
+			//Jump when user presses button
+			if ((MISC_REG(MISC_BTN_REG) & BUTTON_UP)) {
+				m_player_velocity += FLAPPY_JUMP;
+			} else {
+				m_player_velocity += FLAPPY_GRAVITY;
+			}
+		}
 
 		//TODO detect when a pipe is about to go on screen (it just wrapped around) and randomize its height
+
+		//Calculate true x coordinate of pipes
+		int x1 = (((m_pipe_1_x << 10) - (int)dx) & 0xFFFF) >> 6;
+		int x2 = (((m_pipe_1_x << 10) - (int)dx) & 0xFFFF) >> 6;
+		int x3 = (((m_pipe_1_x << 10) - (int)dx) & 0xFFFF) >> 6;
+		int x4 = (((m_pipe_1_x << 10) - (int)dx) & 0xFFFF) >> 6;
+
+		//Detect a pipe about to enter from right side of screen, in this case generate
+		//A new pipe at that same tile x coord so it appears we have infinite scrolling
+		//Screen is 480 wide so 500 is good enough
+		if (x1 == 500) {
+			m_pipe_1_height = (rand() % (FLAPPY_PIPE_HEIGHT_MIN - FLAPPY_PIPE_HEIGHT_MAX)) + FLAPPY_PIPE_HEIGHT_MIN;
+			__create_pipe(m_pipe_1_x, m_pipe_1_height);
+		}
+
+		if (x2 == 500) {
+			m_pipe_2_height = (rand() % (FLAPPY_PIPE_HEIGHT_MIN - FLAPPY_PIPE_HEIGHT_MAX)) + FLAPPY_PIPE_HEIGHT_MIN;
+			__create_pipe(m_pipe_2_x, m_pipe_2_height);
+		}
+
+		if (x3 == 500) {
+			m_pipe_3_height = (rand() % (FLAPPY_PIPE_HEIGHT_MIN - FLAPPY_PIPE_HEIGHT_MAX)) + FLAPPY_PIPE_HEIGHT_MIN;
+			__create_pipe(m_pipe_3_x, m_pipe_3_height);
+		}
+
+		if (x4 == 500) {
+			m_pipe_4_height = (rand() % (FLAPPY_PIPE_HEIGHT_MIN - FLAPPY_PIPE_HEIGHT_MAX)) + FLAPPY_PIPE_HEIGHT_MIN;
+			__create_pipe(m_pipe_4_x, m_pipe_4_height);
+		}
 
 		//Print score at 0,0
 		//NOTE: this seems to be a *very* slow operation. Adding a second fprintf will have a noticeable
 		//slowdown effect. Removing this fprintf will put the game into ludicrous speed mode. Need to fix!
-		fprintf(console, "\0330X\0330Y%dm                     FLAPPY", (m_score/1000)); 
+		fprintf(console, "\0330X\0330Y%dm %d\03324XFLAPPY", (m_score >> 10), gfx_tiles_err); 
 
 		//Flappy score increases with distance which is simply a function of time
 		m_score++;
+
+		//Collision detection
+		if (m_player_y >= FLAPPY_BOTTOM_EXTENT) {
+			break;
+		}
 	 }
+
+	 //Print game over
+	 fprintf(console, "\03310X\03310YGAME OVER!\nScore: %dm", (m_score/1000));
+
+	 //Wait for user to release whatever buttons they were pressing and to press a new one
+	__button_wait_for_release();
+	__INEFFICIENT_delay(200);
+ 	__button_wait_for_press();
 }

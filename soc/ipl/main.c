@@ -35,7 +35,6 @@
 #include "lodepng/lodepng.h"
 #include "gfx_load.h"
 #include "cache.h"
-#include "memtrace.h"
 #include "user_memfn.h"
 
 extern volatile uint32_t UART[];
