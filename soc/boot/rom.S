@@ -98,7 +98,7 @@ do_reset:
 	lw a2, MISC_SOC_VER(a2)
 	srli a2, a2, 15 //mask out 15th bit
 	andi a2, a2, 1
-	andi a2, a2, 0
+//	andi a2, a2, 0
 	beq a2, zero, is_real_badge
 
 	li a2, MISC_OFFSET
