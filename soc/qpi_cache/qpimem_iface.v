@@ -331,6 +331,7 @@ always @(posedge clk) begin
 		end else if (state == STATE_SPIXFER_LASTBIT) begin
 			clk_active <= 0;
 			//sample final input bit, send to output
+			spi_xfer_rdata_shifted <= {spi_xfer_rdata_shifted[6:0], spi_sin_r[1]};
 			spi_xfer_rdata <= {spi_xfer_rdata_shifted[6:0], spi_sin_r[1]};
 			if (bitno == 0) begin
 				state <= STATE_SPIXFER_CLAIMED;
