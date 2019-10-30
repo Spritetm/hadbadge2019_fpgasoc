@@ -8,6 +8,9 @@ SRC_SIM_HDR := video_renderer.hpp verilator_options.hpp verilator_setup.hpp ../i
 verilator: verilator-build/Vvid $(EXTRA_DEPEND)
 	./verilator-build/Vvid
 
+verilator-trace: verilator-build/Vvid $(EXTRA_DEPEND)
+	./verilator-build/Vvid -t
+
 verilator-build/Vvid: $(SRC) $(SRC_SIM) $(BRAMFILE) $(SRC_SIM_HDR)
 	verilator -CFLAGS "-ggdb `sdl2-config --cflags`" -LDFLAGS "`sdl2-config --libs` -lgd" --assert --trace \
 		--Mdir verilator-build -Wno-style -Wno-fatal -cc --top-module vid --exe $(SRC) $(SRC_SIM)
