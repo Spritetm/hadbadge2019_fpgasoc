@@ -169,7 +169,7 @@ module soc(
 	genvar i;
 	for (i=0; i<CPUCNT; i=i+1) begin : gencpus
 		picorv32 #(
-			.STACKADDR('h407ffefc-'h100*i), /* top of 8MByte PSRAM */
+			.STACKADDR('h41000000-'h800*i), /* top of 16 MByte PSRAM */
 			.PROGADDR_RESET('h40000000),
 			.PROGADDR_IRQ ('h40000010),
 			.TWO_STAGE_SHIFT(0),
