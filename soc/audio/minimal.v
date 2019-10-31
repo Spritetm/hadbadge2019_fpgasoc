@@ -25,10 +25,18 @@ localparam VOICETEST = 3;
 
 reg rst = 0;
 
-wire sample_clock;
-sample_clock #( .SAMPLECLOCK_DIV(SAMPLECLOCK_DIV) ) mysampleclock ( 
-	.clk(clk), .rst(rst), .sample_clock(sample_clock) 
-);
+reg sample_clock       = 0;
+reg [SAMPLECLOCK_DIV-1:0] sample_count = 0;
+always @(posedge clk) begin
+	if (rst) begin
+		sample_clock <= 0;
+		sample_count <= 0;
+	end
+	else begin
+		sample_count <= sample_count + 1;
+		sample_clock <= sample_count[SAMPLECLOCK_DIV-1];
+	end
+end
 
 
 wire [BITDEPTH-1:0] osc1_out;
@@ -172,7 +180,7 @@ assign bigmix = (mix >> 1) + (mix2 >> 1);
 dac #(.BITDEPTH(BITDEPTH)) mydac (
 	.clk (clk),
 	.rst(rst),
-	.sample_clock (sample_clock),
+	/* .sample_clock (sample_clock), */
 	.pcm (bigmix), // input to DAC
 	.out (pwmout) // connect to PWM pin
 );

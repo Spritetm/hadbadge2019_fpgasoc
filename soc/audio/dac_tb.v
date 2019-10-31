@@ -1,7 +1,7 @@
 `timescale 1ns/1ns
 module test();
 localparam SAMPLEFREQ = 8000000 / 2**8;
-localparam BD=12;
+localparam BD=14;
 
 reg [BD-1:0] pcm;
 wire out;
@@ -11,34 +11,28 @@ initial begin
 	$display("Go!");
 	// $monitor();
 end
-initial #40000 $finish;
+initial #80000 $finish;
 
 /* Clocks */
 reg clk = 0;
 reg rst = 0;
 always 
-	#1 clk = !clk;
-
-reg sample_clock = 0;
-reg [8:0] sample_count = 0;
-always @(posedge clk) begin
-	sample_count <= sample_count + 1;
-	sample_clock <= sample_count[7];
-end
+	#62.5 clk = !clk;
 
 /* Wires, registers, and module here */
 dac #(.BITDEPTH(BD)) dut (
 	.clk(clk),
 	.rst(rst),
-	.sample_clock(sample_clock),
 	.pcm(pcm),
 	.out(out)
 );
 
 initial begin
 	pcm = 0;
-	#10000 pcm = 2**6;
-	#20000 pcm = 2**8;
+	rst=1;
+	#1000 rst=0;
+	#10000 pcm = 2**7;
+	#20000 pcm = 2**(BD-1)-1;
 	#30000 pcm = 2**BD - 1;
 end
 

@@ -1,0 +1,183 @@
+[*]
+[*] GTKWave Analyzer v3.3.94 (w)1999-2018 BSI
+[*] Sat Nov  2 20:17:32 2019
+[*]
+[dumpfile] "/home/elliot/projects/fpga_badge/hadbadge2019_fpgasoc/soc/soctrace.vcd"
+[dumpfile_mtime] "Sat Nov  2 20:17:12 2019"
+[dumpfile_size] 154444864
+[optimize_vcd]
+[savefile] "/home/elliot/projects/fpga_badge/hadbadge2019_fpgasoc/soc/audio/synth.gtkw"
+[timestart] 21
+[size] 1916 1196
+[pos] -1 -1
+*-7.261505 3927 420 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] TOP.
+[treeopen] TOP.soc.
+[treeopen] TOP.soc.synth.
+[treeopen] TOP.soc.synth.osc1.
+[treeopen] TOP.soc.synth.osc1.myar.
+[treeopen] TOP.soc.synth.osc1.myar.myenv.
+[sst_width] 243
+[signals_width] 261
+[sst_expanded] 1
+[sst_vpaned_height] 269
+@c00022
+[color] 1
+TOP.soc.mem_addr[31:0]
+@28
+[color] 2
+(0)TOP.soc.mem_addr[31:0]
+[color] 2
+(1)TOP.soc.mem_addr[31:0]
+[color] 2
+(2)TOP.soc.mem_addr[31:0]
+[color] 2
+(3)TOP.soc.mem_addr[31:0]
+[color] 2
+(4)TOP.soc.mem_addr[31:0]
+[color] 2
+(5)TOP.soc.mem_addr[31:0]
+[color] 2
+(6)TOP.soc.mem_addr[31:0]
+[color] 2
+(7)TOP.soc.mem_addr[31:0]
+[color] 2
+(8)TOP.soc.mem_addr[31:0]
+[color] 2
+(9)TOP.soc.mem_addr[31:0]
+[color] 2
+(10)TOP.soc.mem_addr[31:0]
+[color] 2
+(11)TOP.soc.mem_addr[31:0]
+[color] 2
+(12)TOP.soc.mem_addr[31:0]
+[color] 2
+(13)TOP.soc.mem_addr[31:0]
+[color] 2
+(14)TOP.soc.mem_addr[31:0]
+[color] 2
+(15)TOP.soc.mem_addr[31:0]
+[color] 2
+(16)TOP.soc.mem_addr[31:0]
+[color] 2
+(17)TOP.soc.mem_addr[31:0]
+[color] 2
+(18)TOP.soc.mem_addr[31:0]
+[color] 2
+(19)TOP.soc.mem_addr[31:0]
+[color] 2
+(20)TOP.soc.mem_addr[31:0]
+[color] 2
+(21)TOP.soc.mem_addr[31:0]
+[color] 2
+(22)TOP.soc.mem_addr[31:0]
+[color] 2
+(23)TOP.soc.mem_addr[31:0]
+[color] 2
+(24)TOP.soc.mem_addr[31:0]
+[color] 2
+(25)TOP.soc.mem_addr[31:0]
+[color] 2
+(26)TOP.soc.mem_addr[31:0]
+[color] 2
+(27)TOP.soc.mem_addr[31:0]
+[color] 2
+(28)TOP.soc.mem_addr[31:0]
+[color] 2
+(29)TOP.soc.mem_addr[31:0]
+[color] 2
+(30)TOP.soc.mem_addr[31:0]
+[color] 2
+(31)TOP.soc.mem_addr[31:0]
+@1401200
+-group_end
+@22
+[color] 2
+TOP.soc.mem_rdata[31:0]
+[color] 2
+TOP.soc.mem_wdata[31:0]
+@28
+[color] 3
+TOP.soc.uart_I.uart_tx_fifo_I.clk
+[color] 3
+TOP.soc.mem_ready
+[color] 3
+TOP.soc.mem_ren
+[color] 3
+TOP.soc.mem_select
+[color] 3
+TOP.soc.mem_valid
+@22
+[color] 3
+TOP.soc.mem_wen[4:0]
+[color] 3
+TOP.soc.mem_wstrb[3:0]
+@28
+[color] 3
+TOP.soc.synth_ready
+[color] 3
+TOP.soc.synth_select
+@22
+TOP.soc.synth.addr[3:0]
+TOP.soc.synth.data_in[31:0]
+@28
+TOP.soc.synth.wen
+TOP.soc.synth.ren
+TOP.soc.synth.ready
+TOP.soc.synth.gate1
+@22
+TOP.soc.synth.osc1_out[13:0]
+@28
+TOP.soc.synth.rst
+TOP.soc.synth.sample_clock
+@22
+TOP.soc.synth.sample_count[7:0]
+@28
+TOP.soc.synth.pwmout
+@22
+[color] 2
+TOP.soc.synth.mydac.accumulator[14:0]
+@8022
+[color] 2
+TOP.soc.synth.mydac.pcm[13:0]
+@20000
+-
+-
+@29
+[color] 2
+TOP.soc.synth.mydac.out
+@22
+[color] 1
+TOP.soc.synth.osc1.myosc.accumulator[19:0]
+[color] 1
+TOP.soc.synth.osc1.myosc.increment[15:0]
+@8022
+[color] 1
+TOP.soc.synth.osc1.myosc.out[13:0]
+@20000
+-
+@22
+[color] 3
+TOP.soc.synth.osc1.myar.myenv.a[7:0]
+[color] 3
+TOP.soc.synth.osc1.myar.myenv.attack_counter[9:0]
+[color] 3
+TOP.soc.synth.osc1.myar.myenv.attack_exponential[8:0]
+@28
+[color] 3
+TOP.soc.synth.osc1.myar.myenv.gate
+@22
+[color] 3
+TOP.soc.synth.osc1.myar.myenv.r[7:0]
+[color] 3
+TOP.soc.synth.osc1.myar.myenv.release_counter[10:0]
+[color] 3
+TOP.soc.synth.osc1.myar.myenv.release_exponential[8:0]
+@28
+[color] 3
+TOP.soc.synth.osc1.myar.myenv.state[1:0]
+@8022
+[color] 3
+TOP.soc.synth.osc1.myar.myenv.volume[7:0]
+[pattern_trace] 1
+[pattern_trace] 0

@@ -1,6 +1,6 @@
 PROJ=minimal
-DUT=oscillator
-INCLUDES=oscillator.v dac.v button_number.v lfsr.v amplifier.v envelope.v cymbal.v
+DUT=dac
+INCLUDES=oscillator.v dac.v button_number.v lfsr.v amplifier.v envelope.v cymbal.v ar.v voice.v mixer4.v midi_note_to_accumulator.v
 CONSTR=had19_proto2.lpf
 TRELLIS=/usr/share/trellis
 
@@ -8,7 +8,8 @@ all: ${PROJ}.svf flash
 # all: sim
 
 %.json: %.v ${INCLUDES} 
-	yosys -p "synth_ecp5 -json $@" $< 
+	# yosys -p "synth_ecp5 -json $@" ${INCLUDES} 
+	yosys -p "synth_ecp5 -json $@" $<
 
 %_out.config: %.json
 	nextpnr-ecp5 --json $< --lpf ${CONSTR} --textcfg $@ --45k --package CABGA381 --speed 8 --seed 42

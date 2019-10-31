@@ -33,8 +33,11 @@ always @(posedge sample_clock) begin
 	end
 end
 
-always @(posedge accumulator[TOPBIT])
-	sub <= ~sub;
+always @(posedge accumulator[TOPBIT]) begin
+	if (!rst) begin
+		sub <= ~sub;
+	end
+end
 
 always @(posedge sample_clock) begin 
 	case (VOICE)
