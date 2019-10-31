@@ -114,6 +114,12 @@ reg [ADDR_WIDTH-1:0] caddr; //normally equals addr but when flushing will be con
 reg ren_delayed;
 reg [3:0] wen_delayed;
 
+// Capture QPI data on the strobe since we use it later
+reg [31:0] qpi_rdata_r;
+always @(posedge clk)
+	if (qpi_next_word)
+		qpi_rdata_r <= qpi_rdata;
+
 //Cache memory, tag memory, flags memory.
 simple_mem_words #(
 	.WORDS(CACHELINE_CT*CACHELINE_WORDS),
@@ -230,7 +236,7 @@ always @(*) begin
 		end
 		flag_wdata[FLAG_LRU] = flag_rdata[FLAG_LRU]; //doesn't matter actually
 		flag_wen = cache_refill_flag_wen;
-		cachedata_wdata = qpi_rdata;
+		cachedata_wdata = qpi_rdata_r;
 		cachedata_wen = cache_refill_wen;
 	end
 end
