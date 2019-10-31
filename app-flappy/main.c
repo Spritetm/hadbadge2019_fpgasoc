@@ -35,6 +35,7 @@ uint32_t *GFXSPRITES = (uint32_t *)0x5000C000;
 #define FLAPPY_GROUND_Y 19
 #define FLAPPY_BRICK_INDEX 136
 #define FLAPPY_PLAYER_INDEX 184
+#define FLAPPY_PLAYER_JUMP_INDEX 191
 
 //Define game parameters
 #define FLAPPY_PIPE_GAP 7
@@ -42,9 +43,9 @@ uint32_t *GFXSPRITES = (uint32_t *)0x5000C000;
 #define FLAPPY_PIPE_HEIGHT_MIN 2
 #define FLAPPY_PIPE_HEIGHT_MAX 9
 #define FLAPPY_SPEED 1.8
-#define FLAPPY_PLAYER_X 8
-#define FLAPPY_GRAVITY 0.9
-#define FLAPPY_JUMP (-2.0)
+#define FLAPPY_PLAYER_X 4
+#define FLAPPY_GRAVITY 2.6
+#define FLAPPY_JUMP (-16)
 #define FLAPPY_BOTTOM_EXTENT 290
 
 int m_player_y = 11;
@@ -205,14 +206,6 @@ void main(int argc, char **argv) {
 		__tile_a_set(x, FLAPPY_GROUND_Y, FLAPPY_GROUND_INDEX);
 	}
 
-	//Generate 4 pipes with fixed heights so it's easy to get started
-	__create_pipe(m_pipe_1_x, 3);
-	__create_pipe(m_pipe_2_x, 7);
-	__create_pipe(m_pipe_3_x, 4);
-	__create_pipe(m_pipe_4_x, 2);
-
-	
-
 	//The user can still see nothing of this graphics goodness, so let's re-enable the framebuffer and
 	//tile layer A (the default layer for the console). 
 	//Normal FB enabled (vice 8 bit) because background is loaded into the framebuffer above in 4 bit mode. 
@@ -226,33 +219,50 @@ void main(int argc, char **argv) {
 	//Primary game loop
 	float dy=0;
 	float dx=0;
-	 while((MISC_REG(MISC_BTN_REG) & BUTTON_A)==0) {
+	int game_over = 0;
+	 while(!game_over) {
 
 		//Move the tile layer b, each 1024 of dx is equal to one tile (or 16 pixels)
 		__tile_a_translate((int)dx, (int)dy);
 		dx += FLAPPY_SPEED;
 
-		//Draw the player sprite
-		__sprite_set(0, FLAPPY_PLAYER_X*16, m_player_y, 32, 32, FLAPPY_PLAYER_INDEX, 0);	
 
-		if ((m_score % 500) == 0) {
+		//Periodically update user y position and check for jumping
+		if ((m_score % 300) == 0) {
 			m_player_y += m_player_velocity;
 
+			//Collision detection
+			if (m_player_y >= FLAPPY_BOTTOM_EXTENT) {
+				game_over = 1;
+				m_player_y = 272;
+			}
+
 			//Jump when user presses button
-			if ((MISC_REG(MISC_BTN_REG) & BUTTON_UP)) {
-				m_player_velocity += FLAPPY_JUMP;
+			if (MISC_REG(MISC_BTN_REG)) {
+				m_player_velocity = 0;
+				m_player_y += FLAPPY_JUMP;
+				__sprite_set(0, FLAPPY_PLAYER_X*16, m_player_y, 32, 32, FLAPPY_PLAYER_JUMP_INDEX, 0);	
 			} else {
 				m_player_velocity += FLAPPY_GRAVITY;
+				__sprite_set(0, FLAPPY_PLAYER_X*16, m_player_y, 32, 32, FLAPPY_PLAYER_INDEX, 0);	
 			}
 		}
 
-		//TODO detect when a pipe is about to go on screen (it just wrapped around) and randomize its height
+		//Generate 4 pipes with fixed heights so it's easy to get started
+		//Only generate the pipes as they make progress
+		if (m_score == 8000) {
+			__create_pipe(m_pipe_3_x, 4);
+			__create_pipe(m_pipe_4_x, 2);
+		} else if (m_score == 25000) {
+			__create_pipe(m_pipe_1_x, 3);
+			__create_pipe(m_pipe_2_x, 7);
+		}
 
 		//Calculate true x coordinate of pipes
 		int x1 = (((m_pipe_1_x << 10) - (int)dx) & 0xFFFF) >> 6;
-		int x2 = (((m_pipe_1_x << 10) - (int)dx) & 0xFFFF) >> 6;
-		int x3 = (((m_pipe_1_x << 10) - (int)dx) & 0xFFFF) >> 6;
-		int x4 = (((m_pipe_1_x << 10) - (int)dx) & 0xFFFF) >> 6;
+		int x2 = (((m_pipe_2_x << 10) - (int)dx) & 0xFFFF) >> 6;
+		int x3 = (((m_pipe_3_x << 10) - (int)dx) & 0xFFFF) >> 6;
+		int x4 = (((m_pipe_4_x << 10) - (int)dx) & 0xFFFF) >> 6;
 
 		//Detect a pipe about to enter from right side of screen, in this case generate
 		//A new pipe at that same tile x coord so it appears we have infinite scrolling
@@ -280,15 +290,10 @@ void main(int argc, char **argv) {
 		//Print score at 0,0
 		//NOTE: this seems to be a *very* slow operation. Adding a second fprintf will have a noticeable
 		//slowdown effect. Removing this fprintf will put the game into ludicrous speed mode. Need to fix!
-		fprintf(console, "\0330X\0330Y%dm %d\03324XFLAPPY", (m_score >> 10), gfx_tiles_err); 
+		fprintf(console, "\0330X\0330Y%dm\03324XFLAPPY", (m_score >> 10)); 
 
 		//Flappy score increases with distance which is simply a function of time
 		m_score++;
-
-		//Collision detection
-		if (m_player_y >= FLAPPY_BOTTOM_EXTENT) {
-			break;
-		}
 	 }
 
 	 //Print game over
