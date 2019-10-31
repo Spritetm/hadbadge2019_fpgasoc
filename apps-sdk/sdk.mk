@@ -19,7 +19,7 @@ BUILD_DIR_SDK := $(BUILD_DIR)/apps-sdk
 #Ipl gloss is in include path because mach_defines.h
 INCLUDEDIRS += $(APPSSDK_DIR) $(APPSSDK_DIR)/gloss $(APPSSDK_DIR)/../soc/ipl/gloss $(APPSSDK_DIR)/../soc/ipl/syscallable/
 CFLAGS += -ggdb $(addprefix -I,$(INCLUDEDIRS))
-LDFLAGS += -ggdb -Wl,-T,$(LDSCRIPT) -Wl,-Map,$(TARGET_MAP) -lgcc -lm
+LDFLAGS += -ggdb -Wl,-T,$(LDSCRIPT) -Wl,-Map,$(TARGET_MAP) -lgcc -lm -lgloss
 DEPFLAGS := -MMD -MP 
 
 export CC AR LD OBJCOPY CFLAGS LDFLAGS APPNAME
