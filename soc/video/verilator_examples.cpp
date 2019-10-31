@@ -148,4 +148,49 @@ void frame_buffer_example1() {
 	draw_pixel(240, 160, 3); 
 }
 
+// Demonstrates palette shifting
+void frame_buffer_example2() {
 
+	// Step 1 & 2: Allocate a buffer and set GFX_FBADDR_REG
+	// This is handled by fb_alloc
+	uint8_t *fb = fb_alloc(480, 320, true);
+
+	// Step 3: Set width of buffer in pixels
+	// only first 480 pixels of each line will be shown
+	GFX_REG(GFX_FBPITCH_REG) = 480 << GFX_FBPITCH_PITCH_OFF;
+
+	// Step 4: Enable frame buffer
+	// Also set it to 8 bit depth.
+	GFX_REG(GFX_LAYEREN_REG) = GFX_LAYEREN_FB_8BIT | GFX_LAYEREN_FB;
+	
+	// Step 5 set palette
+	load_default_palette();
+
+	// Draw every element in a new color
+
+	// Head	
+	draw_circle(240, 160, 100, 1);
+
+	// Eyes
+	draw_circle(200, 130, 20, 2);
+	draw_circle(195, 125, 7, 3);
+	draw_circle(280, 130, 20, 4);
+	draw_circle(275, 125, 7, 5);
+
+	// Mouth
+	draw_line(220, 220, 290, 220, 6);
+	draw_line(215, 225, 290, 220, 7);
+	draw_line(220, 220, 215, 225, 8);
+
+	// Nose
+	draw_line(240, 140, 255, 170, 9);
+	draw_line(240, 180, 255, 170, 10);
+
+	// Set end-of-frame callback to change palettte
+	end_of_frame_callback = [](int field) { 
+		int shift = (field / 3) & 0xf;
+		GFX_REG(GFX_FBPITCH_REG) = 
+			(shift << GFX_FBPITCH_PAL_OFF) + 
+			(480 << GFX_FBPITCH_PITCH_OFF);
+	};
+}
