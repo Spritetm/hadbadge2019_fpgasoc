@@ -62,6 +62,9 @@ RegisterPointer GFXTILEMAPA(GFX_OFFSET_TILEMAPA);
 RegisterPointer GFXTILEMAPB(GFX_OFFSET_TILEMAPB);
 RegisterPointer GFXSPRITES(GFX_OFFSET_SPRITE);
 
+// End of frame callback
+void (*end_of_frame_callback)(int) = NULL;
+
 // Send reset signal to test bench
 void toggle_reset() {
 	tb->reset=1;

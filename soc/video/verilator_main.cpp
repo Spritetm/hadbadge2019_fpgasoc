@@ -183,6 +183,10 @@ void setup6() {
 	frame_buffer_example1();
 }
 
+void setup7() {
+	frame_buffer_example2();
+}
+
 // Array of all setups - defined in verilator_options.hpp
 setup_fn setups[] = {
 	setup1,
@@ -191,6 +195,7 @@ setup_fn setups[] = {
 	setup4,
 	setup5,
 	setup6,
+	setup7,
 	NULL
 };
 
@@ -256,6 +261,9 @@ int main(int argc, char **argv) {
 			if (tb->next_field==1 && next_field==0) {
 				printf("Finished field: %d\n", field);
 				field++;
+				if (end_of_frame_callback) {
+					end_of_frame_callback(field);
+				}
 			}
 			tb->next_field=next_field;
 			tb->next_line=next_line;

@@ -105,6 +105,9 @@ extern RegisterPointer GFXTILEMAPB;
 // Sprites not actually defined in sdk.h or ldscript.ld, yet
 extern RegisterPointer GFXSPRITES; 
 
+// End of frame callback for simulation, to allow primitive animation
+extern void (*end_of_frame_callback)(int);
+
 // Send reset signal to test bench
 void toggle_reset();
 

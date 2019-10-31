@@ -4,5 +4,5 @@
 
 
 // Examples
-
 void frame_buffer_example1();
+void frame_buffer_example2();

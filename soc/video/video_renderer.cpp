@@ -20,7 +20,7 @@
 
 //This emulates the HDMI encoder, and instead shows the image in a SDL window.
 
-#define SCALE 2
+#define SCALE 1
 
 Video_renderer::Video_renderer(bool show_display) {
 	do_display=show_display;
@@ -62,16 +62,18 @@ int Video_renderer::next_pixel(int red, int green, int blue, int *fetch_next, in
 	*next_field=(beam_y==480)?1:0;
 	beam_x++;
 	if (beam_x==796) {
-		if (do_display) {
-			Uint32 time_since_last=SDL_GetTicks()-last_update;
-			if (time_since_last>100) {
-				SDL_UpdateWindowSurface(window);
-				last_update=SDL_GetTicks();
-			}
-		}
+		// Uncomment for more regular updates
+		// if (do_display) {
+		// 	Uint32 time_since_last=SDL_GetTicks()-last_update;
+		// 	if (time_since_last>100) {
+		// 		SDL_UpdateWindowSurface(window);
+		// 		last_update=SDL_GetTicks();
+		// 	}
+		// }
 		beam_x=0;
 		beam_y++;
 		if (beam_y==523) {
+			if (do_display) SDL_UpdateWindowSurface(window);
 			beam_y=0;
 		}
 	}
