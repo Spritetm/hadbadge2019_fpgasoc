@@ -53,17 +53,16 @@ module soc(
 		output lcd_rst,
 		input lcd_fmark,
 		output lcd_blen,
-		output psrama_nce,
-		output psrama_sclk,
-		input [3:0] psrama_sin,
-		output [3:0] psrama_sout,
-		output psrama_oe,
-		output psramb_nce,
-		output psramb_sclk,
-		input [3:0] psramb_sin,
-		output [3:0] psramb_sout,
-		output psramb_oe,
-		
+
+		// PSRAM chips
+		inout wire [3:0] psrama_sio,
+		inout wire psrama_nce,
+		inout wire psrama_sclk,
+
+		inout wire [3:0] psramb_sio,
+		inout wire psramb_nce,
+		inout wire psramb_sclk,
+
 		output flash_nce,
 		output flash_selected,
 		output flash_sclk,
@@ -124,8 +123,6 @@ module soc(
 	reg [31:0] mem_rdata;
 	wire mem_valid;
 	reg [31:0] irq;
-	reg [7:0] psrama_ovr;
-	reg [7:0] psramb_ovr;
 
 
 /* verilator lint_off PINMISSING */
@@ -358,6 +355,9 @@ module soc(
 	wire [31:0] pic_rdata;
 	wire pic_ready;
 	reg pic_select;
+	wire [31:0] psram_rdata;
+	wire psram_ready;
+	reg psram_select;
 
 	reg synth_select;
 	wire synth_ready;
@@ -379,8 +379,6 @@ module soc(
 	parameter MISC_REG_BTN = 1;
 	parameter MISC_REG_SOC_VER = 2;
 	parameter MISC_REG_CPU_NO = 3;
-	parameter MISC_REG_PSRAMOVR_A = 4; //read will give current CPU ID... ToDo: make that more logical
-	parameter MISC_REG_PSRAMOVR_B = 5;
 	parameter MISC_REG_RESETN = 6;
 	parameter MISC_REG_FLASH_CTL = 7;
 	parameter MISC_REG_FLASH_WDATA = 8;
@@ -421,6 +419,7 @@ module soc(
 		usb_select = 0;
 		pic_select = 0;
 		synth_select = 0;
+		psram_select = 0;
 		linerenderer_select=0;
 		bus_error = 0;
 		mem_rdata = 'hx;
@@ -442,10 +441,6 @@ module soc(
 				mem_rdata = soc_version;
 			end else if (mem_addr[6:2]==MISC_REG_CPU_NO) begin
 				mem_rdata = arb_currcpu;
-			end else if (mem_addr[6:2]==MISC_REG_PSRAMOVR_A) begin
-				mem_rdata = psrama_ovr;
-			end else if (mem_addr[6:2]==MISC_REG_PSRAMOVR_B) begin
-				mem_rdata = psramb_ovr;
 			end else if (mem_addr[6:2]==MISC_REG_FLASH_CTL) begin
 				mem_rdata = {29'h0, flash_dma_memw_done, flash_idle, flash_claim};
 			end else if (mem_addr[6:2]==MISC_REG_FLASH_RDATA) begin
@@ -479,7 +474,7 @@ module soc(
 			end else begin
 				mem_rdata = 0;
 			end
-			//todo: improve misc/psram/... readback
+			//todo: improve misc/... readback
 		end else if (mem_addr[31:28]=='h3) begin
 			lcd_select = mem_valid;
 			mem_rdata = lcd_rdata;
@@ -498,6 +493,9 @@ module soc(
 		end else if (mem_addr[31:28]=='h8) begin
 			synth_select = mem_valid;
 			mem_rdata = 0;
+		end else if (mem_addr[31:28]=='h9) begin
+			psram_select = mem_valid;
+			mem_rdata = psram_rdata;
 		end else begin
 			//Bus error. Raise IRQ if memory is accessed.
 			mem_rdata = 'hDEADBEEF;
@@ -514,7 +512,7 @@ module soc(
 `endif
 
 	assign mem_ready = ram_ready || uart_ready || irda_ready || misc_select ||
-			lcd_ready || linerenderer_ready || usb_ready || pic_ready || synth_ready || bus_error;
+			lcd_ready || linerenderer_ready || usb_ready || pic_ready || synth_ready || psram_ready ||| bus_error;
 
 	dsadc dsadc (
 		.clk(clk48m),
@@ -787,48 +785,79 @@ module soc(
 	assign qpimem_arb_do_write[1] = 0;
 	assign `SLICE_32(qpimem_arb_wdata, 1) = 0;
 
-	wire qpsram_sclk;
-	wire qpsram_nce;
-	wire [3:0] qpsrama_sout;
-	wire [3:0] qpsramb_sout;
-	wire qpsram_oe;
 
-	qpimem_iface_intl qpimem_iface_intl(
+	// PSRAM QPI interface
+	// -------------------
+
+	// Signals
+	wire [15:0] psram_io_i;
+	wire [15:0] psram_io_o;
+	wire [ 7:0] psram_io_t;
+	wire [1:0] psram_sck_o;
+	wire psram_cs_o;
+
+	// Controller
+	qpimem_iface_2x2w qpi_psram_I (
+		.spi_io_i(psram_io_i),
+		.spi_io_o(psram_io_o),
+		.spi_io_t(psram_io_t),
+		.spi_sck_o(psram_sck_o),
+		.spi_cs_o(psram_cs_o),
+		.qpi_do_read(qpi_do_read),
+		.qpi_do_write(qpi_do_write),
+		.qpi_addr({1'b0, qpi_addr[23:2], 1'b0}),
+		.qpi_is_idle(qpi_is_idle),
+		.qpi_wdata(qpi_wdata),
+		.qpi_rdata(qpi_rdata),
+		.qpi_next_word(qpi_next_word),
+		.bus_addr(mem_addr[5:2]),
+		.bus_wdata(mem_wdata),
+		.bus_rdata(psram_rdata),
+		.bus_cyc(psram_select),
+		.bus_ack(psram_ready),
+		.bus_we(mem_wstrb != 0),
 		.clk(clk48m),
-		.rst(rst),
-		
-		.do_read(qpi_do_read),
-		.do_write(qpi_do_write),
-		.next_word(qpi_next_word),
-		.addr(qpi_addr),
-		.wdata(qpi_wdata),
-		.rdata(qpi_rdata),
-		.is_idle(qpi_is_idle),
-
-		.spi_clk(qpsram_sclk),
-		.spi_ncs(qpsram_nce),
-		.spi_sout_b(qpsrama_sout),
-		.spi_sin_b(psrama_sin),
-		.spi_sout_a(qpsramb_sout),
-		.spi_sin_a(psramb_sin),
-		.spi_oe(qpsram_oe)
+		.rst(rst)
 	);
 
-	wire psrama_override;
-	assign psrama_override=psrama_ovr[7];
-	assign psrama_oe = psrama_override ? psrama_ovr[6] : qpsram_oe;
-	assign psrama_sclk = psrama_override ? psrama_ovr[5] : qpsram_sclk;
-	assign psrama_nce = psrama_override ? psrama_ovr[4] : qpsram_nce;
-	assign psrama_sout = psrama_override ? psrama_ovr[3:0] : qpsrama_sout;
+	// PHY
+	qspi_phy_2x_ecp5 #(
+		.N_CS(1)
+	) qspi_phy_psrama_I (
+		.spi_io(psrama_sio),
+		.spi_cs(psrama_nce),
+		.spi_sck(psrama_sclk),
+		.spi_io_i(psram_io_i[7:0]),
+		.spi_io_o(psram_io_o[7:0]),
+		.spi_io_t(psram_io_t[3:0]),
+		.spi_sck_o(psram_sck_o),
+		.spi_cs_o(psram_cs_o),
+		.clk_1x(clk48m),
+		.clk_2x(clk96m),
+		.rst(rst)
+	);
 
-	wire psramb_override;
-	assign psramb_override=psramb_ovr[7];
-	assign psramb_oe = psrama_override ? psramb_ovr[6] : qpsram_oe;
-	assign psramb_sclk = psrama_override ? psramb_ovr[5] : qpsram_sclk;
-	assign psramb_nce = psrama_override ? psramb_ovr[4] : qpsram_nce;
-	assign psramb_sout = psrama_override ? psramb_ovr[3:0] : qpsramb_sout;
+	qspi_phy_2x_ecp5 #(
+		.N_CS(1)
+	) qspi_phy_psramb_I (
+		.spi_io(psramb_sio),
+		.spi_cs(psramb_nce),
+		.spi_sck(psramb_sclk),
+		.spi_io_i(psram_io_i[15:8]),
+		.spi_io_o(psram_io_o[15:8]),
+		.spi_io_t(psram_io_t[7:4]),
+		.spi_sck_o(psram_sck_o),
+		.spi_cs_o(psram_cs_o),
+		.clk_1x(clk48m),
+		.clk_2x(clk96m),
+		.rst(rst)
+	);
 
-	//Flash mostly uses SPI to communicate, but can use QPI for DMA reads.
+
+	// Flash interface
+	// ---------------
+
+	// Flash mostly uses SPI to communicate, but can use QPI for DMA reads.
 	qpimem_iface #(
 		.READCMD('hEb),
 		.READDUMMY(7),
@@ -881,8 +910,6 @@ module soc(
 	always @(posedge clk48m) begin
 		if (rst) begin
 			pic_led <= 0;
-			psrama_ovr <= 0;
-			psramb_ovr <= 0;
 			cpu_resetn <= 1;
 			flash_claim <= 0;
 			fsel_strobe <= 0;
@@ -904,10 +931,6 @@ module soc(
 					pic_led <= mem_wdata[16:0];
 				end else if (mem_addr[6:2]==MISC_REG_SOC_VER) begin
 					trace_en <= mem_wdata[0];
-				end else if (mem_addr[6:2]==MISC_REG_PSRAMOVR_A) begin
-					psrama_ovr <= mem_wdata;
-				end else if (mem_addr[6:2]==MISC_REG_PSRAMOVR_B) begin
-					psramb_ovr <= mem_wdata;
 				end else if (mem_addr[6:2]==MISC_REG_RESETN) begin
 					cpu_resetn[1] <= mem_wdata[1];
 				end else if (mem_addr[6:2]==MISC_REG_FLASH_CTL) begin

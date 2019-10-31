@@ -104,13 +104,6 @@ module top_fpga(
 		.OSC(clkint)
 	);
 
-	wire [3:0] psrama_sout;
-	wire [3:0] psrama_sin;
-	wire psrama_oe;
-	wire [3:0] psramb_sout;
-	wire [3:0] psramb_sin;
-	wire psramb_oe;
-
 	wire vid_pixelclk;
 	wire vid_fetch_next;
 	wire vid_next_line;
@@ -186,17 +179,12 @@ module top_fpga(
 		.lcd_rst(lcd_rst),
 		.lcd_fmark(lcd_fmark),
 		.lcd_blen(lcd_blen),
+		.psrama_sio(psrama_sio),
 		.psrama_nce(psrama_nce),
 		.psrama_sclk(psrama_sclk),
-		.psrama_sout(psrama_sout),
-		.psrama_sin(psrama_sin),
-		.psrama_oe(psrama_oe),
+		.psramb_sio(psramb_sio),
 		.psramb_nce(psramb_nce),
 		.psramb_sclk(psramb_sclk),
-		.psramb_sin(psramb_sin),
-		.psramb_sout(psramb_sout),
-		.psramb_oe(psramb_oe),
-
 		.flash_nce(flash_cs),
 		.flash_selected(flash_selected),
 		.flash_sclk(flash_sclk),
@@ -267,11 +255,6 @@ module top_fpga(
 	);
 
 	genvar i;
-	//Note: TRELLIS_IO has a T-ristate input, which does the opposite of OE.
-	for (i=0; i<4; i++) begin
-		TRELLIS_IO #(.DIR("BIDIR")) psrama_sio_tristate[i] (.I(psrama_sout[i]),.T(!psrama_oe),.B(psrama_sio[i]),.O(psrama_sin[i]));
-		TRELLIS_IO #(.DIR("BIDIR")) psramb_sio_tristate[i] (.I(psramb_sout[i]),.T(!psramb_oe),.B(psramb_sio[i]),.O(psramb_sin[i]));
-	end
 
 	TRELLIS_IO #(.DIR("BIDIR")) flash_tristate_mosi (.I(flash_sout[0]),.T(flash_bus_qpi && !flash_oe),.B(flash_mosi),.O(flash_sin[0]));
 	TRELLIS_IO #(.DIR("BIDIR")) flash_tristate_miso (.I(flash_sout[1]),.T(!flash_bus_qpi || !flash_oe),.B(flash_miso),.O(flash_sin[1]));

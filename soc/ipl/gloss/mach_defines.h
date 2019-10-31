@@ -75,11 +75,6 @@
 #define MISC_SOC_VER_VERILATOR (1<<16)
 /** This reads the ID of the current CPU reading this. */
 #define MISC_CPU_NO (3*4)
-/** PSRAM I/O override register for PSRAM A. Used to bitbang the SPI lines to
-    get the PSRAM in the proper QPI mode. (ToDo: document bits)*/
-#define MISC_PSRAMOVRA_REG (4*4)
-/** PSRAM I/O override register for PSRAM B. */
-#define MISC_PSRAMOVRB_REG (5*4)
 /** Reset register for various CPUs in the SoC. (ToDo: document) */
 #define MISC_RESETN_REG (6*4)
 /** Flash control register. Used to read from / write to both the on-board as
@@ -507,13 +502,19 @@ but this should get you started.
 #define AUDIO_DRUMS         0xD0
 #define AUDIO_CONFIG_VOLUME 0xF0
 
+/* -------------- PSRAM peripheral defines --------------------- */
 
+/** Offset of the manual control for PSRAM */
+#define PSRAM_CMD_OFFSET 0x90000000
 
-
-
-
-
-
-
-
-
+#define PSRAM_CMD_CSR		0x00
+#define PSRAM_CMD_RSP_NOWAIT	0x08
+#define PSRAM_CMD_RSP_BLOCK	0x0C
+#define PSRAM_CMD_SPI_WR_16B	0x20
+#define PSRAM_CMD_SPI_WR_32B	0x24
+#define PSRAM_CMD_SPI_RD_16B	0x28
+#define PSRAM_CMD_SPI_RD_32B	0x2C
+#define PSRAM_CMD_QPI_WR_16B	0x30
+#define PSRAM_CMD_QPI_WR_32B	0x34
+#define PSRAM_CMD_QPI_RD_16B	0x38
+#define PSRAM_CMD_QPI_RD_32B	0x3C

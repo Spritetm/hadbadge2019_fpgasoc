@@ -38,6 +38,7 @@ SRC_SIM = \
 
 	# Misc
 SRC += $(addprefix misc/, \
+	delay.v \
 	fifo_sync_ram.v \
 	fifo_sync_shift.v \
 	glitch_filter.v \
@@ -51,6 +52,8 @@ SRC += $(addprefix qpi_cache/, \
 	qpimem_dma_rdr.v \
 	qpimem_iface.v \
 	qpimem_iface_intl.v \
+	qpimem_iface_2x2w.v \
+	qspi_phy_2x_ecp5.v \
 	simple_mem.v \
 	simple_mem_words.v \
 )
