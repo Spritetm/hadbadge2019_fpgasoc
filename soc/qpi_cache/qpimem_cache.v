@@ -29,9 +29,9 @@
 
 module qpimem_cache #(
 	//Simple 2-way cache.
-	parameter integer CACHELINE_WORDS=4,
-	parameter integer CACHELINE_CT=32,
-	parameter integer ADDR_WIDTH=21 //addresses words
+	parameter integer CACHELINE_WORDS=16,
+	parameter integer CACHELINE_CT=512,
+	parameter integer ADDR_WIDTH=22 //addresses words
 	//Cache size is CACHELINE_WORDS*CACHELINE_CT*4 bytes.
 ) (
 	input clk,
