@@ -44,8 +44,8 @@ uint32_t *GFXSPRITES = (uint32_t *)0x5000C000;
 #define FLAPPY_PIPE_HEIGHT_MAX 9
 #define FLAPPY_SPEED 1.8
 #define FLAPPY_PLAYER_X 4
-#define FLAPPY_GRAVITY 2.6
-#define FLAPPY_JUMP (-16)
+#define FLAPPY_GRAVITY 2.0
+#define FLAPPY_JUMP (-17)
 #define FLAPPY_BOTTOM_EXTENT 290
 
 int m_player_y = 11;
@@ -54,11 +54,11 @@ uint32_t m_score = 0;
 int m_pipe_1_x = 11;
 int m_pipe_1_height = 3;
 int m_pipe_2_x = 27;
-int m_pipe_2_height = 3;
+int m_pipe_2_height = 5;
 int m_pipe_3_x = 43;
-int m_pipe_3_height = 3;
+int m_pipe_3_height = 7;
 int m_pipe_4_x = 59;
-int m_pipe_4_height = 3;
+int m_pipe_4_height = 4;
 
 //Borrowed this from lcd.c until a better solution comes along :/
 static void __INEFFICIENT_delay(int n) {
@@ -131,6 +131,46 @@ static inline void __create_pipe(int x, int h) {
 		}
 		__tile_a_set(x+4,y,0);
 	}
+}
+
+/**
+ * Check for collision with a pipe with true screen x coordinate and height value
+ * Sadly units do not match. If I find time to fix it I will.
+ * x is in absolute screen coordinate (pixels)
+ * h is the height of the bottom pipe in tiles
+ * 
+ * This is compared against the player position which is stored statically.
+ * YOLO
+ * 
+ * Returns 0 if no collision, non-zero if collision
+ */
+static int __collision_test(int x, int h) {
+	//Easiest test is if player has not reached pipe
+	if (x > ((FLAPPY_PLAYER_X* 16)+32)) {
+		return 0;
+	}
+
+	//If player is past the pipe there can be no collision
+	if ((x + 4) * 16 < (FLAPPY_PLAYER_X * 16)) {
+		return 0;
+	}
+
+	//We only reach this point if player is at the pipe
+
+
+	//Top is the minimum y extent the player can be as they're passing through the pipe
+	int top = (FLAPPY_PIPE_BOTTOM - FLAPPY_PIPE_GAP - h) * 16;
+	//Bottom is the maximum y extent he player can be as they're passing through the pipe
+	int bottom = ((FLAPPY_PIPE_BOTTOM - h) * 16) - 32;
+
+	//Test if player y is valid
+	if (m_player_y < top || m_player_y > bottom) {
+		return -1;
+	}
+
+
+	//We got this far, must be clear
+	return 0;
 }
 
 void main(int argc, char **argv) {
@@ -226,6 +266,11 @@ void main(int argc, char **argv) {
 		__tile_a_translate((int)dx, (int)dy);
 		dx += FLAPPY_SPEED;
 
+		//Calculate true screen coordinates x coordinate of pipes
+		int x1 = (((m_pipe_1_x << 10) - (int)dx) & 0xFFFF) >> 6;
+		int x2 = (((m_pipe_2_x << 10) - (int)dx) & 0xFFFF) >> 6;
+		int x3 = (((m_pipe_3_x << 10) - (int)dx) & 0xFFFF) >> 6;
+		int x4 = (((m_pipe_4_x << 10) - (int)dx) & 0xFFFF) >> 6;
 
 		//Periodically update user y position and check for jumping
 		if ((m_score % 300) == 0) {
@@ -246,44 +291,52 @@ void main(int argc, char **argv) {
 				m_player_velocity += FLAPPY_GRAVITY;
 				__sprite_set(0, FLAPPY_PLAYER_X*16, m_player_y, 32, 32, FLAPPY_PLAYER_INDEX, 0);	
 			}
+
+			//Test collision against any pipes, but use our made up minimum score values to only test after the pipes
+			//are created
+			if (m_score > 8000) {
+				game_over |=
+					__collision_test(x3, m_pipe_3_height) ||
+					__collision_test(x4, m_pipe_4_height);
+			}
+			if (m_score > 25000) {
+				game_over |= 
+					__collision_test(x1, m_pipe_1_height) ||
+					__collision_test(x2, m_pipe_2_height);
+			}
 		}
 
 		//Generate 4 pipes with fixed heights so it's easy to get started
 		//Only generate the pipes as they make progress
+		//The 8000 and 25000 values are arbitrary but defer pipe creation _just_ enough
 		if (m_score == 8000) {
-			__create_pipe(m_pipe_3_x, 4);
-			__create_pipe(m_pipe_4_x, 2);
+			__create_pipe(m_pipe_3_x, m_pipe_3_height);
+			__create_pipe(m_pipe_4_x, m_pipe_4_height);
 		} else if (m_score == 25000) {
-			__create_pipe(m_pipe_1_x, 3);
-			__create_pipe(m_pipe_2_x, 7);
+			__create_pipe(m_pipe_1_x, m_pipe_1_height);
+			__create_pipe(m_pipe_2_x, m_pipe_2_height);
 		}
-
-		//Calculate true x coordinate of pipes
-		int x1 = (((m_pipe_1_x << 10) - (int)dx) & 0xFFFF) >> 6;
-		int x2 = (((m_pipe_2_x << 10) - (int)dx) & 0xFFFF) >> 6;
-		int x3 = (((m_pipe_3_x << 10) - (int)dx) & 0xFFFF) >> 6;
-		int x4 = (((m_pipe_4_x << 10) - (int)dx) & 0xFFFF) >> 6;
-
+			
 		//Detect a pipe about to enter from right side of screen, in this case generate
 		//A new pipe at that same tile x coord so it appears we have infinite scrolling
 		//Screen is 480 wide so 500 is good enough
 		if (x1 == 500) {
-			m_pipe_1_height = (rand() % (FLAPPY_PIPE_HEIGHT_MIN - FLAPPY_PIPE_HEIGHT_MAX)) + FLAPPY_PIPE_HEIGHT_MIN;
+			// m_pipe_1_height = (rand() % (FLAPPY_PIPE_HEIGHT_MIN - FLAPPY_PIPE_HEIGHT_MAX)) + FLAPPY_PIPE_HEIGHT_MIN;
 			__create_pipe(m_pipe_1_x, m_pipe_1_height);
 		}
 
 		if (x2 == 500) {
-			m_pipe_2_height = (rand() % (FLAPPY_PIPE_HEIGHT_MIN - FLAPPY_PIPE_HEIGHT_MAX)) + FLAPPY_PIPE_HEIGHT_MIN;
+			// m_pipe_2_height = (rand() % (FLAPPY_PIPE_HEIGHT_MIN - FLAPPY_PIPE_HEIGHT_MAX)) + FLAPPY_PIPE_HEIGHT_MIN;
 			__create_pipe(m_pipe_2_x, m_pipe_2_height);
 		}
 
 		if (x3 == 500) {
-			m_pipe_3_height = (rand() % (FLAPPY_PIPE_HEIGHT_MIN - FLAPPY_PIPE_HEIGHT_MAX)) + FLAPPY_PIPE_HEIGHT_MIN;
+			// m_pipe_3_height = (rand() % (FLAPPY_PIPE_HEIGHT_MIN - FLAPPY_PIPE_HEIGHT_MAX)) + FLAPPY_PIPE_HEIGHT_MIN;
 			__create_pipe(m_pipe_3_x, m_pipe_3_height);
 		}
 
 		if (x4 == 500) {
-			m_pipe_4_height = (rand() % (FLAPPY_PIPE_HEIGHT_MIN - FLAPPY_PIPE_HEIGHT_MAX)) + FLAPPY_PIPE_HEIGHT_MIN;
+			// m_pipe_4_height = (rand() % (FLAPPY_PIPE_HEIGHT_MIN - FLAPPY_PIPE_HEIGHT_MAX)) + FLAPPY_PIPE_HEIGHT_MIN;
 			__create_pipe(m_pipe_4_x, m_pipe_4_height);
 		}
 
@@ -303,4 +356,10 @@ void main(int argc, char **argv) {
 	__button_wait_for_release();
 	__INEFFICIENT_delay(200);
  	__button_wait_for_press();
+
+	//Clear both tilemaps
+	memset(GFXTILEMAPA,0,0x4000);
+	memset(GFXTILEMAPB,0,0x4000);
+	//Clear sprites that IPL may have loaded
+	memset(GFXSPRITES,0,0x4000);
 }
