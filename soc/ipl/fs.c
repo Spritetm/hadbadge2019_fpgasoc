@@ -21,8 +21,6 @@
 #include "gloss/mach_defines.h"
 #include "gloss/uart.h"
 #include <stdio.h>
-#include <lcd.h>
-#include "ugui.h"
 #include <string.h>
 #include "tusb.h"
 #include "flash.h"

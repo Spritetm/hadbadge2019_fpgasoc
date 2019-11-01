@@ -5,7 +5,7 @@ BADGE_VER ?= 2
 PROJ=soc
 #Seed for nextpnr. Change this to another random value if you happen to run 
 #into a situation that mis-synths or takes extremely long to synth the SoC.
-SEED = 58
+SEED = 59
 
 # Sources
 	# Base
@@ -53,6 +53,10 @@ SRC += $(addprefix qpi_cache/, \
 	qpimem_iface_intl.v \
 	simple_mem.v \
 	simple_mem_words.v \
+)
+
+SRC_SIM += $(addprefix qpi_cache/, \
+	ecp5_ioregs_sim.v \
 )
 
 	# Video
@@ -189,7 +193,9 @@ verilator: verilator-build/Vsoc ipl boot/ $(EXTRA_DEPEND)
 	./verilator-build/Vsoc
 
 verilator-build/Vsoc: $(SRC) $(SRC_SIM) $(BRAMFILE)
-	verilator -Iusb -CFLAGS "-ggdb `sdl2-config --cflags`" -LDFLAGS "`sdl2-config --libs`" --assert --trace --Mdir verilator-build -Wno-style -Wno-fatal -cc --top-module soc --exe $(SRC) $(SRC_SIM)
+	verilator -Iusb -CFLAGS "-ggdb `sdl2-config --cflags`" -LDFLAGS "`sdl2-config --libs`" --assert \
+			--trace --Mdir verilator-build -Wno-style -Wno-fatal -cc --top-module soc \
+			--threads 2 -O3 --noassert --exe $(SRC) $(SRC_SIM)
 	make OPT_FAST="-O2 -fno-stack-protector" -C verilator-build -f Vsoc.mk
 
 rom.hex: boot/
