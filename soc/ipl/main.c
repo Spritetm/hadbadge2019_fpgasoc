@@ -27,6 +27,7 @@
 #include <math.h>
 #include <string.h>
 #include "tusb.h"
+#include "usb_descriptors.h"
 #include "hexdump.h"
 #include "fs.h"
 #include "flash.h"
@@ -433,4 +434,40 @@ void tud_dfu_rt_reboot_to_dfu(void)
 
 	// Wait indefinitely
 	while (1);
+}
+
+// Invoked when received VENDOR control request
+bool tud_vendor_control_request_cb(uint8_t rhport, tusb_control_request_t const * request)
+{
+  switch (request->bRequest)
+  {
+    case VENDOR_REQUEST_MICROSOFT:
+      if ( request->wIndex == 7 )
+      {
+        // Get Microsoft OS 2.0 compatible descriptor
+        uint16_t total_len;
+        memcpy(&total_len, desc_ms_os_20+8, 2);
+
+        return tud_control_xfer(rhport, request, (void*) desc_ms_os_20, total_len);
+      }else
+      {
+        return false;
+      }
+
+    default:
+      // stall unknown request
+      return false;
+  }
+
+  return true;
+}
+
+// Invoked when DATA Stage of VENDOR's request is complete
+bool tud_vendor_control_complete_cb(uint8_t rhport, tusb_control_request_t const * request)
+{
+  (void) rhport;
+  (void) request;
+
+  // nothing to do
+  return true;
 }
