@@ -133,11 +133,9 @@ EXTRA_DEPEND=rom_random_seeds0x123456.hex pic/rom_initial.hex
 BRAMFILE=rom.hex
 CONSTR=$(word $(BADGE_VER), had19_proto1.lpf had19_proto2.lpf had19_proto3.lpf had19_prod.lpf)
 TRELLIS=/usr/share/trellis
+
 ifeq ($(OS),Windows_NT)
 EXE:=.exe
-CHMOD:=echo WINDOWS: Skipping chmod
-else
-CHMOD:=chmod
 endif
 
 #Image read mode: qspi, dual-spi, fast-read
