@@ -57,7 +57,7 @@ int gfx_load_tilemap_mem(uint32_t *tilemap, int tilemaph, int tilemapw, int laye
 	int getting_data=0;
 	int curtile;
 	int tmpos;
-	for (char *p=tilemapstr; (*p!=0 && (tilemaplen<0 || p<tilemapstr+tilemaplen)); p++) {
+	for (const char *p=tilemapstr; (*p!=0 && (tilemaplen<0 || p<tilemapstr+tilemaplen)); p++) {
 		r=yxml_parse(&yx, *p);
 		if (r<0) {
 			fprintf(stderr, "yxml_parse: error %d at character %d\n", r, p-tilemapstr);

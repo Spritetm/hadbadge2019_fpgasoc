@@ -71,6 +71,14 @@ void verilator_start_trace() {
 
 void cdc_task();
 
+
+void boot_cart_fpga_bitstream() {
+	MISC_REG(MISC_FLASH_SEL_REG)=MISC_FLASH_SEL_CARTFLASH;
+	volatile int w;
+	for (w=0; w<16; w++) ;
+	MISC_REG(MISC_FLASH_SEL_REG)=MISC_FLASH_SEL_CARTFLASH|MISC_FLASH_SEL_FPGARELOAD_MAGIC;
+}
+
 extern char _binary_bgnd_png_start;
 extern char _binary_bgnd_png_end;
 extern char _binary_tileset_default_png_start;
@@ -110,6 +118,7 @@ void set_sprite(int no, int x, int y, int sx, int sy, int tileno, int palstart) 
 
 #define ITEM_FLAG_SELECTABLE (1<<0)
 #define ITEM_FLAG_ON_CART (1<<1)
+#define ITEM_FLAG_BITSTREAM (1<<2)
 
 typedef struct {
 	int no_items;
@@ -136,6 +145,15 @@ void menu_add_apps(menu_data_t *s, char *path, int flag) {
 	closedir(d);
 }
 
+int cart_has_fpga_image() {
+	const char magic[]="\xFF\x00Part: LFE5U-45F-8CABGA381";
+	char buf[128];
+	flash_wake(FLASH_SEL_CART);
+	flash_read(FLASH_SEL_CART, 0, buf, sizeof(magic));
+	hexdump(buf, 28);
+	return memcmp(buf, magic, sizeof(magic))==0;
+}
+
 
 void read_menu_items(menu_data_t *s) {
 	//First, clean struct
@@ -146,17 +164,21 @@ void read_menu_items(menu_data_t *s) {
 	if (has_cart) {
 		s->flag[s->no_items]=0;
 		s->item[s->no_items++]=strdup("- CARTRIDGE -");
+		if (cart_has_fpga_image()) {
+			s->flag[s->no_items]=ITEM_FLAG_SELECTABLE|ITEM_FLAG_ON_CART|ITEM_FLAG_BITSTREAM;
+			s->item[s->no_items++]=strdup("Boot FPGA bitstream");
+		}
 		//ToDo: load files from cart
 		s->flag[s->no_items]=0;
 		s->item[s->no_items++]=strdup("- INTERNAL -");
 	}
-	menu_add_apps(s, "/", 0);
+	menu_add_apps(s, "/", ITEM_FLAG_SELECTABLE);
 }
 
 
 #define SCR_PITCH 20 //Scoller letter pitch
 
-int show_main_menu(char *app_name) {
+int show_main_menu(char *app_name, int *ret_flags) {
 	menu_data_t menu={0};
 
 	//First read of available items
@@ -278,7 +300,8 @@ int show_main_menu(char *app_name) {
 			selected+=movedir;
 			if (selected<0) selected=menu.no_items-1;
 			if (selected>=menu.no_items) selected=0;
-		} while((menu.flag[selected] & ITEM_FLAG_SELECTABLE)!=0);
+			if (movedir==0) movedir=1; //if we loop we need to go somewhere
+		} while((menu.flag[selected] & ITEM_FLAG_SELECTABLE)==0);
 
 		if (need_redraw) {
 			fprintf(console, "\033C");
@@ -300,7 +323,10 @@ int show_main_menu(char *app_name) {
 		old_btn=btn;
 	}
 	
-	if (selected>=0) strcpy(app_name, menu.item[selected]);
+	if (selected>=0) {
+		strcpy(app_name, menu.item[selected]);
+		*ret_flags=menu.flag[selected];
+	}
 	for (int i=0; i<menu.no_items; i++) free(menu.item[i]);
 
 	//Set tilemaps to default 1-to-1 mapping
@@ -318,6 +344,7 @@ int show_main_menu(char *app_name) {
 	//..and close it.
 	fclose(console);
 	free(lcdfb);
+	return 0;
 }
 
 void start_app(char *app) {
@@ -370,11 +397,15 @@ void main() {
 		MISC_REG(MISC_LED_REG)=0xfffff;
 		printf("IPL running.\n");
 		char app_name[256]="*na*";
-		show_main_menu(app_name);
+		int flags=0;
+		show_main_menu(app_name, &flags);
 		printf("IPL: starting app %s\n", app_name);
 		usb_msc_off();
 		syscall_reinit();
 		user_memfn_set(NULL, NULL, NULL);
+		if (flags&ITEM_FLAG_BITSTREAM) {
+			boot_cart_fpga_bitstream();
+		}
 		start_app(app_name);
 		syscall_reinit();
 		user_memfn_set(malloc, realloc, free);

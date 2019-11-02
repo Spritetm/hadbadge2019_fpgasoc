@@ -223,20 +223,19 @@ Note that there's no on-storage partition table at this moment. All offsets are 
 
 Internal flash:
 
-| Location          | Size   | Function            | Note           |
-|-------------------|--------|---------------------|----------------|
-| 0-0x17FFFF        | 1.5MiB | TinyFPGA-Bootloader | FPGA bitstream |
-| 0x180000-0x2FFFFF | 1.5MiB | SoC                 | FPGA bitstream |
-| 0x300000-0x380000 | 0.5MiB | IPL                 | RiscV binary   |
-| 0x380000-0xCFFFFF | 9.5MiB | FAT16 part          | Filesystem     |
-| 0xD00000-0xFFFFFF | 3MiB   | Spare               | Not used atm   |
+| Location          | Size   | Function            | Note               |
+|-------------------|--------|---------------------|--------------------|
+| 0-0x17FFFF        | 1.5MiB | Bootloader          | FPGA bitstream     |
+| 0x180000-0x2FFFFF | 1.5MiB | SoC                 | FPGA bitstream     |
+| 0x300000-0x37FFFF | 0.5MiB | IPL                 | RiscV binary       |
+| 0x380000-0xCFFFFF | 9.5MiB | FAT16 part          | Filesystem, TJFTL  |
+| 0xD00000-0xFFFFFF | 3MiB   | Spare               | Not used atm       |
 
 What do they do?
 
-- The TinyFPGA-Bootloader starts at power on and if USB is plugged in, gives an 5 second window
-  to connect the device to a computer to write things to the flash directly. After that 5 second window,
-  or if no Vbus on the USB connector is detected, it'll pull the FPGAs PROGRAMN pin to load the SoC 
-  bitstream.
+- The bootloader starts at power on and if you hold the SELECT button (SW7) you are able to use DFU
+  to connect the device to a computer to write things to the flash directly. If that button is not
+  held, or after a DFU reset, it'll pull the FPGAs PROGRAMN pin to load the SoC bitstream.
 
 - The SoC bitstream has a small bit of code pre-loaded in its PSRAM cache. This piece of code will try
   to load the IPL from flash, then run it. If no IPL is detected, it'll sit and wait until the data at
@@ -244,7 +243,23 @@ What do they do?
   of IPL+app)
 
 - The IPL will initialize the LCD and framebuffer and show the main menu that can be used to select
-  an app.
+  an app. To do this, it will also initialize TJFTL (the flash translation layer) and on top of that 
+  a FAT16 partition that contains the apps. This FAT partition is accessible over USB as mass storage
+  as well, allowing you to just drag&drop files into it.
+
+
+Cartridge flash:
+
+| Location          | Size   | Function            | Note                       |
+|-------------------|--------|---------------------|----------------------------|
+| 0-0x17FFFF        | 1.5MiB | FPGA image          | FPGA bitstream             |
+| 0x300000-0x37FFFF | 0.5MiB | User-defined        | IPL, if bitstream is SoC   |
+| 0x380000-0xFFFFFF | 14MiB  | Filesystem          | FAT16/TJFL *               |
+
+The last partition is only used if a TJFTL signature is detected (3 out of 4 first pages have
+a valid signature), otherwise they are ignored and can be used as user-defined memory. The
+user-defined partition is never touched by the main software, but can contain an IPL image
+if the FPGA bitstream is a (modified) SoC image.
 
 SDK usage (or: how do I create an app?)
 =======================================
