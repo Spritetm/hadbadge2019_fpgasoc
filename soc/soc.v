@@ -1011,5 +1011,4 @@ IRQs used:
 
 
 	//Unused pins
-	assign pwmout = 0;
 endmodule

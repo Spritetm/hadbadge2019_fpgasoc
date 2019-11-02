@@ -12,12 +12,13 @@ Inputs from userland will be the MIDI note/pitch and a gate duration for the not
 Simply put the note/duration data in the corresponding register and it goes.  
 Note that if you select a long release, it will "spill over" the time that you've selected as duration -- it's the time that you're holding down the key on a keyboard.  
 
-This general layout should be kinda musical, make it easy to write a MIDI player (todo!), and generally be fun.  
+This general layout should be kinda musical, make it easy to write a MIDI player or tracker (todo!), and generally be fun.  
 
 A lightweight overlayer in the IPL could make this even more accessible.  We'll see what happens.
 
 Configurables include attack and release on the amplitude envelope.
 
+This should probably combine with a timer / sequencer to play the notes.  
 
 ## Layout: 
 
@@ -26,15 +27,17 @@ Configurables include attack and release on the amplitude envelope.
 * 80002000 Voice 2 
 * 80003000 Voice 3 
  ...
-* 8000C000 Drums
+* 8000C000 Raw PCM input: 14-bit samples, but hit it with whatever you got
+  Sample rate is determined by whatever you push in, 
+
+* 8000D000 Drums  (yes, I'm picking the register addresses to be mnemonic)
   Bits: Kick drum, Snare, Hat/Cymbal, Cowbell
 
-* 8000D000 Raw PCM input: 14-bit samples, but hit it with whatever you got
-  Sample rate is determined by whatever you push in, 
 
 ## Config
 
-Tempo, something else?  I don't know what should go here. 
+Tempo, something else?  I don't know what should go here.  
+Maybe implement an overall filter like the SID did?  
 
 ## Voice Registers
 

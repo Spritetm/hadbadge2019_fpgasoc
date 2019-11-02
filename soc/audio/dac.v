@@ -13,12 +13,12 @@ module dac #(parameter BITDEPTH=14) (
 
 // buffer when comes in
 reg [BITDEPTH-1:0] sample;
-always @(pcm) begin
-	if (!rst) begin
-		sample = pcm;
+always @(pcm, rst) begin
+	if (rst) begin
+		sample = 'h0;
 	end
 	else begin
-		sample = 'h0;
+		sample = pcm;
 	end
 end
 
