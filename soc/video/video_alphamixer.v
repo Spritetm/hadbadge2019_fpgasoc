@@ -44,7 +44,7 @@ always @(*) begin
 		alpha_a = 'h100;
 		alpha_b = 0;
 	end else begin
-		alpha_a = rate;
+		alpha_a = {1'0, rate};
 		alpha_b = ('h100 - rate);
 	end
 end
@@ -53,12 +53,12 @@ genvar i;
 for (i=0; i<4; i++) begin
 	mul_18x18 mult_s (
 		.a({10'h0, in_a[i*8+:8]}),
-		.b({10'h0, alpha_a}),
+		.b({9'h0, alpha_a}),
 		.dout(mulr_out_a[i])
 	);
 	mul_18x18 mult_d (
 		.a({10'h0, in_b[i*8+:8]}),
-		.b({10'h0, alpha_b}),
+		.b({9'h0, alpha_b}),
 		.dout(mulr_out_b[i])
 	);
 	assign out[i*8+:8] = mulr_out_a[i][15:8]+mulr_out_b[i][15:8];
