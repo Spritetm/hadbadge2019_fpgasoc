@@ -6,10 +6,37 @@
  levels of games), or directly into the hardware tilemap a or b memories. In the latter case, tilemaph and
  tilemapw should be 64.
 
- ...
- @param palstart Start index of palette used. Must be divisable by 8.
+ How to create something compatible in tiled:
+ - Create a tilemap png. 16x16 tiles, 512 tiles max. Draw, cut/paste, whatever, all your tiles. Note
+   that tile 0 is used as 'no tile', suggest making that entirely transparent. If you're going
+   to use the tiles for sprites, make sure palette color index 0 is fully transparent.
+ - Start tiled. Select 'new tileset'. Type must be 'based on image', do not select 'embed in map'.
+   Select the png you just created as png, set tile width/height to 16/16 and offsets to 0/0.
+ - Save the tileset
+ - Select 'New Map' to create the tilemap. Orientation is orthogonal, tile layer format *must be* csv,
+   tile render order is 'right down'. Map size is 64x64 or less if you directly want to load the
+   tilemap into hardware tile memory; it can be more if you manually copy bits over to tile memory.
+   Tile size should be 16x16 again.
+ - Draw your map. Feel free to flip/rotate tiles, the hardware supports it.
+ - When done, make sure your app can get at the data in the resulting tilemap tmx file. Either
+   embed it in your app using BINFILES in the app Makefile, or copy it over to flash as a file
+   and read the data from it using fopen/fread/... .
+ - Feed the data to this function to convert the tilemap into something the hardware can understand.
+ - Feed the png containing the tiles into gfx_load_tiles_mem to also load the tiles themselves
+
+ @param tilemap The tilemap to save the tile data into. Can either be GFXTILEMAPA/GFXTILEMAPB
+                to directly load to the gfx hardware, or a buffer in memory if you need to preprocess
+                it somehow.
+ @param tilemaph Height of the target tilemap memory, in tiles. Use 64 when using GFXTILEMAP[A|B].
+ @param tilemapw Width of the target tilemap memory, in tiles. Use 64 when using GFXTILEMAP[A|B].
+ @param layerid Layer ID of the Tile Layer in the tmx file to load. Use 1 unless you have multiple 
+        layers defined in the map file.
+ @param tilemapstr Pointer to the contents of the tmx file.
+ @param tilemaplen Length of tmx file, or -1 if tilemapstr is zero-terminated.
+ @param palstart Start index of palette used for tiles. Must be divisable by 8.
+ @returns 
 */
-int gfx_load_tilemap_mem(uint32_t *tilemap, int tilemaph, int tilemapw, int layerid, char *tilemapstr, int tilemaplen, int palstart);
+int gfx_load_tilemap_mem(uint32_t *tilemap, int tilemaph, int tilemapw, int layerid, const char *tilemapstr, int tilemaplen, int palstart);
 
 /**
  Load a png file, already in memory, into a buffer that can be used as a framebuffer. As a side effect,
@@ -33,7 +60,8 @@ int gfx_load_fb_mem(uint8_t *fbmem, uint32_t *palmem, int fbbpp, int pitch, char
  @param pngstart Pointer to start of png data
  @param pnglen Length of png data
  @returns 0 on success, other on failure (lodepng_decode error)
-*/int gfx_load_tiles_mem(uint32_t *tilemem, uint32_t *palettemem, char *pngstart, int pnglen);
+*/
+int gfx_load_tiles_mem(uint32_t *tilemem, uint32_t *palettemem, char *pngstart, int pnglen);
 
 /**
  Helper function for grabbing a pixel value from a decoded, indexed png file.

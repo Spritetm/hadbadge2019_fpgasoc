@@ -45,7 +45,7 @@ static void set_tmx_tilemap_ent(uint32_t *tilemap, int tilemaph, int tilemapw, i
 
 #define YXML_BUF_SIZE 2048
 
-int gfx_load_tilemap_mem(uint32_t *tilemap, int tilemaph, int tilemapw, int layerid, char *tilemapstr, int tilemaplen, int palstart) {
+int gfx_load_tilemap_mem(uint32_t *tilemap, int tilemaph, int tilemapw, int layerid, const char *tilemapstr, int tilemaplen, int palstart) {
 	void *buf=malloc(YXML_BUF_SIZE);
 	char attrval[128];
 	if (buf==NULL) return 0;
@@ -57,7 +57,7 @@ int gfx_load_tilemap_mem(uint32_t *tilemap, int tilemaph, int tilemapw, int laye
 	int getting_data=0;
 	int curtile;
 	int tmpos;
-	for (char *p=tilemapstr; (*p!=0 && p<tilemapstr+tilemaplen); p++) {
+	for (char *p=tilemapstr; (*p!=0 && (tilemaplen<0 || p<tilemapstr+tilemaplen)); p++) {
 		r=yxml_parse(&yx, *p);
 		if (r<0) {
 			fprintf(stderr, "yxml_parse: error %d at character %d\n", r, p-tilemapstr);
@@ -69,7 +69,7 @@ int gfx_load_tilemap_mem(uint32_t *tilemap, int tilemaph, int tilemapw, int laye
 			strncat(attrval, yx.data, sizeof(attrval)-1);
 			attrval[sizeof(attrval)-1]=0;
 		} else if (r==YXML_ATTREND) {
-			printf("Element %s attr %s val %s\n", yx.elem, yx.attr, attrval);
+			//sprintf(stderr, "Element %s attr %s val %s\n", yx.elem, yx.attr, attrval);
 			if ((strcmp(yx.elem, "layer")==0) && strcmp(yx.attr, "id")==0) {
 				curr_layer=atoi(attrval);
 			} else if ((strcmp(yx.elem, "layer")==0) && strcmp(yx.attr, "width")==0) {
@@ -110,7 +110,7 @@ int gfx_load_tilemap_mem(uint32_t *tilemap, int tilemaph, int tilemapw, int laye
 		}
 	}
 	free(buf);
-	return r;
+	return (r>=0);
 }
 
 int gfx_load_fb_mem(uint8_t *fbmem, uint32_t *palmem, int fbbpp, int pitch, char *pngstart, int pnglen) {
