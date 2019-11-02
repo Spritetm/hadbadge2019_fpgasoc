@@ -1,6 +1,17 @@
 #include <stdint.h>
 
 /**
+ Load a tilemap in tmx format, as output by tiled. Only loads csv-formatted data, does not load embedded tilesets
+ (use gfx_load_tiles_mem for that). You can either load into a memory buffer, for large tilemaps (e.g. entire
+ levels of games), or directly into the hardware tilemap a or b memories. In the latter case, tilemaph and
+ tilemapw should be 64.
+
+ ...
+ @param palstart Start index of palette used. Must be divisable by 8.
+*/
+int gfx_load_tilemap_mem(uint32_t *tilemap, int tilemaph, int tilemapw, int layerid, char *tilemapstr, int tilemaplen, int palstart);
+
+/**
  Load a png file, already in memory, into a buffer that can be used as a framebuffer. As a side effect,
  also writes out the palette.
  @param fbmem Memory to write pixeldata into. Can be an actual framebuffer.

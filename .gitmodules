@@ -16,3 +16,6 @@
 [submodule "soc/ipl/lodepng"]
 	path = soc/ipl/lodepng
 	url = https://github.com/lvandeve/lodepng.git
+[submodule "soc/ipl/yxml"]
+	path = soc/ipl/yxml
+	url = https://g.blicky.net/yxml.git

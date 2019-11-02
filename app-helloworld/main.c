@@ -12,6 +12,9 @@
 extern char _binary_bgnd_png_start;
 extern char _binary_bgnd_png_end;
 
+extern char _binary_tilemap_tmx_start;
+extern char _binary_tilemap_tmx_end;
+
 //Pointer to the framebuffer memory.
 uint8_t *fbmem;
 
@@ -67,6 +70,7 @@ void main(int argc, char **argv) {
 	//8-bit.
 	GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB_8BIT|GFX_LAYEREN_FB|GFX_LAYEREN_TILEA;
 
+	gfx_load_tilemap_mem(GFXTILEMAPA, 64, 64, 1, &_binary_tilemap_tmx_start, &_binary_tilemap_tmx_end-&_binary_tilemap_tmx_start, 0);
 	
 	printf("Hello World ready. Press a button to exit.\n");
 	//Wait until all buttons are released

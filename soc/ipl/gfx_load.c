@@ -14,9 +14,104 @@
  * along with this software.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include <stdlib.h>
+#include <stdio.h>
 #include "lodepng/lodepng.h"
 #include "gfx_load.h"
 #include "user_memfn.h"
+#include "yxml/yxml.h"
+#include "mach_defines.h"
+
+static void set_tmx_tilemap_ent(uint32_t *tilemap, int tilemaph, int tilemapw, int tx, int ty, int tileval, int palstart) {
+	if (tx<tilemapw && ty<tilemaph) {
+		int tileno=tileval&0xfffffff;
+		//Note: tiled stores tiles starting from 1; 0 is an empty tile. We start from 0, and
+		//map an empty (or invalid) tile to tile 0.
+		if (tileno>1 || tileno<=512) {
+			tileno=tileno-1;
+		} else {
+			tileno=0;
+		}
+		//Set palette offset and map tiled flip/rotate bits to hw flip/rotate bits.
+		int attr=(palstart>>3)<<GFX_TILEMAP_ENT_PAL_OFF;
+		if (tileval&(1<<31)) attr|=GFX_TILEMAP_ENT_FLIP_X;
+		if (tileval&(1<<30)) attr|=GFX_TILEMAP_ENT_FLIP_Y;
+		if (tileval&(1<<29)) attr|=GFX_TILEMAP_ENT_SWAP_XY;
+		if (attr!=0) printf("attr %x\n", attr);
+		//Set the tile.
+		tilemap[ty*tilemaph+tx]=tileno|attr;
+	}
+}
+
+
+#define YXML_BUF_SIZE 2048
+
+int gfx_load_tilemap_mem(uint32_t *tilemap, int tilemaph, int tilemapw, int layerid, char *tilemapstr, int tilemaplen, int palstart) {
+	void *buf=malloc(YXML_BUF_SIZE);
+	char attrval[128];
+	if (buf==NULL) return 0;
+	yxml_t yx;
+	yxml_init(&yx, buf, YXML_BUF_SIZE);
+	yxml_ret_t r;
+	int curr_layer=-1;
+	int tmapfilew, tmapfileh, tx, ty;
+	int getting_data=0;
+	int curtile;
+	int tmpos;
+	for (char *p=tilemapstr; (*p!=0 && p<tilemapstr+tilemaplen); p++) {
+		r=yxml_parse(&yx, *p);
+		if (r<0) {
+			fprintf(stderr, "yxml_parse: error %d at character %d\n", r, p-tilemapstr);
+			break; //error
+		}
+		if (r==YXML_ATTRSTART) {
+			attrval[0]=0;
+		} else if (r==YXML_ATTRVAL) {
+			strncat(attrval, yx.data, sizeof(attrval)-1);
+			attrval[sizeof(attrval)-1]=0;
+		} else if (r==YXML_ATTREND) {
+			printf("Element %s attr %s val %s\n", yx.elem, yx.attr, attrval);
+			if ((strcmp(yx.elem, "layer")==0) && strcmp(yx.attr, "id")==0) {
+				curr_layer=atoi(attrval);
+			} else if ((strcmp(yx.elem, "layer")==0) && strcmp(yx.attr, "width")==0) {
+				tmapfilew=atoi(attrval);
+			} else if ((strcmp(yx.elem, "layer")==0) && strcmp(yx.attr, "height")==0) {
+				tmapfileh=atoi(attrval);
+			} else if ((strcmp(yx.elem, "data")==0) && strcmp(yx.attr, "encoding")==0) {
+				if (strcmp(attrval, "csv")==0) {
+					getting_data=1;
+					curtile=0;
+					tx=0; ty=0;
+				} else {
+					fprintf(stderr, "gfx_load_tiles: tilemap has encoding %s, should be csv!\n", attrval);
+				}
+			}
+		} else if (r==YXML_CONTENT && strcmp(yx.elem, "data")==0) {
+			if (getting_data) {
+				for (char *c=yx.data; *c!=0; c++) {
+					if (*c<='9' && *c>='0') {
+						curtile=(curtile*10)+(*c-'0');
+					} else if (*c==',') {
+						set_tmx_tilemap_ent(tilemap, tilemaph, tilemapw, tx, ty, curtile, palstart);
+						curtile=0;
+						tx++;
+						if (tx>=tmapfilew) {
+							tx=0;
+							ty++;
+						}
+					}
+				}
+			}
+		} else if (r==YXML_ELEMEND && strcmp(yx.elem, "data")==0) {
+			if (getting_data) {
+				//final entry of csv does not have comma appended, so it's not written yet.
+				set_tmx_tilemap_ent(tilemap, tilemaph, tilemapw, tx, ty, curtile, palstart);
+				getting_data=0;
+			}
+		}
+	}
+	free(buf);
+	return r;
+}
 
 int gfx_load_fb_mem(uint8_t *fbmem, uint32_t *palmem, int fbbpp, int pitch, char *pngstart, int pnglen) {
 	unsigned char *decoded=NULL;
