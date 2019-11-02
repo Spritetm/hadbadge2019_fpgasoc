@@ -51,28 +51,34 @@ static int to_mapb=0;
 void console_write_char_raw(char c) {
 	uint32_t *map;
 	if (to_mapb) map=&GFXTILEMAPB[0]; else map=&GFXTILEMAPA[0];
-	if (xpos>=win_x+win_w || c=='\n') {
-		//printf("Next line; xpos=%d win_w=%d, c=%d\n", xpos, win_w, c);
+
+	if (xpos>=win_x+win_w) {
+		//Next line because we hit the end of the window.
 		xpos=win_x;
 		ypos++;
-		if (ypos>=win_y+win_h) {
-			//printf("Console scrolling because ypos %d >=win_y %d\n", ypos, win_y);
-			//Scroll up the window
-			for (int y=win_y; y<win_y+win_h-1; y++) {
-				for (int x=win_x; x<win_x+win_w; x++) {
-					map[y*GFX_TILEMAP_W+x]=map[(y+1)*GFX_TILEMAP_W+x];
-				}
-			}
-			//..and clear last line.
-			for (int y=win_y; y<win_y+win_w-1; y++) {
-				map[y*GFX_TILEMAP_W+win_x+win_w-1]=' ';
-			}
-			ypos--;
-		}
 	}
+
+	if (ypos>=win_y+win_h) {
+		//Scroll up the window
+		for (int y=win_y; y<win_y+win_h-1; y++) {
+			for (int x=win_x; x<win_x+win_w; x++) {
+				map[y*GFX_TILEMAP_W+x]=map[(y+1)*GFX_TILEMAP_W+x];
+			}
+		}
+		//..and clear last line.
+		for (int x=win_x; x<win_x+win_w; x++) {
+			map[(win_y+win_h-1)*GFX_TILEMAP_W+x]=' ';
+		}
+		ypos--;
+	}
+
 	if (c!='\n') {
 		map[ypos*GFX_TILEMAP_W+xpos]=c+attr;
 		xpos++;
+	} else {
+		//Next line because newline.
+		xpos=win_x;
+		ypos++; //note we handle ypos overflow only when the next
 	}
 }
 
