@@ -66,7 +66,7 @@ assign all_done = (out_addr >= addr_end);
 wire qpi_done;
 assign qpi_done = (qpi_addr >= addr_end);
 
-qpimem_dma_rd_fifomem fifomem(
+qpimem_dma_rd_fifomem #(.FIFO_WORDS(FIFO_WORDS)) fifomem(
 	.clk(clk),
 	.w_en(qpi_next_word),
 	.w_addr(fifo_wptr),
