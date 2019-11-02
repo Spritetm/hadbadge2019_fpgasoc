@@ -121,8 +121,9 @@ qpimem_dma_rdr dma_rdr(
 	.addr_start(dma_start_addr),
 	.addr_end(dma_start_addr+(fb_is_8bit?480:(480/2))),
 	.run(dma_run),
-	.do_read(dma_do_read),
 	.ready(dma_ready),
+	.all_done(),
+	.do_read(dma_do_read),
 	.rdata(dma_data),
 
 	.qpi_do_read(m_do_read),
@@ -451,7 +452,7 @@ always @(*) begin
 			tilepix_y = tileb_data[10] ? (15-tileb_y[9:6]) : tileb_y[9:6];
 		end
 		tilemem_no = tileb_data[8:0];
-		pal_addr = tilemem_pixel + {tilea_data[17:12], 3'b0}; //from tilemap a
+		pal_addr = 9'(tilemem_pixel) + {tilea_data[17:12], 3'b0}; //from tilemap a
 		alphamixer_rate = layer_en[0] ? pal_data[31:24] : 0; //fb
 		alphamixer_in_b = bgnd_color; //background
 	end else if (cycle==1) begin
@@ -459,7 +460,7 @@ always @(*) begin
 		tilepix_y = sprite_tilemem_y;
 		tilemem_no = sprite_tilemem_no;
 		sprite_tilemem_ack = 1;
-		pal_addr = tilemem_pixel + {tileb_data[17:12], 3'b0}; //from tilemap b
+		pal_addr = 9'(tilemem_pixel) + {tileb_data[17:12], 3'b0}; //from tilemap b
 		alphamixer_rate = layer_en[1] ? pal_data[31:24] : 0; //tilemap a
 		alphamixer_in_b = alphamixer_out; //bgnd+fb
 	end else if (cycle==2) begin
@@ -583,12 +584,12 @@ always @(posedge clk) begin
 			dma_run <= 0;
 			tilea_linestart_x <= tilea_xoff + tilea_rowinc_x;
 			tilea_linestart_y <= tilea_yoff + tilea_rowinc_y;
-			tilea_x <= tilea_xoff;
-			tilea_y <= tilea_yoff;
+			tilea_x <= {1'b0, tilea_xoff};
+			tilea_y <= {1'b0, tilea_yoff};
 			tileb_linestart_x <= tileb_xoff + tileb_rowinc_x;
 			tileb_linestart_y <= tileb_yoff + tileb_rowinc_y;
-			tileb_x <= tileb_xoff;
-			tileb_y <= tileb_yoff;
+			tileb_x <= {1'b0, tileb_xoff};
+			tileb_y <= {1'b0, tileb_yoff};
 			if (next_field) begin
 				write_vid_addr_next <= 0;
 				dma_start_addr <= fb_addr;
@@ -625,7 +626,7 @@ always @(posedge clk) begin
 						//next line
 						write_vid_addr_next[19:9] <= write_vid_addr_next[19:9] + 'h1;
 						write_vid_addr_next[8:0] <= 0;
-						dma_start_addr <= dma_start_addr + (fb_is_8bit?pitch:pitch[15:1]);
+						dma_start_addr <= dma_start_addr + (fb_is_8bit ? 24'(pitch) : 24'(pitch) >> 1);
 						dma_run <= 0;
 						tilea_x <= tilea_linestart_x;
 						tilea_y <= tilea_linestart_y;
