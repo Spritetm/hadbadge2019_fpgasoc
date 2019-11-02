@@ -216,6 +216,7 @@ int show_main_menu(char *app_name) {
 						"                       ";
 	int scrpos=0;
 
+
 	while(!done) {
 		uint32_t cur_vbl_ctr=GFX_REG(GFX_VBLCTR_REG);
 		p++;
@@ -235,8 +236,6 @@ int show_main_menu(char *app_name) {
 		}
 		if (scrtxt[scrpos/SCR_PITCH+sprno]==0) scrpos=0;
 		scrpos+=2;
-//		set_sprite(65, 0, 0, 16, 16, 132, 0);
-
 
 		int usbstate=MISC_REG(MISC_GPEXT_IN_REG)&(1<<31);
 		if (usbstate!=old_usbstate) {
@@ -283,7 +282,7 @@ int show_main_menu(char *app_name) {
 
 		if (need_redraw) {
 			fprintf(console, "\033C");
-			
+
 			int start=selected-5;
 			for (int i=0; i<10; i++) {
 				const char *itm;
@@ -294,10 +293,10 @@ int show_main_menu(char *app_name) {
 		}
 
 		//Idle doing USB stuff while the current frame is still active.
-		while (GFX_REG(GFX_VBLCTR_REG)==cur_vbl_ctr) {
+		do {
 			cdc_task();
 			tud_task();
-		}
+		} while (GFX_REG(GFX_VBLCTR_REG) <= cur_vbl_ctr+1); //we run at 30fps
 		old_btn=btn;
 	}
 	
