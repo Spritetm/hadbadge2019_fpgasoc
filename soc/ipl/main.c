@@ -217,6 +217,7 @@ int show_main_menu(char *app_name) {
 	int scrpos=0;
 
 	while(!done) {
+		uint32_t cur_vbl_ctr=GFX_REG(GFX_VBLCTR_REG);
 		p++;
 
 		bgnd_pal_state++;
@@ -292,7 +293,8 @@ int show_main_menu(char *app_name) {
 			}
 		}
 
-		while ((GFX_REG(GFX_VIDPOS_REG)>>16)<318) {
+		//Idle doing USB stuff while the current frame is still active.
+		while (GFX_REG(GFX_VBLCTR_REG)==cur_vbl_ctr) {
 			cdc_task();
 			tud_task();
 		}

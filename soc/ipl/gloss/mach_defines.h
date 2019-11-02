@@ -303,15 +303,20 @@ fill the palette memory), the fields are
 #define GFX_VIDPOS_X_OFF 0
 /** [32:16]: Y position being currently processed */
 #define GFX_VIDPOS_Y_OFF 16
+/** Read-only: Amount of vertical blanks processed. This increases 
+    when the line renderer is done processing a frame and is waiting
+    for the next one to begin. As this is a 32-bit value and counts 
+    up at 60Hz it will overflow every 2 years or so.*/
+#define GFX_VBLCTR_REG 0x28
 /** Background color register. If all the layers are disabled, or 
     if a pixel is transparent or translucent in all layers, this
     color 'shines through'. This is a RGBA color, but the alpha
     probably isn't that useful.*/
-#define GFX_BGNDCOL_REG 0x28
+#define GFX_BGNDCOL_REG 0x2C
 /** Offset of all the sprites. Defaults to (64, 64) meaning that
     a sprite placed on x=64, y=64 will appear in the top left
     corner.
-#define GFX_SPRITE_OFF_REG 0x28
+#define GFX_SPRITE_OFF_REG 0x30
 /** [12:0]: Sprite X position that maps to left of screen */
 #define GFX_SPRITE_OFF_X_OFF 0
 /** [28:16]: Sprite Y position that maps to top of screen */
