@@ -625,7 +625,7 @@ always @(posedge clk) begin
 						//next line
 						write_vid_addr_next[19:9] <= write_vid_addr_next[19:9] + 'h1;
 						write_vid_addr_next[8:0] <= 0;
-						dma_start_addr <= dma_start_addr + (fb_is_8bit?pitch:pitch/2);
+						dma_start_addr <= dma_start_addr + (fb_is_8bit?pitch:pitch[15:1]);
 						dma_run <= 0;
 						tilea_x <= tilea_linestart_x;
 						tilea_y <= tilea_linestart_y;
