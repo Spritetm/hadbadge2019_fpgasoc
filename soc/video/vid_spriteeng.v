@@ -211,11 +211,11 @@ size_to_d_lookup_rom reciproc_rom_y (
 
 wire [12:0] virt_ypos;
 wire [12:0] virt_xpos;
-assign virt_ypos = vid_ypos + offy;
-assign virt_xpos = vid_xpos + offx;
+assign virt_ypos = {4'b0, vid_ypos} + offy;
+assign virt_xpos = {4'b0, vid_xpos} + offx;
 
 wire [17:0] gfx_ypos; //ypos within the scaled output tile
-assign gfx_ypos = {7'h0, virt_ypos} - {4'h0, spritemem_data[2][29:16]}; //stage 4
+assign gfx_ypos = {5'h0, virt_ypos} - {4'h0, spritemem_data[2][29:16]}; //stage 4
 wire [35:0] tile_ypos_multiplied;
 reg [15:0] reciproc_y_out_reg; //for stage 4
 
@@ -223,7 +223,7 @@ reg [15:0] reciproc_y_out_reg; //for stage 4
 //Input is anywhere 0-255 on gfx_ypos, 65536-0 on tile_ypos_multiplied.
 //Multiplied, this gives a number from 0 to 16K.
 mul_18x18 mul_ypos(
-	.a(reciproc_y_out_reg),
+	.a({2'b0, reciproc_y_out_reg}),
 	.b(gfx_ypos),
 	.dout(tile_ypos_multiplied)
 );
@@ -282,7 +282,7 @@ always @(posedge clk) begin
 			spritemem_data[4] <= spritemem_data[3]; //stage 6
 			reciproc_y_out_reg <= reciproc_y_out; //stage 4
 			tile_ypos_reg <= tile_ypos;
-			if (spritemem_data[2][29:16]<=virt_ypos && !tile_ypos_ovf && spritemem_data[2][39:32]!=0 && spritemem_data[2][47:40]!=0) begin
+			if (spritemem_data[2][28:16]<=virt_ypos && !tile_ypos_ovf && spritemem_data[2][39:32]!=0 && spritemem_data[2][47:40]!=0) begin
 				drawable_ready <= !line_done;
 			end
 		end
@@ -323,8 +323,8 @@ wire [35:0] tile_xpos_multiplied;
 //Input is anywhere 0-255 on gfx_ypos, 65536-0 on tile_ypos_multiplied.
 //Multiplied, this gives a number from 0 to 16K.
 mul_18x18 mul_xpos(
-	.a(reciproc_x_out_reg),
-	.b(dspr_xoff),
+	.a({2'b0, reciproc_x_out_reg}),
+	.b({4'b0, dspr_xoff}),
 	.dout(tile_xpos_multiplied)
 );
 wire [3:0] tile_xpos;
@@ -387,7 +387,7 @@ always @(posedge clk) begin
 			end
 			if (tilemem_has_data) begin
 				if (tilemem_data != 0) begin
-					lb_din <= tilemem_data + dspr_pal_sel*4;
+					lb_din <= {5'b0, tilemem_data} + ({dspr_pal_sel, 2'b00});
 					lb_wr <= 1;
 				end
 			end
