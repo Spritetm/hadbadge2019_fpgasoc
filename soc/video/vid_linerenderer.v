@@ -229,7 +229,7 @@ always @(*) begin
 		end else if (addr[5:2]==REG_SEL_BGNDCOL) begin
 			dout = bgnd_color;
 		end else if (addr[5:2]==REG_SEL_SPRITE_OFF) begin
-			dout = {4'h0, sprite_yoff, 4'h0, sprite_xoff};
+			dout = {3'h0, sprite_yoff, 3'h0, sprite_xoff};
 		end
 	end else if (addr[16:13]=='h1) begin
 		cpu_sel_palette = 1;
