@@ -34,7 +34,7 @@
 module qpimem_dma_rdr #(
 	//Simple 2-way cache.
 	parameter integer FIFO_WORDS=512, //must be power of 2
-	parameter integer BURST_LEN=16, //in words; note: must be power of 2, <= FIFO_WORDS
+	parameter unsigned [$clog2(FIFO_WORDS)-1:0] BURST_LEN=16, //in words; note: must be power of 2, <= FIFO_WORDS
 	parameter integer ADDR_WIDTH=24 //qpi bus address width
 ) (
 	input clk,
@@ -55,7 +55,6 @@ module qpimem_dma_rdr #(
 	input [31:0] qpi_rdata,
 	input qpi_is_idle
 );
-
 
 reg [ADDR_WIDTH-1:0] out_addr;
 wire [$clog2(FIFO_WORDS)-1:0] fifo_rptr;
@@ -109,7 +108,8 @@ always @(posedge clk) begin
 			end
 		end else if (qpi_is_idle && !qpi_do_read) begin
 			//See if we should start reading again.
-			if ((qpi_addr - out_addr) < ((FIFO_WORDS - BURST_LEN) * 4)) begin
+			localparam LOW_TIDE = {22'(FIFO_WORDS) - 22'(BURST_LEN), 2'b00};
+			if ((qpi_addr - out_addr) < LOW_TIDE) begin
 				if (qpi_addr < addr_end) begin
 					qpi_do_read <= 1; //go read more.
 				end
