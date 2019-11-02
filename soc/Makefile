@@ -133,11 +133,12 @@ EXTRA_DEPEND=rom_random_seeds0x123456.hex pic/rom_initial.hex
 BRAMFILE=rom.hex
 CONSTR=$(word $(BADGE_VER), had19_proto1.lpf had19_proto2.lpf had19_proto3.lpf had19_prod.lpf)
 TRELLIS=/usr/share/trellis
+
 ifeq ($(OS),Windows_NT)
 EXE:=.exe
-CHMOD:=echo WINDOWS: Skipping chmod
-else
-CHMOD:=chmod
+endif
+ifneq ("$(WSL_DISTRO_NAME)","")
+EXE:=.exe
 endif
 
 #Image read mode: qspi, dual-spi, fast-read
@@ -149,12 +150,12 @@ FLASH_FREQ=38.8 #MHz
 all: $(PROJ).svf
 
 $(PROJ).json $(PROJ).blif: $(SRC) $(SRC_SYNTH) $(EXTRA_DEPEND)
-	yosys -e ".*(assigned|implicitly).*" -l yosys.log \
+	yosys$(EXE) -e ".*(assigned|implicitly).*" -l yosys.log \
 		-p "read -sv -DBADGE_VER=$(BADGE_VER) -DBADGE_V$(BADGE_VER)=1 $(SRC) $(SRC_SYNTH); \
 			  synth_ecp5 -abc9 -top top_fpga -json $(PROJ).json -blif $(PROJ).blif"
 
 %_out_synth.config: %.json clock-constrainsts.py
-	nextpnr-ecp5 --json $< --lpf $(CONSTR) --textcfg $@ --45k --package CABGA381 --speed 8 \
+	nextpnr-ecp5$(EXE) --json $< --lpf $(CONSTR) --textcfg $@ --45k --package CABGA381 --speed 8 \
 			--pre-pack clock-constrainsts.py -l nextpnr.log --freq 48 --seed $(SEED)
 
 %_out.config: %_out_synth.config rom.hex
@@ -164,10 +165,10 @@ $(PROJ).json $(PROJ).blif: $(SRC) $(SRC_SYNTH) $(EXTRA_DEPEND)
 #bitstreams with SPI-specific things over JTAG.
 
 %.bit: %_out.config
-	ecppack --spimode $(FLASH_MODE) --freq $(FLASH_FREQ) --input $< --bit $@
+	ecppack$(EXE) --spimode $(FLASH_MODE) --freq $(FLASH_FREQ) --input $< --bit $@
 
 %.svf: %_out.config
-	ecppack --svf-rowsize 100000 --svf $@ --input $<
+	ecppack$(EXE) --svf-rowsize 100000 --svf $@ --input $<
 
 prog: $(PROJ).svf
 	openocd -f ../openocd.cfg -c "init; svf  $<; exit"
@@ -176,12 +177,16 @@ flash: $(PROJ).bit
 	tinyprog -p $(PROJ).bit -a 0x180000
 
 dfu_flash: $(PROJ).bit
-	dfu-util -d 1d50:614a,1d50:614b -a 0 -D $<
+	dfu-util$(EXE) -d 1d50:614a,1d50:614b -a 0 -D $<
+
+dfu_flash_all: $(PROJ).bit ipl
+	dfu-util$(EXE) -d 1d50:614a,1d50:614b -a 0 -D $(PROJ).bit
+	dfu-util$(EXE) -d 1d50:614a,1d50:614b -a 1 -D ipl/ipl.bin -R
 
 clean:
 	rm -f $(PROJ).json $(PROJ).svf $(PROJ).bit $(PROJ)_out.config
 	rm -rf verilator-build
-	make -C boot clean
+	$(MAKE) -C boot clean
 	rm -f rom.hex
 
 verilator: verilator-build/Vsoc ipl boot/ $(EXTRA_DEPEND)
@@ -191,10 +196,10 @@ verilator-build/Vsoc: $(SRC) $(SRC_SIM) $(BRAMFILE)
 	verilator -Iusb -CFLAGS "-ggdb `sdl2-config --cflags`" -LDFLAGS "`sdl2-config --libs`" --assert \
 			--trace --Mdir verilator-build -Wno-style -Wno-fatal -cc --top-module soc \
 			--threads 2 -O3 --noassert --exe $(SRC) $(SRC_SIM)
-	make OPT_FAST="-O2 -fno-stack-protector" -C verilator-build -f Vsoc.mk
+	$(MAKE) OPT_FAST="-O2 -fno-stack-protector" -C verilator-build -f Vsoc.mk
 
 rom.hex: boot/
-	make -C boot
+	$(MAKE) -C boot
 ifeq ($(OS),Windows_NT)
 	bin2hex.exe boot/rom.bin rom.hex
 else
@@ -202,17 +207,17 @@ else
 endif
 
 gdb:
-	$(RISCV_TOOLCHAIN_PATH)riscv32-unknown-elf-gdb -b 115200 -ex "set debug remote 1" -ex "target remote /dev/ttyUSB0" app/app.elf
+	$(GDB) -b 115200 -ex "set debug remote 1" -ex "target remote /dev/ttyUSB0" app/app.elf
 
 pcpi_fastmul_dsp_testbench:
 	iverilog -opcpi_fastmul_dsp_testbench.vvp pcpi_fastmul_dsp_testbench.v pcpi_fastmul_dsp.v picorv32/picorv32.v mul_18x18_sim.v
 	vvp pcpi_fastmul_dsp_testbench.vvp
 
 pic/rom_initial.hex: pic/rom.asm
-	make -C pic rom_initial.hex
+	$(MAKE) -C pic rom_initial.hex
 
 ipl:
-	make -C ipl
+	$(MAKE) -C ipl
 
 .PHONY: prog clean verilator boot/ ipl
 .PRECIOUS: $(PROJ).json $(PROJ)_out_synth.config $(PROJ)_out.config
