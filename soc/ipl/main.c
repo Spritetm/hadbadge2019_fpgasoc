@@ -27,6 +27,7 @@
 #include <math.h>
 #include <string.h>
 #include "tusb.h"
+#include "usb_descriptors.h"
 #include "hexdump.h"
 #include "fs.h"
 #include "flash.h"
@@ -414,3 +415,59 @@ void tud_cdc_rx_cb(uint8_t itf) {
 	(void)itf;
 }
 
+// Invoked on DFU_DETACH request to reboot to the bootloader
+void tud_dfu_rt_reboot_to_dfu(void)
+{
+	volatile uint32_t *psram  = (volatile uint32_t *)(MACH_RAM_START);
+	volatile uint32_t *reboot = (volatile uint32_t *)(MISC_OFFSET + MISC_FLASH_SEL_REG);
+
+	// Debug
+	printf("REBOOT\n");
+
+	// Set MAGIC value in PSRAM
+	psram[0] = 0x46464444;
+	psram[1] = 0x21215555;
+	cache_flush((void*)&psram[0], (void*)&psram[2]);
+
+	// Reboot
+	*reboot = 0xD0F1A500;
+
+	// Wait indefinitely
+	while (1);
+}
+
+// Invoked when received VENDOR control request
+bool tud_vendor_control_request_cb(uint8_t rhport, tusb_control_request_t const * request)
+{
+  switch (request->bRequest)
+  {
+    case VENDOR_REQUEST_MICROSOFT:
+      if ( request->wIndex == 7 )
+      {
+        // Get Microsoft OS 2.0 compatible descriptor
+        uint16_t total_len;
+        memcpy(&total_len, desc_ms_os_20+8, 2);
+
+        return tud_control_xfer(rhport, request, (void*) desc_ms_os_20, total_len);
+      }else
+      {
+        return false;
+      }
+
+    default:
+      // stall unknown request
+      return false;
+  }
+
+  return true;
+}
+
+// Invoked when DATA Stage of VENDOR's request is complete
+bool tud_vendor_control_complete_cb(uint8_t rhport, tusb_control_request_t const * request)
+{
+  (void) rhport;
+  (void) request;
+
+  // nothing to do
+  return true;
+}

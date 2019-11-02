@@ -24,13 +24,14 @@
  */
 
 #include "tusb.h"
+#include "usb_descriptors.h"
 
 //------------- Device Descriptors -------------//
 tusb_desc_device_t const desc_device =
 {
     .bLength            = sizeof(tusb_desc_device_t),
     .bDescriptorType    = TUSB_DESC_DEVICE,
-    .bcdUSB             = 0x0200,
+    .bcdUSB             = 0x0201,
 
   #if CFG_TUD_CDC
     // Use Interface Association Descriptor (IAD) for CDC
@@ -48,7 +49,7 @@ tusb_desc_device_t const desc_device =
 
     .idVendor           = 0x1d50,
     .idProduct          = 0x614a,
-    .bcdDevice          = 0x0100,
+    .bcdDevice          = 0x0102,
 
     .iManufacturer      = 0x01,
     .iProduct           = 0x02,
@@ -97,12 +98,16 @@ enum
   ITF_NUM_HID,
 #endif
 
+#if CFG_TUD_DFU_RT
+  ITF_NUM_DFU_RT,
+#endif
+
   ITF_NUM_TOTAL
 };
 
 enum
 {
-  CONFIG_TOTAL_LEN = TUD_CONFIG_DESC_LEN + CFG_TUD_CDC*TUD_CDC_DESC_LEN + CFG_TUD_MSC*TUD_MSC_DESC_LEN + CFG_TUD_HID*TUD_HID_DESC_LEN
+  CONFIG_TOTAL_LEN = TUD_CONFIG_DESC_LEN + CFG_TUD_CDC*TUD_CDC_DESC_LEN + CFG_TUD_MSC*TUD_MSC_DESC_LEN + CFG_TUD_HID*TUD_HID_DESC_LEN + CFG_TUD_DFU_RT*TUD_DFU_RT_DESC_LEN
 };
 
 #if CFG_TUSB_MCU == OPT_MCU_LPC175X_6X || CFG_TUSB_MCU == OPT_MCU_LPC177X_8X || CFG_TUSB_MCU == OPT_MCU_LPC40XX
@@ -132,7 +137,12 @@ uint8_t const desc_configuration[] =
 
 #if CFG_TUD_HID
   // Interface number, string index, protocol, report descriptor len, EP In address, size & polling interval
-  TUD_HID_DESCRIPTOR(ITF_NUM_HID, 6, HID_PROTOCOL_NONE, sizeof(desc_hid_report), 0x84, 16, 10)
+  TUD_HID_DESCRIPTOR(ITF_NUM_HID, 6, HID_PROTOCOL_NONE, sizeof(desc_hid_report), 0x84, 16, 10),
+#endif
+
+#if CFG_TUD_DFU_RT
+  // Interface number, string index, attributes, detach timeout, transfer size */
+  TUD_DFU_RT_DESCRIPTOR(ITF_NUM_DFU_RT, 7, 0x0d, 1000, 4096),
 #endif
 };
 
@@ -151,6 +161,49 @@ uint8_t const * tud_descriptor_configuration_cb(uint8_t index)
   (void) index; // for multiple configurations
   return desc_configuration;
 }
+
+
+//------------- BOS Descriptor -------------//
+
+#define BOS_TOTAL_LEN      (TUD_BOS_DESC_LEN + TUD_BOS_MICROSOFT_OS_DESC_LEN)
+
+#define MS_OS_20_DESC_LEN  0x2E
+
+// BOS Descriptor
+uint8_t const desc_bos[] =
+{
+  // total length, number of device caps
+  TUD_BOS_DESCRIPTOR(BOS_TOTAL_LEN, 1),
+
+  // Microsoft OS 2.0 descriptor
+  TUD_BOS_MS_OS_20_DESCRIPTOR(MS_OS_20_DESC_LEN, VENDOR_REQUEST_MICROSOFT),
+};
+
+uint8_t const * tud_descriptor_bos_cb(void)
+{
+  return desc_bos;
+}
+
+
+uint8_t const desc_ms_os_20[] =
+{
+  // Set header: length, type, windows version, total length
+  U16_TO_U8S_LE(0x000A), U16_TO_U8S_LE(MS_OS_20_SET_HEADER_DESCRIPTOR), U32_TO_U8S_LE(0x06030000), U16_TO_U8S_LE(MS_OS_20_DESC_LEN),
+
+  // Configuration subset header: length, type, configuration index, reserved, configuration total length
+  U16_TO_U8S_LE(0x0008), U16_TO_U8S_LE(MS_OS_20_SUBSET_HEADER_CONFIGURATION), 0, 0, U16_TO_U8S_LE(MS_OS_20_DESC_LEN-0x0A),
+
+  // Function Subset header: length, type, first interface, reserved, subset length
+  U16_TO_U8S_LE(0x0008), U16_TO_U8S_LE(MS_OS_20_SUBSET_HEADER_FUNCTION), ITF_NUM_DFU_RT, 0, U16_TO_U8S_LE(MS_OS_20_DESC_LEN-0x0A-0x08),
+
+  // MS OS 2.0 Compatible ID descriptor: length, type, compatible ID, sub compatible ID
+  U16_TO_U8S_LE(0x0014), U16_TO_U8S_LE(MS_OS_20_FEATURE_COMPATBLE_ID), 'W', 'I', 'N', 'U', 'S', 'B', 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // sub-compatible
+};
+
+TU_VERIFY_STATIC(sizeof(desc_ms_os_20) == MS_OS_20_DESC_LEN, "Incorrect size");
+
+
 //------------- String Descriptors -------------//
 
 // array of pointer to string descriptors
@@ -162,7 +215,8 @@ char const* string_desc_arr [] =
   "0000000000000000",            // 3: Serials, should use chip ID
   "TinyUSB CDC",                 // 4: CDC Interface
   "TinyUSB MSC",                 // 5: MSC Interface
-  "TinyUSB HID"                  // 6: HID
+  "TinyUSB HID",                 // 6: HID
+  "DFU Runtime interface",       // 7: DFU Runtime
 };
 
 static uint16_t _desc_str[32];

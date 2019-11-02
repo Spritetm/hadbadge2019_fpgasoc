@@ -12,6 +12,7 @@ OBJS += tinyusb/src/device/usbd.o tinyusb/src/device/usbd_control.o tinyusb/src/
 OBJS += tinyusb/src/common/tusb_fifo.o
 OBJS += tinyusb/src/class/msc/msc_device.o tinyusb/src/class/midi/midi_device.o
 OBJS += tinyusb/src/class/cdc/cdc_device.o tinyusb/src/class/hid/hid_device.o
+OBJS += tinyusb/src/class/dfu/dfu_rt_device.o
 OBJS += dcd_tntusb.o usb_descriptors.o hexdump.o flash.o
 OBJS += fatfs/source/ff.o fatfs/source/ffunicode.o loadapp.o elfload/elfload.o
 OBJS += elfload/elfreloc_riscv.o lodepng.o bgnd.o tileset-default.o
