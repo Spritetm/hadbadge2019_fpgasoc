@@ -234,7 +234,8 @@ fill the palette memory), the fields are
 /** Register describing the pitch and palette offset of the framebuffer */
 #define GFX_FBPITCH_REG 0x04
 /** Bits [15:0]: Pitch (length of one row of pixel data) of the framebuffer bitmap. 
-    Note the pitch is in pixels. Field length is */
+    Note the pitch is in pixels. Must be a multiple of 4 for 8-bit pixels or 8 for
+    4-bit pixels, or else display artifacts will be evident. */
 #define GFX_FBPITCH_PITCH_OFF 0
 /** Bits [24:15]: Palette offset. This is added to the nibbles or bytes retrieved 
     from framebuffer, and the result is used as an address into the palette memory
