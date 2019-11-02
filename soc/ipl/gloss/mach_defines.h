@@ -340,10 +340,12 @@ fill the palette memory), the fields are
 #define GFX_TILEMAP_ENT_FLIP_X (1<<9)
 /** Bit [10]: Flip tile vertically */
 #define GFX_TILEMAP_ENT_FLIP_Y (1<<10)
-/** Bit [17:11]: Palette offset. If this is set to i, the 16 colors of 
+/** Bit [10]: Swap x and y of tile (diagonal flip). This happens before the other flips. */
+#define GFX_TILEMAP_ENT_SWAP_XY (1<<11)
+/** Bit [17:12]: Palette offset. If this is set to i, the 16 colors of 
     the tile will be looked up in the palette memory starting from entry 
-    (i*4). */
-#define GFX_TILEMAP_ENT_PAL_OFF 11
+    (i*8). */
+#define GFX_TILEMAP_ENT_PAL_OFF 12
 
 /** Memory address of the sprites. This is contains 256 2x32-bit
     words containing the sprite data for 256 sprites. Note that 

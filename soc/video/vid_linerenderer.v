@@ -439,10 +439,15 @@ always @(*) begin
 	sprite_tilemem_ack=0;
 
 	if (cycle==0) begin
-		tilepix_x = tileb_data[9] ? (15-tileb_x[9:6]) : tileb_x[9:6];
-		tilepix_y = tileb_data[10] ? (15-tileb_y[9:6]) : tileb_y[9:6];
+		if (tileb_data[11]) begin
+			tilepix_y = tileb_data[9] ? (15-tileb_x[9:6]) : tileb_x[9:6];
+			tilepix_x = tileb_data[10] ? (15-tileb_y[9:6]) : tileb_y[9:6];
+		end else begin
+			tilepix_x = tileb_data[9] ? (15-tileb_x[9:6]) : tileb_x[9:6];
+			tilepix_y = tileb_data[10] ? (15-tileb_y[9:6]) : tileb_y[9:6];
+		end
 		tilemem_no = tileb_data[8:0];
-		pal_addr = tilemem_pixel + {tilea_data[17:11], 2'b0}; //from tilemap a
+		pal_addr = tilemem_pixel + {tilea_data[17:12], 3'b0}; //from tilemap a
 		alphamixer_rate = layer_en[0] ? pal_data[31:24] : 0; //fb
 		alphamixer_in_b = bgnd_color; //background
 	end else if (cycle==1) begin
@@ -450,7 +455,7 @@ always @(*) begin
 		tilepix_y = sprite_tilemem_y;
 		tilemem_no = sprite_tilemem_no;
 		sprite_tilemem_ack = 1;
-		pal_addr = tilemem_pixel + {tileb_data[17:11], 2'b0}; //from tilemap b
+		pal_addr = tilemem_pixel + {tileb_data[17:12], 3'b0}; //from tilemap b
 		alphamixer_rate = layer_en[1] ? pal_data[31:24] : 0; //tilemap a
 		alphamixer_in_b = alphamixer_out; //bgnd+fb
 	end else if (cycle==2) begin
@@ -463,8 +468,13 @@ always @(*) begin
 		alphamixer_rate = layer_en[2] ? pal_data[31:24] : 0; //tilemap b
 		alphamixer_in_b = alphamixer_out; //bgnd+fb+tilemap_a
 	end else begin //cycle==3
-		tilepix_x = tilea_data[9] ? (15-tilea_x[9:6]) : tilea_x[9:6];
-		tilepix_y = tilea_data[10] ? (15-tilea_y[9:6]) : tilea_y[9:6];
+		if (tilea_data[11]) begin
+			tilepix_y = tilea_data[9] ? (15-tilea_x[9:6]) : tilea_x[9:6];
+			tilepix_x = tilea_data[10] ? (15-tilea_y[9:6]) : tilea_y[9:6];
+		end else begin
+			tilepix_x = tilea_data[9] ? (15-tilea_x[9:6]) : tilea_x[9:6];
+			tilepix_y = tilea_data[10] ? (15-tilea_y[9:6]) : tilea_y[9:6];
+		end
 		tilemem_no = tilea_data[8:0];
 		pal_addr = {fb_pixel+fb_pal_offset}; //from fb
 		alphamixer_rate = layer_en[3] ? pal_data[31:24] : 0; //sprite
