@@ -12,8 +12,10 @@ module oscillator
 
 );
 localparam TOPBIT     = BITDEPTH+BITFRACTION-1;
-localparam PULSEWIDTH = 2**(BITDEPTH-4);
+localparam PULSEWIDTH = 2**(BITDEPTH-3);
 localparam MIDPOINT   = 2**(BITDEPTH-1)-1;
+localparam PULSELO    = MIDPOINT - 2**(BITDEPTH-4); 
+localparam PULSEHI    = MIDPOINT + 2**(BITDEPTH-4); 
 
 localparam SAW   = 2'd0;
 localparam TRI   = 2'd1;
@@ -34,7 +36,7 @@ always @(posedge sample_clock,  posedge rst) begin
 			SAW: out <= accumulator[TOPBIT -: BITDEPTH] ; 
 			TRI: out <= accumulator[TOPBIT] ? ~accumulator[TOPBIT-1 -: BITDEPTH] : accumulator[TOPBIT-1 -: BITDEPTH];
 			PULSE: out <= accumulator[TOPBIT -: BITDEPTH] < PULSEWIDTH ? 2**BITDEPTH-1 : 0 ;
-			SUB: out <= sub ? (accumulator[TOPBIT -: BITDEPTH] < PULSEWIDTH ? 2**BITDEPTH-1 : 0 ) : (accumulator[TOPBIT -: BITDEPTH] < PULSEWIDTH ? 0 : 2**BITDEPTH-1) ;
+			SUB: out <= (((accumulator[TOPBIT -: BITDEPTH] < PULSEHI) && (accumulator[TOPBIT -: BITDEPTH] > PULSELO) ) ?  2**BITDEPTH-1 : 0)/2 + sub << (BITDEPTH-1); 
 			default: out <= MIDPOINT;
 		endcase 
 		sub <= accumulator[TOPBIT+1] ? ~sub : sub ;

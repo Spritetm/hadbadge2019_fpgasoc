@@ -1,21 +1,23 @@
 [*]
 [*] GTKWave Analyzer v3.3.94 (w)1999-2018 BSI
-[*] Sun Nov  3 15:46:37 2019
+[*] Sun Nov  3 20:12:12 2019
 [*]
 [dumpfile] "/home/elliot/projects/fpga_badge/hadbadge2019_fpgasoc/soc/soctrace.vcd"
-[dumpfile_mtime] "Sun Nov  3 15:44:31 2019"
-[dumpfile_size] 879384779
+[dumpfile_mtime] "Sun Nov  3 20:09:32 2019"
+[dumpfile_size] 733629880
 [optimize_vcd]
 [savefile] "/home/elliot/projects/fpga_badge/hadbadge2019_fpgasoc/soc/audio/synth.gtkw"
-[timestart] 3603
+[timestart] 21
 [size] 1916 1196
 [pos] 0 1199
-*-6.842819 3864 420 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-20.925467 448000 420 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] TOP.
 [treeopen] TOP.soc.
 [treeopen] TOP.soc.synth.
 [treeopen] TOP.soc.synth.genblk1(0).
 [treeopen] TOP.soc.synth.genblk1(0).osc.
+[treeopen] TOP.soc.synth.genblk1(1).
+[treeopen] TOP.soc.synth.genblk1(1).osc.
 [treeopen] TOP.soc.synth.genblk2(2).
 [treeopen] TOP.soc.synth.genblk2(2).osc.
 [treeopen] TOP.soc.synth.genblk2(3).osc.
@@ -130,14 +132,11 @@ TOP.soc.synth.ren
 TOP.soc.synth.ready
 TOP.soc.synth.rst
 TOP.soc.synth.sample_clock
-@22
-TOP.soc.synth.sample_count[7:0]
-@28
 TOP.soc.synth.pwmout
 @22
 [color] 2
 TOP.soc.synth.mydac.accumulator[14:0]
-@8022
+@8023
 [color] 2
 TOP.soc.synth.mydac.pcm[13:0]
 @20000
@@ -147,26 +146,14 @@ TOP.soc.synth.mydac.pcm[13:0]
 @28
 TOP.soc.synth.voice_gate(0)
 TOP.soc.synth.voice_gate(1)
-@29
-[color] 3
 TOP.soc.synth.voice_gate(2)
-@23
-[color] 3
-TOP.soc.synth.genblk2(2).osc.envelope_attack[7:0]
-[color] 3
-TOP.soc.synth.genblk2(2).osc.envelope_decay[7:0]
-@28
 TOP.soc.synth.voice_gate(3)
 TOP.soc.synth.voice_gate(4)
 TOP.soc.synth.voice_gate(5)
 TOP.soc.synth.voice_gate(6)
 TOP.soc.synth.voice_gate(7)
 @8022
-TOP.soc.synth.voice_out(0)[13:0]
-TOP.soc.synth.voice_out(4)[13:0]
-@22
-TOP.soc.synth.genblk1(0).osc.pitch_increment[15:0]
-TOP.soc.synth.genblk3(4).osc.pitch_increment[15:0]
-TOP.soc.synth.addressed_voice[15:0]
+TOP.soc.synth.genblk1(1).osc.myosc.out[13:0]
+TOP.soc.synth.genblk2(2).osc.myosc.out[13:0]
 [pattern_trace] 1
 [pattern_trace] 0
