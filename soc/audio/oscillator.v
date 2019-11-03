@@ -20,7 +20,7 @@ localparam TRI   = 2'd1;
 localparam PULSE = 2'd2;
 localparam SUB   = 2'd3;
 
-reg [TOPBIT:0] accumulator;  
+reg [TOPBIT+1:0] accumulator;  
 reg sub;
 always @(posedge sample_clock,  posedge rst) begin 
 	if (rst) begin 
@@ -29,7 +29,7 @@ always @(posedge sample_clock,  posedge rst) begin
 		sub <= 0;
 	end
 	else begin
-		accumulator <= accumulator + increment;
+		accumulator <= accumulator[TOPBIT:0] + increment;
 		case (VOICE)
 			SAW: out <= accumulator[TOPBIT -: BITDEPTH] ; 
 			TRI: out <= accumulator[TOPBIT] ? ~accumulator[TOPBIT-1 -: BITDEPTH] : accumulator[TOPBIT-1 -: BITDEPTH];
@@ -37,12 +37,7 @@ always @(posedge sample_clock,  posedge rst) begin
 			SUB: out <= sub ? (accumulator[TOPBIT -: BITDEPTH] < PULSEWIDTH ? 2**BITDEPTH-1 : 0 ) : (accumulator[TOPBIT -: BITDEPTH] < PULSEWIDTH ? 0 : 2**BITDEPTH-1) ;
 			default: out <= MIDPOINT;
 		endcase 
-	end
-end
-
-always @(posedge accumulator[TOPBIT]) begin
-	if (!rst) begin
-		sub <= ~sub;
+		sub <= accumulator[TOPBIT+1] ? ~sub : sub ;
 	end
 end
 

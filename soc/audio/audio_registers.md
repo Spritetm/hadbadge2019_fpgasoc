@@ -22,32 +22,35 @@ Configurables include attack and release on the amplitude envelope.  IPL functio
 ## Layout: 
 
 * 80000000 Voice 0 : Sawtooth
-* 80001000 Voice 1 : Sawtooth
-* 80002000 Voice 2 : Pulse + Sub
-* 80003000 Voice 3 : Pulse + Sub
-* 80004000 Voice 4 : Triangle
- ...
-* 8000C000 Raw PCM input: 14-bit samples, but hit it with whatever you got
+* 80000010 Voice 1 : Sawtooth
+* 80000020 Voice 2 : Pulse + Sub
+* 80000030 Voice 3 : Pulse + Sub
+* 80000040 Voice 4 : Triangle
+* ...
+* 80000070 Voice 7 : Triangle
+
+* 800000C0 Raw PCM input: 14-bit samples, but hit it with whatever you got
   Sample rate is determined by whatever you push in, 
-
-* 8000D000 Drums  (yes, I'm picking the register addresses to be mnemonic)
+* 800000D0 Drums  (yes, I'm picking the register addresses to be mnemonic)
   Bits: Kick drum, Snare, Hat/Cymbal, Cowbell
+* 800000F0 Config register
 
-* 8000F000 Config register
+## Voice Registers 
 
-## Registers per Voice  (six-bit addresses?)
+0. @0x800000V0: 0xG000PPPP    Pitch accumulator and duration.  Low 16 bits are the pitch.  High 15 bits may eventually be the duration in clocks.  For now the highest bit (31) is a gate.
 
-Offsets:
+1. @0x800000V4: 0x0000RRAA  Attack and release fit in low 16 bits, each 8 bit. Figure out what's relevant for drums here.  
 
-0. Pitch accumulator and duration.  Low 16 bits are the pitch.  High 16 bits are the duration in clocks.   (Do I need to squish a gate in here?)
+2. @0x800000V8: Filter parameters. Misc voice parameters? (All TBD, if space allows.  Might use detune to control pulse width of the pulse...)  Ditto on drums.
 
-1. Attack and release.  Both in range 0-255.  (8 bits each, oh the waste of address space!)  Figure out what's relevant for drums here.  Still have  16 bits free?
+3. @0x800000VC: Nothing yet.
 
-2. Detune and filter cutoff. Misc voice parameters? (TBD, if space allows.  Might use detune to control pulse width of the pulse...)  Ditto on drums.
+OK, so that's a ton of space left over, but what you gonna do?  Better too much space for parameters than too little.  The cost is two extra wires, virtually nil.  And it just feels so _luxurious_.
 
-3. TBD, reserved, not for production use, dragons.
+## PCM Register (0hC0)
 
-(Better too much space for parameters than too little?  The cost is two extra wires.)
+This just takes 14-bit data and shuttles it straight off to the PCM channel.  Do what you want with it.
+It's mixed in kinda loud with respect to the other synth voices, but that just gives you more flexibility.
 
 ## Config
 

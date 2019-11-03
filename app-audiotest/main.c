@@ -34,13 +34,25 @@ static inline void button_wait(){
 	while ((MISC_REG(MISC_BTN_REG) & BUTTON_A)==0) ;
 }
 
+/* static inline uint32_t counter60hz(void) { */
+/* 	return GFX_REG(GFX_VBLCTR_REG); */
+/* } */
+/* static inline pause(void) { */
+/* 	uint32_t count = counter60hz() + 60; */
+/* 	while (counter60hz() < count){;} */
+/* } */
+static inline void pause(void){
+	for (volatile uint32_t i=0; i<0x000ffff0; i++){;}
+}
+
+
 void main(int argc, char **argv) {
 	//We're running in app context. We have full control over the badge and can do with the hardware what we want. As
 	//soon as main() returns, however, we will go back to the IPL.
 	
 	//Blank out fb while we're loading stuff by disabling all layers. This just shows the background color.
 	//  Blue, Green, Red
-	GFX_REG(GFX_BGNDCOL_REG)=0xf010f0; //a soft gray
+	GFX_REG(GFX_BGNDCOL_REG)=0x301010; //a soft gray
 	GFX_REG(GFX_LAYEREN_REG)=0; //disable all gfx layers
 	
 	//First, allocate some memory for the background framebuffer. We're gonna dump a fancy image into it. The image is
@@ -81,10 +93,16 @@ void main(int argc, char **argv) {
 	//8-bit.
 	GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB_8BIT|GFX_LAYEREN_FB|GFX_LAYEREN_TILEA;
 
-	button_wait();
-    SYNTHREG(0x0) = 0x1;	// just send gate high for now
-	button_wait();
-	fprintf(f,"HOWDY!\n");
-    SYNTHREG(0x0) = 0x0;	// just send gate high for now
-	button_wait();
+	pause();
+	SYNTHREG(0x24) = 0x00001010;	
+	SYNTHREG(0x20) = 0xF0001770;	
+	pause();
+
+	SYNTHREG(0x20) = 0x00000000;
+	SYNTHREG(0x50) = 0xF0002328;	
+	pause();
+	SYNTHREG(0x50) = 0;
+	fprintf(f,"BYE!\n");
+	pause();
 }
+

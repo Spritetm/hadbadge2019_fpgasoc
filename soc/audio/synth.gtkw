@@ -1,21 +1,23 @@
 [*]
 [*] GTKWave Analyzer v3.3.94 (w)1999-2018 BSI
-[*] Sun Nov  3 11:48:25 2019
+[*] Sun Nov  3 15:46:37 2019
 [*]
 [dumpfile] "/home/elliot/projects/fpga_badge/hadbadge2019_fpgasoc/soc/soctrace.vcd"
-[dumpfile_mtime] "Sun Nov  3 11:48:06 2019"
-[dumpfile_size] 154544382
+[dumpfile_mtime] "Sun Nov  3 15:44:31 2019"
+[dumpfile_size] 879384779
 [optimize_vcd]
 [savefile] "/home/elliot/projects/fpga_badge/hadbadge2019_fpgasoc/soc/audio/synth.gtkw"
-[timestart] 21
+[timestart] 3603
 [size] 1916 1196
 [pos] 0 1199
-*-18.842819 526050 420 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-6.842819 3864 420 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] TOP.
 [treeopen] TOP.soc.
 [treeopen] TOP.soc.synth.
 [treeopen] TOP.soc.synth.genblk1(0).
 [treeopen] TOP.soc.synth.genblk1(0).osc.
+[treeopen] TOP.soc.synth.genblk2(2).
+[treeopen] TOP.soc.synth.genblk2(2).osc.
 [treeopen] TOP.soc.synth.genblk2(3).osc.
 [treeopen] TOP.soc.synth.genblk3(4).
 [treeopen] TOP.soc.synth.genblk3(4).osc.
@@ -94,6 +96,7 @@ TOP.soc.mem_addr[31:0]
 @1401200
 -group_end
 @22
+TOP.soc.synth.addr[7:0]
 [color] 2
 TOP.soc.mem_rdata[31:0]
 [color] 2
@@ -120,7 +123,6 @@ TOP.soc.synth_ready
 [color] 3
 TOP.soc.synth_select
 @22
-TOP.soc.synth.addr[3:0]
 TOP.soc.synth.data_in[31:0]
 @28
 TOP.soc.synth.wen
@@ -145,7 +147,15 @@ TOP.soc.synth.mydac.pcm[13:0]
 @28
 TOP.soc.synth.voice_gate(0)
 TOP.soc.synth.voice_gate(1)
+@29
+[color] 3
 TOP.soc.synth.voice_gate(2)
+@23
+[color] 3
+TOP.soc.synth.genblk2(2).osc.envelope_attack[7:0]
+[color] 3
+TOP.soc.synth.genblk2(2).osc.envelope_decay[7:0]
+@28
 TOP.soc.synth.voice_gate(3)
 TOP.soc.synth.voice_gate(4)
 TOP.soc.synth.voice_gate(5)
@@ -156,7 +166,7 @@ TOP.soc.synth.voice_out(0)[13:0]
 TOP.soc.synth.voice_out(4)[13:0]
 @22
 TOP.soc.synth.genblk1(0).osc.pitch_increment[15:0]
-@23
 TOP.soc.synth.genblk3(4).osc.pitch_increment[15:0]
+TOP.soc.synth.addressed_voice[15:0]
 [pattern_trace] 1
 [pattern_trace] 0

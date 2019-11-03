@@ -10,7 +10,7 @@ module synth_interface(
 	//CPU interface
 	input clk,
 	input rst,
-	input [3:0] addr, // 16 instruments?  should be enough.
+	input [7:0] addr, // 16 sets of 4x 32-bit registers
 	input [31:0] data_in,
 	input wen,
 	input ren,
@@ -29,7 +29,7 @@ localparam NUMVOICES = 8;
 
 reg sample_clock       = 0;
 reg [SAMPLECLOCK_DIV-1:0] sample_count = 0;
-/* reg [31:0] mydata; */
+reg [31:0] mydata;
 reg ready_n;
 integer i;
 
@@ -40,51 +40,91 @@ wire [BITDEPTH-1:0] voice_out [NUMVOICES-1:0];
 reg [INCREMENTBITS-1:0] voice_increment [NUMVOICES-1:0];
 reg [ARBITS-1:0] voice_attack [NUMVOICES-1:0];
 reg [ARBITS-1:0] voice_release [NUMVOICES-1:0];
+/* reg newdata; */
 
 always @(posedge clk) begin
-        if (rst) begin
-                sample_clock <= 0;
-                sample_count <= 0;
-		/* slow_counter <= 0; */
-		ready_n <= 0;
+	if (rst) begin
+		sample_clock <= 0;
+		sample_count <= 0;
+		mydata       <= 0;
+		ready_n      <= 0;
+		/* newdata      <= 0; */
 		for (i=0; i<8; i=i+1) begin
-			voice_gate[i]   <= 0; // all off
-			voice_increment[i]    <= 'd6000; // no idea! 
-			voice_attack[i]  <= 'hf0; // snappy
-			voice_release[i] <= 'hf0; // snappy
+			voice_gate[i]      <= 0; // all off
+			voice_increment[i] <= 'd6000; // 358 Hz?  Subject to change.
+			voice_attack[i]    <= 'hf0; // snappy
+			voice_release[i]   <= 'hf0; // snappy
 		end
-
-        end
-        else begin
-                sample_count <= sample_count + 1;
-                sample_clock <= sample_count[SAMPLECLOCK_DIV-1];
+	end
+	else begin
+		sample_count <= sample_count + 1;
+		sample_clock <= sample_count[SAMPLECLOCK_DIV-1];
 		if (wen) begin
-			voice_gate[addr] <= data_in[0];
-			voice_increment[addr] <= 6000  + 1000 *  addr;
-			/* mydata <= data_in; */
-			ready_n <= 1; // handled data
+			mydata  <= data_in;
+			ready_n <= 1; // signal handled data to system
+			/* newdata <= 1; // now go handle it */
 		end
-        end
+		else begin
+			ready_n <= 0; // reset.
+		end
+	end
 end
 assign ready = ready_n && wen ; // speedup, drops line as soon as wen falls
 
+// debugging, remove me later
+reg [15:0] addressed_voice = 0;
 // Handle incoming data
-/* always (mydata) begin */
-/*     case (addr) */
-/* 	    4'h0: */ 
-/* 	    4'h1: */
-/* 	    4'h2: */
-/* 	    4'h3: */
-/* 	    4'h4: */
-/* 	    4'h5: */
-/* 	    4'h6: */
-/* 	    4'h7: */
-/* 	    4'h8: */
-/* 	    4'hC: */
-/* 	    4'hD: */
-/* 	    default: #0; // this is an error */
-/*     endcase */
-/*     end */
+always @(posedge clk) begin
+	if (!rst && ready_n) begin
+	/* if (!rst && newdata) begin */
+	case (addr[3:0])	
+		'h0: begin
+			if (addr[7:4] < 'h8) begin
+				/* $display("Synth voice play data register."); */
+				if (mydata[31]) begin
+					voice_gate[addr[7:4]] <= 1;
+					voice_increment[addr[7:4]] <= mydata[15:0];
+				end else begin
+					voice_gate[addr[7:4]] <= 0;
+				end
+				/* handle duration in the upper 15 bits? */
+				addressed_voice <= addr[7:4];
+			end 
+			else if (addr[7:4] == 'hC ) begin 
+				/* $display("PCM play data register."); */
+			end
+			else if (addr[7:4] == 'hD ) begin 
+				/* $display("Drum play register."); */
+			end
+			else if (addr[7:4] == 'hF ) begin 
+				/* $display("General play register."); */
+			end
+			else begin
+				/* $display("Not a valid 0 register."); */
+			end
+		end
+		'h4: begin
+			if (addr[7:4] < 'h8) begin
+				/* $display("Synth voice A/R register."); */
+				voice_attack[addr[7:4]]  <= mydata[7:0];
+				voice_release[addr[7:4]] <= mydata[15:8];
+			end else begin
+				/* $display("Not a valid config register."); */
+			end
+		end
+		'h8: begin
+			/* $display("2 register not implemented yet."); */
+		end
+		'hC: begin
+			/* $display("3 register not implemented yet."); */
+		end
+		default: begin 
+			/* $display("Fallen between the cracks."); */
+		end
+	endcase
+	/* newdata <= 0; // handled. */
+        end
+end
 
 // Begin synthesizer
 genvar synth_num;
