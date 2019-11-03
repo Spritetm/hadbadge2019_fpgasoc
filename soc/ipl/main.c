@@ -421,7 +421,8 @@ void main() {
 	verilator_start_trace();
 	//When testing in Verilator, put code that pokes your hardware here.
     
-	SYNTHREG(0) = 1;	
+	SYNTHREG(0x00) = 1;	
+	SYNTHREG(0x04) = 1;	
 
 	//Initialize IRQ stack to be bigger than the bootrom stack
 	uint32_t *int_stack=malloc(IRQ_STACK_SIZE);

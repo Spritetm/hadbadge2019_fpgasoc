@@ -128,6 +128,7 @@ SRC += $(addprefix audio/, \
        	scales_rom.v      \
 	amplifier.v      \
 	envelope.v       \
+	mixer4.v \
 )
 
 

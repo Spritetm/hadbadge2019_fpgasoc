@@ -22,10 +22,11 @@ This should probably combine with a timer / sequencer to play the notes.
 
 ## Layout: 
 
-* 80000000 General config registers
-* 80001000 Voice 1 
-* 80002000 Voice 2 
-* 80003000 Voice 3 
+* 80000000 Voice 0 : Sawtooth
+* 80001000 Voice 1 : Sawtooth
+* 80002000 Voice 2 : Pulse + Sub
+* 80003000 Voice 3 : Pulse + Sub
+* 80004000 Voice 4 : Triangle
  ...
 * 8000C000 Raw PCM input: 14-bit samples, but hit it with whatever you got
   Sample rate is determined by whatever you push in, 
@@ -33,21 +34,23 @@ This should probably combine with a timer / sequencer to play the notes.
 * 8000D000 Drums  (yes, I'm picking the register addresses to be mnemonic)
   Bits: Kick drum, Snare, Hat/Cymbal, Cowbell
 
+* 8000F000 Config register
+
+## Registers per Voice  (six-bit addresses?)
+
+Offsets:
+
+0. Note and duration.  Low 8 bits are MIDI note 0-127 (yes, it's a 7 bit number).  Bit 8 is gate -- useful.  High 16 bits are the duration in clocks.   
+
+1. Attack and release.  Both in range 0-255.  (8 bits each, oh the waste of address space!)  Figure out what's relevant for drums here.
+
+2. Detune and filter cutoff. Misc voice parameters? (TBD, if space allows.  Might use detune to control pulse width of the pulse...)  Ditto on drums.
+
+3. TBD, reserved, not for production use, dragons.
+
 
 ## Config
 
 Tempo, something else?  I don't know what should go here.  
 Maybe implement an overall filter like the SID did?  
-
-## Voice Registers
-
-Offsets:
-
-1. Note and duration.  Low 16 bits are MIDI note 0-127 (yes, it's a 7 bit number).   High 16 bits are the duration in clocks.
-
-2. Attack and release.  Both in range 0-255.  (8 bits each, oh the waste of address space!)  Figure out what's relevant for drums here.
-
-3. Detune and filter cutoff.  (TBD, if space allows.  Might use detune to control pulse width of the pulse...)  Ditto on drums.
-
-
 

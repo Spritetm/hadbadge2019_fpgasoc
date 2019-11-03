@@ -3,9 +3,13 @@ DUT=dac
 INCLUDES=oscillator.v dac.v button_number.v lfsr.v amplifier.v envelope.v cymbal.v ar.v voice.v mixer4.v midi_note_to_accumulator.v
 CONSTR=had19_proto2.lpf
 TRELLIS=/usr/share/trellis
+DOCS:=audio_registers.html
 
-all: ${PROJ}.svf flash
+all: ${PROJ}.svf flash 
 # all: sim
+
+docs: ${DOCS} 
+
 
 %.json: %.v ${INCLUDES} 
 	# yosys -p "synth_ecp5 -json $@" ${INCLUDES} 
@@ -28,6 +32,8 @@ clean:
 flash: ${PROJ}.bit 
 	tinyprog -p ${PROJ}.bit -a 0x180000
 
+%.html: %.md
+	 markdown_py2 $^ > $@
 
 sim: ${DUT}.v  ${DUT}_tb.v 
 	iverilog -Wall -Wno-timescale -o${DUT} ${DUT}.v ${DUT}_tb.v 
