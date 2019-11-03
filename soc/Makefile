@@ -5,7 +5,7 @@ BADGE_VER ?= 2
 PROJ=soc
 #Seed for nextpnr. Change this to another random value if you happen to run 
 #into a situation that mis-synths or takes extremely long to synth the SoC.
-SEED = 60
+SEED = 61
 
 # Sources
 	# Base
@@ -177,7 +177,7 @@ flash: $(PROJ).bit
 	tinyprog -p $(PROJ).bit -a 0x180000
 
 dfu_flash: $(PROJ).bit
-	dfu-util$(EXE) -d 1d50:614a,1d50:614b -a 0 -D $<
+	dfu-util$(EXE) -d 1d50:614a,1d50:614b -a 0 -R -D $<
 
 dfu_flash_all: $(PROJ).bit ipl
 	dfu-util$(EXE) -d 1d50:614a,1d50:614b -a 0 -D $(PROJ).bit

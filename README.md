@@ -253,8 +253,8 @@ Cartridge flash:
 | Location          | Size   | Function            | Note                       |
 |-------------------|--------|---------------------|----------------------------|
 | 0-0x17FFFF        | 1.5MiB | FPGA image          | FPGA bitstream             |
-| 0x300000-0x37FFFF | 0.5MiB | User-defined        | IPL, if bitstream is SoC   |
-| 0x380000-0xFFFFFF | 14MiB  | Filesystem          | FAT16/TJFL *               |
+| 0x180000-0x200000 | 0.5MiB | User-defined        | IPL, if bitstream is SoC   |
+| 0x200000-0xFFFFFF | 14MiB  | Filesystem          | FAT16/TJFL *               |
 
 The last partition is only used if a TJFTL signature is detected (3 out of 4 first pages have
 a valid signature), otherwise they are ignored and can be used as user-defined memory. The

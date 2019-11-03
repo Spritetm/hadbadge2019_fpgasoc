@@ -119,6 +119,7 @@ void set_sprite(int no, int x, int y, int sx, int sy, int tileno, int palstart) 
 #define ITEM_FLAG_SELECTABLE (1<<0)
 #define ITEM_FLAG_ON_CART (1<<1)
 #define ITEM_FLAG_BITSTREAM (1<<2)
+#define ITEM_FLAG_FORMAT (1<<3)
 
 typedef struct {
 	int no_items;
@@ -150,10 +151,19 @@ int cart_has_fpga_image() {
 	char buf[128];
 	flash_wake(FLASH_SEL_CART);
 	flash_read(FLASH_SEL_CART, 0, buf, sizeof(magic));
-	hexdump(buf, 28);
 	return memcmp(buf, magic, sizeof(magic))==0;
 }
 
+//If the first 512 bytes of the tjftl partition are 0xff, we assume it's an unerased cart and we're free
+//to create the tjftl part. If not, we assume it's used for 'other' stuff and we hide the option.
+int cart_tjftl_creatable() {
+	char buf[512];
+	flash_read(FLASH_SEL_CART, 0x200000, buf, 512);
+	for (int x=0; x<512; x++) {
+		if (buf[x]!=0xff) return 0;
+	}
+	return 1;
+}
 
 void read_menu_items(menu_data_t *s) {
 	//First, clean struct
@@ -168,11 +178,17 @@ void read_menu_items(menu_data_t *s) {
 			s->flag[s->no_items]=ITEM_FLAG_SELECTABLE|ITEM_FLAG_ON_CART|ITEM_FLAG_BITSTREAM;
 			s->item[s->no_items++]=strdup("Boot FPGA bitstream");
 		}
-		//ToDo: load files from cart
+		if (fs_cart_ftl_active()) {
+			//Add cart items
+			menu_add_apps(s, "cart:", ITEM_FLAG_SELECTABLE|ITEM_FLAG_ON_CART);
+		} else if (cart_tjftl_creatable()) {
+			s->flag[s->no_items]=ITEM_FLAG_SELECTABLE|ITEM_FLAG_ON_CART|ITEM_FLAG_FORMAT;
+			s->item[s->no_items++]=strdup("Format filesystem");
+		}
 		s->flag[s->no_items]=0;
 		s->item[s->no_items++]=strdup("- INTERNAL -");
 	}
-	menu_add_apps(s, "/", ITEM_FLAG_SELECTABLE);
+	menu_add_apps(s, "int:", ITEM_FLAG_SELECTABLE);
 }
 
 
@@ -324,7 +340,11 @@ int show_main_menu(char *app_name, int *ret_flags) {
 	}
 	
 	if (selected>=0) {
-		strcpy(app_name, menu.item[selected]);
+		if (menu.flag[selected]&ITEM_FLAG_ON_CART) {
+			sprintf(app_name, "cart:%s", menu.item[selected]);
+		} else {
+			sprintf(app_name, "int:%s", menu.item[selected]);
+		}
 		*ret_flags=menu.flag[selected];
 	}
 	for (int i=0; i<menu.no_items; i++) free(menu.item[i]);
@@ -399,17 +419,22 @@ void main() {
 		char app_name[256]="*na*";
 		int flags=0;
 		show_main_menu(app_name, &flags);
-		printf("IPL: starting app %s\n", app_name);
-		usb_msc_off();
-		syscall_reinit();
-		user_memfn_set(NULL, NULL, NULL);
 		if (flags&ITEM_FLAG_BITSTREAM) {
+			printf("Booting cart bitstream...\n");
 			boot_cart_fpga_bitstream();
+		} else if (flags&ITEM_FLAG_FORMAT) {
+			printf("Formatting cart...\n");
+			fs_cart_initialize_fat();
+		} else {
+			printf("IPL: starting app %s\n", app_name);
+			usb_msc_off();
+			syscall_reinit();
+			user_memfn_set(NULL, NULL, NULL);
+			start_app(app_name);
+			syscall_reinit();
+			user_memfn_set(malloc, realloc, free);
+			printf("IPL: App %s returned.\n", app_name);
 		}
-		start_app(app_name);
-		syscall_reinit();
-		user_memfn_set(malloc, realloc, free);
-		printf("IPL: App %s returned.\n", app_name);
 	}
 }
 

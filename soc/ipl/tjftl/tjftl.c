@@ -248,6 +248,20 @@ static void cache_update(tjftl_t *tj, int lba, int blkno, int sec) {
 #endif
 }
 
+//Check the first 4 blocks. If 2 of them have valid tjftl headers, we assume this is a tjftl
+//partition.
+int tjftl_detect(flashcb_read_t rf, void *arg) {
+	tjftl_block_t blkh;
+	int valid_blocks=0;
+	for (int blk=0; blk<4; blk++) {
+		int addr=blk*BLKSZ;
+		bool ret=rf(addr, (uint8_t*)&blkh, sizeof(tjftl_block_t), arg);
+		if (!ret) return 0; //flash error = not detected
+		if (blkh_valid(&blkh)) valid_blocks++;
+	}
+	return valid_blocks>=2;
+}
+
 static bool garbage_collect(tjftl_t *tj);
 
 tjftl_t *tjftl_init(flashcb_read_t rf, flashcb_erase_32k_t ef, flashcb_program_t pf, void *arg, int size, int sect_cnt, int verbose) {
