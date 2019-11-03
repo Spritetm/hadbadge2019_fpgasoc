@@ -421,9 +421,6 @@ void main() {
 	verilator_start_trace();
 	//When testing in Verilator, put code that pokes your hardware here.
     
-	/* SYNTHREG(0x24) = 0x0000f0f0; */	
-	/* SYNTHREG(0x20) = 0xF0004770; */	
-	/* SYNTHREG(0x10) = 0xF0004770; */	
 
 	//Initialize IRQ stack to be bigger than the bootrom stack
 	uint32_t *int_stack=malloc(IRQ_STACK_SIZE);
@@ -441,6 +438,11 @@ void main() {
 
 	//Initialize the LCD
 	lcd_init(simulated());
+	
+	SYNTHREG(0x40) = 0x00151800;	
+	SYNTHREG(0x50) = 0x00251E00;	
+	SYNTHREG(0x60) = 0x00352400;	
+	SYNTHREG(0x70) = 0x00453000;	
 
 	//See if there's an autoexec.elf we can run.
 	const char *autoexec;

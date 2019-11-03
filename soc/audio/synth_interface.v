@@ -29,11 +29,12 @@ localparam ARBITS = 8;
 localparam NUMVOICES = 8;
 
 reg sample_clock;
-reg [SAMPLECLOCK_DIV-1:0] sample_count;
+reg slow_clock; // approx milliseconds
+reg [15:0] slow_counter;
+reg [16:0] counter;
 reg [31:0] mydata;
 reg ready_n;
 integer i;
-
 
 // Control lines
 reg voice_gate [NUMVOICES-1:0];
@@ -41,24 +42,29 @@ wire [BITDEPTH-1:0] voice_out [NUMVOICES-1:0];
 reg [INCREMENTBITS-1:0] voice_increment [NUMVOICES-1:0];
 reg [ARBITS-1:0] voice_attack [NUMVOICES-1:0];
 reg [ARBITS-1:0] voice_release [NUMVOICES-1:0];
+reg [15:0] voice_off_time [NUMVOICES-1:0];
 
 always @(posedge clk) begin
 	if (rst) begin
-		sample_clock <= 0;
-		sample_count <= 0;
 		mydata       <= 0;
 		ready_n      <= 0;
-		/* newdata      <= 0; */
+		counter      <= 0;
+		sample_clock <= 0;
+		slow_clock   <= 0;
+		slow_counter <= 0;
 		for (i=0; i<8; i=i+1) begin
 			voice_gate[i]      <= 0; // all off
 			voice_increment[i] <= 'hC00; // 137 Hz
 			voice_attack[i]    <= 'hf0; // snappy
 			voice_release[i]   <= 'hf0; // snappy
+			voice_off_time[i]  <= 0; // all off
 		end
 	end
 	else begin
-		sample_count <= sample_count + 1;
-		sample_clock <= sample_count[SAMPLECLOCK_DIV-1];
+		counter <= counter[15:0] + 1;
+		sample_clock <= counter[SAMPLECLOCK_DIV-1];
+		slow_clock <= counter[15];
+		slow_counter <= slow_counter + counter[16];
 		if (wen) begin
 			mydata  <= data_in;
 			ready_n <= 1; // signal handled data to system
@@ -77,8 +83,11 @@ always @(posedge clk) begin
 		'h0: begin
 			if (addr[7:4] < 'h8) begin
 				/* $display("Synth voice play data register."); */
-				voice_gate[addr[7:4]] <= mydata[31];
 				voice_increment[addr[7:4]] <= mydata[15:0];
+				if (mydata[31:16]) begin
+					voice_gate[addr[7:4]] <= 1;
+					voice_off_time[addr[7:4]] <= slow_counter + mydata[31:16];
+				end 
 			end 
 			else if (addr[7:4] == 'hC ) begin 
 				/* $display("PCM play data register."); */
@@ -98,7 +107,8 @@ always @(posedge clk) begin
 				/* $display("Synth voice A/R register."); */
 				voice_attack[addr[7:4]]  <= mydata[7:0];
 				voice_release[addr[7:4]] <= mydata[15:8];
-			end else begin
+			end 
+			else begin
 				/* $display("Not a valid config register."); */
 			end
 		end
@@ -115,12 +125,24 @@ always @(posedge clk) begin
         end
 end
 
+
+// Check for gates expiring
+always @(posedge clk) begin
+	if (!rst) begin
+		for (i=0; i<8; i=i+1) begin
+			if ( (voice_gate[i] == 1) && (voice_off_time[i] == slow_counter) ) begin
+				voice_gate[i] <= 0;
+			end
+		end
+	end
+end
+
 // Begin synthesizer
 genvar synth_num;
 // Sawtooths
 generate
 	for (synth_num=0 ; synth_num < 2; synth_num=synth_num+1) begin 
-		voice #(.VOICE(0)) osc (
+		voice #(.VOICE(0)) myvoice (
 			.sample_clock(sample_clock),
 			.rst(rst),
 			.pitch_increment(voice_increment[synth_num]),
@@ -148,7 +170,7 @@ endgenerate
 // Triangles
 generate
 	for (synth_num=4 ; synth_num < 8; synth_num=synth_num+1) begin 
-		voice #(.VOICE(1)) osc (
+		voice #(.VOICE(1)) myvoice (
 			.sample_clock(sample_clock),
 			.rst(rst),
 			.pitch_increment(voice_increment[synth_num]),
@@ -164,31 +186,32 @@ endgenerate
 // Note the horrible off-by one!
 wire [BITDEPTH-1:0] mix1;
 mixer4 mixer (
-	.in1(voice_out[0]),
-	.in2(voice_out[1]),
-	.in3(voice_out[2]),
-	.in4(voice_out[3]),
-	.mix(mix1)
+       .in1(voice_out[0]),
+       .in2(voice_out[1]),
+       .in3(voice_out[2]),
+       .in4(voice_out[3]),
+       .mix(mix1)
 );
 
 wire [BITDEPTH-1:0] mix2;
 mixer4 othermixer (
-	.in1(voice_out[4]),
-	.in2(voice_out[5]),
-	.in3(voice_out[6]),
-	.in4(voice_out[7]),
-	.mix(mix2)
+       .in1(voice_out[4]),
+       .in2(voice_out[5]),
+       .in3(voice_out[6]),
+       .in4(voice_out[7]),
+       .mix(mix2)
 );
 
-// Then mix them together
-wire [BITDEPTH-1:0] bigmix;
-assign bigmix = (mix1 >> 1) + (mix2 >> 1);
+wire [BITDEPTH:0] summer;
+assign summer = mix1 + mix2;
+wire [BITDEPTH-1:0] to_dac;
+assign to_dac = summer >> 1;
 
 // And out.
 dac #(.BITDEPTH(BITDEPTH)) mydac (
 	.clk (clk),
 	.rst(rst),
-	.pcm (bigmix), // input to DAC
+	.pcm (to_dac), // input to DAC
 	.out (pwmout) // connect to PWM pin
 );
 

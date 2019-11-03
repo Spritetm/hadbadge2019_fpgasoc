@@ -1,32 +1,38 @@
 [*]
 [*] GTKWave Analyzer v3.3.94 (w)1999-2018 BSI
-[*] Sun Nov  3 20:12:12 2019
+[*] Mon Nov  4 00:03:49 2019
 [*]
 [dumpfile] "/home/elliot/projects/fpga_badge/hadbadge2019_fpgasoc/soc/soctrace.vcd"
-[dumpfile_mtime] "Sun Nov  3 20:09:32 2019"
-[dumpfile_size] 733629880
+[dumpfile_mtime] "Mon Nov  4 00:00:55 2019"
+[dumpfile_size] 1951536477
 [optimize_vcd]
 [savefile] "/home/elliot/projects/fpga_badge/hadbadge2019_fpgasoc/soc/audio/synth.gtkw"
 [timestart] 21
 [size] 1916 1196
-[pos] 0 1199
-*-20.925467 448000 420 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[pos] 0 -1200
+*-22.302286 25320000 420 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] TOP.
 [treeopen] TOP.soc.
 [treeopen] TOP.soc.synth.
 [treeopen] TOP.soc.synth.genblk1(0).
-[treeopen] TOP.soc.synth.genblk1(0).osc.
+[treeopen] TOP.soc.synth.genblk1(0).myvoice.
+[treeopen] TOP.soc.synth.genblk1(0).myvoice.myar.
 [treeopen] TOP.soc.synth.genblk1(1).
-[treeopen] TOP.soc.synth.genblk1(1).osc.
 [treeopen] TOP.soc.synth.genblk2(2).
 [treeopen] TOP.soc.synth.genblk2(2).osc.
 [treeopen] TOP.soc.synth.genblk2(3).osc.
 [treeopen] TOP.soc.synth.genblk3(4).
-[treeopen] TOP.soc.synth.genblk3(4).osc.
+[treeopen] TOP.soc.synth.genblk3(4).myvoice.
+[treeopen] TOP.soc.synth.genblk3(5).
+[treeopen] TOP.soc.synth.genblk3(5).myvoice.
+[treeopen] TOP.soc.synth.genblk3(6).
+[treeopen] TOP.soc.synth.genblk3(6).myvoice.
+[treeopen] TOP.soc.synth.genblk3(7).
+[treeopen] TOP.soc.synth.genblk3(7).myvoice.
 [sst_width] 243
-[signals_width] 261
+[signals_width] 308
 [sst_expanded] 1
-[sst_vpaned_height] 491
+[sst_vpaned_height] 548
 @c00022
 [color] 1
 TOP.soc.mem_addr[31:0]
@@ -103,57 +109,41 @@ TOP.soc.synth.addr[7:0]
 TOP.soc.mem_rdata[31:0]
 [color] 2
 TOP.soc.mem_wdata[31:0]
-@28
-[color] 3
-TOP.soc.uart_I.uart_tx_fifo_I.clk
-[color] 3
-TOP.soc.mem_ready
-[color] 3
-TOP.soc.mem_ren
-[color] 3
-TOP.soc.mem_select
-[color] 3
-TOP.soc.mem_valid
-@22
-[color] 3
-TOP.soc.mem_wen[4:0]
-[color] 3
-TOP.soc.mem_wstrb[3:0]
-@28
-[color] 3
-TOP.soc.synth_ready
-[color] 3
-TOP.soc.synth_select
-@22
 TOP.soc.synth.data_in[31:0]
 @28
-TOP.soc.synth.wen
-TOP.soc.synth.ren
 TOP.soc.synth.ready
-TOP.soc.synth.rst
+[color] 3
+TOP.soc.uart_I.uart_tx_fifo_I.clk
 TOP.soc.synth.sample_clock
-TOP.soc.synth.pwmout
+TOP.soc.synth.slow_clock
 @22
-[color] 2
-TOP.soc.synth.mydac.accumulator[14:0]
-@8023
-[color] 2
-TOP.soc.synth.mydac.pcm[13:0]
+TOP.soc.synth.slow_counter[15:0]
+@28
+TOP.soc.synth.pwmout
+@8022
+TOP.soc.synth.summer[14:0]
 @20000
 -
 -
 -
 @28
 TOP.soc.synth.voice_gate(0)
-TOP.soc.synth.voice_gate(1)
-TOP.soc.synth.voice_gate(2)
-TOP.soc.synth.voice_gate(3)
-TOP.soc.synth.voice_gate(4)
-TOP.soc.synth.voice_gate(5)
-TOP.soc.synth.voice_gate(6)
-TOP.soc.synth.voice_gate(7)
+@22
+TOP.soc.synth.voice_increment(0)[15:0]
+TOP.soc.synth.genblk1(0).myvoice.myar.envelope_attack[7:0]
+TOP.soc.synth.genblk1(0).myvoice.myar.envelope_decay[7:0]
+TOP.soc.synth.voice_off_time(0)[15:0]
 @8022
-TOP.soc.synth.genblk1(1).osc.myosc.out[13:0]
-TOP.soc.synth.genblk2(2).osc.myosc.out[13:0]
+TOP.soc.synth.genblk1(0).myvoice.myar.volume[7:0]
+TOP.soc.synth.genblk3(4).myvoice.myar.volume[7:0]
+TOP.soc.synth.genblk3(5).myvoice.myar.volume[7:0]
+TOP.soc.synth.genblk3(6).myvoice.myar.volume[7:0]
+TOP.soc.synth.genblk3(7).myvoice.myar.volume[7:0]
+@29
+TOP.soc.synth.genblk3(4).myvoice.myar.gate
+@28
+TOP.soc.synth.genblk3(5).myvoice.myar.gate
+TOP.soc.synth.genblk3(6).myvoice.myar.gate
+TOP.soc.synth.genblk3(7).myvoice.myar.gate
 [pattern_trace] 1
 [pattern_trace] 0

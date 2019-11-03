@@ -6,17 +6,15 @@ Voices 1 and 2 are sawtooths.  I like 'em for basses, but whatever.
 Voices 3 and 4 are pulse waves with a suboctave added in for extra flavor. Good for leads.
 Voices 5-8 are mellow triangle voices, good for chords.
 Drums are Kick, Snare, a noisy hat/cymbal, and a cheesy Cowbell.  
-Finally, there is a raw PCM channel which takes 14-bit samples at whatever speed you send 'em.
+Finally, there is a raw PCM channel that takes 16-bit samples at whatever speed you send 'em.
 
-The oscillators take a pitch increment (scale: TBD) from userland.  A lookup or formula in the IPL should take care of turning this into pitches for the user.
-An IPL function should also take care of durations, but I haven't decided yet how to handle that: timer in HW or SW?
-But the user experience should be `synth_play(voice, note, duration);`
+You can configure an attack and release rate for each voice independently, and then play it by sending it a pitch increment (scale: TBD) and a duration.  A lookup or formula in the IPL should take care of turning this into pitches for the user, and the durations are approximately 180 counts for a quarter note at 120 BPM.
 
-Note that if you select a long release, it will "spill over" the time that you've selected as duration -- it's the time that you're holding down the key on a keyboard.  
+But the user experience should be `synth_play(voice, note, duration);`  You just have to fire these off at the right time, and you have music.
+
+Note that if you have configured the voice for a long release, it will "spill over" the time that you've selected as duration -- the duration is like the time that you're holding down the key on a keyboard -- it rings out a bit after that.  
 
 This general layout should be kinda musical, make it easy to write a MIDI player or tracker (todo!), and generally be fun. How would it be easiest to write a tracker?  What can I do to support that?
-
-Configurables include attack and release on the amplitude envelope.  IPL functions for these will need to be written, once the configurable hardware gets done.
 
 
 ## Layout: 
@@ -31,15 +29,19 @@ Configurables include attack and release on the amplitude envelope.  IPL functio
 
 * 800000C0 Raw PCM input: 14-bit samples, but hit it with whatever you got
   Sample rate is determined by whatever you push in, 
-* 800000D0 Drums  (yes, I'm picking the register addresses to be mnemonic)
-  Bits: Kick drum, Snare, Hat/Cymbal, Cowbell
+
+* 800000D0 Drums  (Still TBD) Bits: Kick drum, Snare, Hat/Cymbal, Cowbell
+
 * 800000F0 Config register
 
 ## Voice Registers 
 
-0. @0x800000V0: 0xG000PPPP    Pitch accumulator and duration.  Low 16 bits are the pitch.  High 15 bits may eventually be the duration in clocks.  For now the highest bit (31) is a gate.
+Replace V with the voice number.
 
-1. @0x800000V4: 0x0000RRAA  Attack and release fit in low 16 bits, each 8 bit. Figure out what's relevant for drums here.  
+0. @0x800000V0: 0xDDDDPPPP    Pitch accumulator and duration.  Low 16 bits are the pitch.  High 16 bits is the gate-on time in clicks, which are 2^15/48MHz = 0.68266667 ms 
+   180 counts is about a quarter note at 120 BPM, which gives you 90-count eighths, and 45-count sixteenths, etc.  You're still responsible for the timing...
+
+1. @0x800000V4: 0x0000RRAA  Attack and release are both 0-255, and fit in low 16 bits. (Figure out what's relevant for drums when I get there.)
 
 2. @0x800000V8: Filter parameters. Misc voice parameters? (All TBD, if space allows.  Might use detune to control pulse width of the pulse...)  Ditto on drums.
 
@@ -49,11 +51,12 @@ OK, so that's a ton of space left over, but what you gonna do?  Better too much 
 
 ## PCM Register (0hC0)
 
-This just takes 14-bit data and shuttles it straight off to the PCM channel.  Do what you want with it.
-It's mixed in kinda loud with respect to the other synth voices, but that just gives you more flexibility.
+This just takes 16-bit data, mixes it with the synth voices, and sends it off to the DAC.  It's mixed in kinda loud with respect to the other synth voices which come in at 14 bits, but that just gives you more flexibility. If it's distorting, try turning the master volume down from 0x80, the default.
 
 ## Config
 
-Tempo, something else?  I don't know what should go here.  
-Maybe implement an overall filter like the SID did?  
+0. @0x800000F0: 0xTTTTVVVV Controls master tempo and volume.  
+
+1. @0x800000F4: 0x0000FFFF : This may eventually be a master lowpass filter, like the SID has. FFFF will be the cutoff.
+
 
