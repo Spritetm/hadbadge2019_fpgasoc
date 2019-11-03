@@ -7,28 +7,29 @@
 // Allows 8-bit state?
 
 module synth_interface(
-	//CPU interface
+	/* CPU interface */
 	input clk,
 	input rst,
-	input [7:0] addr, // 16 sets of 4x 32-bit registers
+	input [7:0] addr, 
+	/* 16 sets of 4x 32-bit registers */
 	input [31:0] data_in,
 	input wen,
 	input ren,
 	output ready,
-	// Audio/mixer i/o
+	/* Audio/mixer i/o */
 	output pwmout
 );
 
 localparam BITDEPTH    = 14;
 localparam BITFRACTION = 6;
-localparam SAMPLECLOCK_DIV = 8;
-localparam SAMPLEFREQ  = 8000000 / 2**SAMPLECLOCK_DIV;  // 31,250 Hz or 32 us
+localparam SAMPLECLOCK_DIV = 10;
+localparam SAMPLEFREQ  = 48000000 / 2**SAMPLECLOCK_DIV;  // 46,875 Hz
 localparam INCREMENTBITS = 16;
 localparam ARBITS = 8;
 localparam NUMVOICES = 8;
 
-reg sample_clock       = 0;
-reg [SAMPLECLOCK_DIV-1:0] sample_count = 0;
+reg sample_clock;
+reg [SAMPLECLOCK_DIV-1:0] sample_count;
 reg [31:0] mydata;
 reg ready_n;
 integer i;
@@ -40,7 +41,6 @@ wire [BITDEPTH-1:0] voice_out [NUMVOICES-1:0];
 reg [INCREMENTBITS-1:0] voice_increment [NUMVOICES-1:0];
 reg [ARBITS-1:0] voice_attack [NUMVOICES-1:0];
 reg [ARBITS-1:0] voice_release [NUMVOICES-1:0];
-/* reg newdata; */
 
 always @(posedge clk) begin
 	if (rst) begin
@@ -51,7 +51,7 @@ always @(posedge clk) begin
 		/* newdata      <= 0; */
 		for (i=0; i<8; i=i+1) begin
 			voice_gate[i]      <= 0; // all off
-			voice_increment[i] <= 'd6000; // 358 Hz?  Subject to change.
+			voice_increment[i] <= 'hC00; // 137 Hz
 			voice_attack[i]    <= 'hf0; // snappy
 			voice_release[i]   <= 'hf0; // snappy
 		end
@@ -62,7 +62,6 @@ always @(posedge clk) begin
 		if (wen) begin
 			mydata  <= data_in;
 			ready_n <= 1; // signal handled data to system
-			/* newdata <= 1; // now go handle it */
 		end
 		else begin
 			ready_n <= 0; // reset.
@@ -71,24 +70,15 @@ always @(posedge clk) begin
 end
 assign ready = ready_n && wen ; // speedup, drops line as soon as wen falls
 
-// debugging, remove me later
-reg [15:0] addressed_voice = 0;
 // Handle incoming data
 always @(posedge clk) begin
 	if (!rst && ready_n) begin
-	/* if (!rst && newdata) begin */
 	case (addr[3:0])	
 		'h0: begin
 			if (addr[7:4] < 'h8) begin
 				/* $display("Synth voice play data register."); */
-				if (mydata[31]) begin
-					voice_gate[addr[7:4]] <= 1;
-					voice_increment[addr[7:4]] <= mydata[15:0];
-				end else begin
-					voice_gate[addr[7:4]] <= 0;
-				end
-				/* handle duration in the upper 15 bits? */
-				addressed_voice <= addr[7:4];
+				voice_gate[addr[7:4]] <= mydata[31];
+				voice_increment[addr[7:4]] <= mydata[15:0];
 			end 
 			else if (addr[7:4] == 'hC ) begin 
 				/* $display("PCM play data register."); */
@@ -122,7 +112,6 @@ always @(posedge clk) begin
 			/* $display("Fallen between the cracks."); */
 		end
 	endcase
-	/* newdata <= 0; // handled. */
         end
 end
 

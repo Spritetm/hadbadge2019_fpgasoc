@@ -421,10 +421,9 @@ void main() {
 	verilator_start_trace();
 	//When testing in Verilator, put code that pokes your hardware here.
     
-	SYNTHREG(0x24) = 0x00001010;	
-	SYNTHREG(0x20) = 0xF0001770;	
-	/* for (volatile uint32_t i=0; i<0xffff; i++){;} */
-	SYNTHREG(0x20) = 0x00000000;	
+	/* SYNTHREG(0x24) = 0x0000f0f0; */	
+	/* SYNTHREG(0x20) = 0xF0004770; */	
+	/* SYNTHREG(0x10) = 0xF0004770; */	
 
 	//Initialize IRQ stack to be bigger than the bootrom stack
 	uint32_t *int_stack=malloc(IRQ_STACK_SIZE);

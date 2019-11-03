@@ -6,3 +6,7 @@ local-settings.mk
 *.map
 *.o
 *.a
+patchy
+riscv32-naming.patch
+seed-changing.path
+supercon_badge_channel_logs
