@@ -207,7 +207,7 @@ void main(int argc, char **argv) {
 	//Note that without the setvbuf command, no characters would be printed until 1024 characters are
 	//buffered.
 	FILE *console=fopen("/dev/console", "w");
-	setvbuf(console, NULL, _IOLBF, 1024); //make console line buffered
+	setvbuf(console, NULL, _IONBF, 0); //make console unbuffered
 	if (console==NULL) {
 		printf("Error opening console!\n");
 	}
@@ -231,8 +231,6 @@ void main(int argc, char **argv) {
 	//Not sure yet what attr does, but tilemap be is important as it will have the effect of layering
 	//on top of our scrolling game
 	fprintf(console, "\0331M\033C\0330A"); 
-	//Note that without the newline at the end, all printf's would stay in the buffer.
-
 
 	//Clear both tilemaps
 	memset(GFXTILEMAPA,0,0x4000);

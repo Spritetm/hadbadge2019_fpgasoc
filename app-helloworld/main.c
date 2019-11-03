@@ -56,14 +56,13 @@ void main(int argc, char **argv) {
 	//ipl/gloss/console_out.c for more info.
 	FILE *f;
 	f=fopen("/dev/console", "w");
-	setvbuf(f, NULL, _IOLBF, 1024); //make console line buffered
+	setvbuf(f, NULL, _IONBF, 0); //make console line unbuffered
 	//Note that without the setvbuf command, no characters would be printed until 1024 characters are
-	//buffered.
+	//buffered. You normally don't want this.
 	fprintf(f, "\033C"); //clear the console. Note '\033' is the escape character.
 	fprintf(f, "\0335X"); //set Xpos to 5
 	fprintf(f, "\0338Y"); //set Ypos to 8
-	fprintf(f, "Hello World!\n"); // Print a nice greeting.
-	//Note that without the newline at the end, all printf's would stay in the buffer.
+	fprintf(f, "Hello World!"); // Print a nice greeting.
 	
 	//The user can still see nothing of this graphics goodness, so let's re-enable the framebuffer and
 	//tile layer A (the default layer for the console). Also indicate the framebuffer we have is
