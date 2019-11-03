@@ -11,7 +11,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with Foobar.  If not, see <https://www.gnu.org/licenses/>.
+ * along with this software.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include "gloss/mach_defines.h"
 #include "ipl_flash.h"
@@ -20,7 +20,9 @@ volatile uint32_t *MISC=(volatile uint32_t*)MISC_OFFSET;
 #define MISC_REG(i) MISC[(i/4)]
 
 static inline void flash_start_xfer(int flash_sel) {
-	//ToDo: use flash_sel to select internal or external flash cs
+	if (flash_sel!=FLASH_SEL_CURRENT) {
+		MISC_REG(MISC_FLASH_SEL_REG)=(flash_sel==0)?MISC_FLASH_SEL_INTFLASH:MISC_FLASH_SEL_CARTFLASH;
+	}
 	MISC_REG(MISC_FLASH_CTL_REG)=MISC_FLASH_CTL_CLAIM;
 }
 
@@ -36,6 +38,7 @@ static inline uint8_t flash_send_recv(uint8_t data) {
 	return MISC_REG(MISC_FLASH_RDATA_REG);
 }
 
+#define CMD_GETUID 0x4B
 #define CMD_GETID 0x9f
 #define CMD_FASTREAD 0x0B
 #define CMD_PAGE_PGM 0x02
@@ -56,7 +59,6 @@ static inline uint8_t flash_send_recv(uint8_t data) {
 
 uint32_t flash_get_id(int flash_sel) {
 	int id=0;
-	MISC_REG(MISC_FLASH_CTL_REG)=MISC_FLASH_CTL_CLAIM;
 	flash_start_xfer(flash_sel);
 	flash_send_recv(CMD_GETID);
 	id=flash_send_recv(0)<<16;
@@ -65,6 +67,20 @@ uint32_t flash_get_id(int flash_sel) {
 	flash_end_xfer();
 	return id;
 }
+
+uint64_t flash_get_uid(int flash_sel) {
+	uint64_t uid;
+	flash_start_xfer(flash_sel);
+	flash_send_recv(CMD_GETUID);
+	for (int i=0; i<4; i++) flash_send_recv(0);
+	for (int i=0; i<8; i++) {
+		uid<<=8;
+		uid|=flash_send_recv(0);
+	}
+	flash_end_xfer();
+	return uid;
+}
+
 
 void flash_read(int flash_sel, uint32_t addr, uint8_t *buff, int len) {
 #if FLASH_READ_USE_DMA

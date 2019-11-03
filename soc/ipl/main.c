@@ -69,6 +69,12 @@ void verilator_start_trace() {
 	MISC_REG(MISC_SOC_VER)=1;
 }
 
+extern uint32_t rom_cart_boot_flag;
+
+int booted_from_cartridge() {
+	return rom_cart_boot_flag;
+}
+
 void cdc_task();
 
 
@@ -191,6 +197,12 @@ void read_menu_items(menu_data_t *s) {
 	menu_add_apps(s, "int:", ITEM_FLAG_SELECTABLE);
 }
 
+void load_tiles() {
+	//ToDo: loading pngs takes a long time... move over to pcx instead.
+	printf("Loading tiles...\n");
+	gfx_load_tiles_mem(GFXTILES, &GFXPAL[0], &_binary_tileset_default_png_start, (&_binary_tileset_default_png_end-&_binary_tileset_default_png_start));
+	printf("Tiles initialized\n");
+}
 
 #define SCR_PITCH 20 //Scoller letter pitch
 
@@ -212,10 +224,7 @@ int show_main_menu(char *app_name, int *ret_flags) {
 	GFX_REG(GFX_LAYEREN_REG)=0;
 
 	//Load up the default tileset and font.
-	//ToDo: loading pngs takes a long time... move over to pcx instead.
-	printf("Loading tiles...\n");
-	gfx_load_tiles_mem(GFXTILES, &GFXPAL[0], &_binary_tileset_default_png_start, (&_binary_tileset_default_png_end-&_binary_tileset_default_png_start));
-	printf("Tiles initialized\n");
+	load_tiles();
 
 	//Open the console driver for output to screen.
 	FILE *console=fopen("/dev/console", "w");
@@ -375,8 +384,12 @@ void start_app(char *app) {
 		return;
 	}
 	sbrk_app_set_heap_start(max_app_addr);
+	user_memfn_set(NULL, NULL, NULL);
+	syscall_reinit();
 	main_cb maincall=(main_cb)la;
 	maincall(0, NULL);
+	user_memfn_set(malloc, realloc, free);
+	syscall_reinit();
 }
 
 static void
@@ -401,7 +414,7 @@ void main() {
 	irq_stack_ptr=int_stack+(IRQ_STACK_SIZE/sizeof(uint32_t));
 
 	//Initialize USB subsystem
-	printf("IPL main function.\n");
+	printf("IPL main function. Booted from %s.\n", booted_from_cartridge()?"cartridge":"internal memory");
 	usb_setup_serial_no();
 	tusb_init();
 	printf("USB inited.\n");
@@ -412,6 +425,25 @@ void main() {
 
 	//Initialize the LCD
 	lcd_init(simulated());
+
+	//See if there's an autoexec.elf we can run.
+	const char *autoexec;
+	if (booted_from_cartridge()) {
+		autoexec="cart:autoexec.elf";
+	} else {
+		autoexec="int:autoexec.elf";
+	}
+	FILE *f=fopen(autoexec, "r");
+	if (f!=NULL) {
+		fclose(f);
+		printf("Found %s. Executing\n", autoexec);
+		load_tiles();
+		usb_msc_off();
+		start_app(autoexec);
+		printf("%s done.\n", autoexec);
+	} else {
+		printf("No %s found; not running\n", autoexec);
+	}
 
 	while(1) {
 		MISC_REG(MISC_LED_REG)=0xfffff;
@@ -428,11 +460,7 @@ void main() {
 		} else {
 			printf("IPL: starting app %s\n", app_name);
 			usb_msc_off();
-			syscall_reinit();
-			user_memfn_set(NULL, NULL, NULL);
 			start_app(app_name);
-			syscall_reinit();
-			user_memfn_set(malloc, realloc, free);
 			printf("IPL: App %s returned.\n", app_name);
 		}
 	}

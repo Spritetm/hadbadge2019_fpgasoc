@@ -183,6 +183,10 @@ dfu_flash_all: $(PROJ).bit ipl
 	dfu-util$(EXE) -d 1d50:614a,1d50:614b -a 0 -D $(PROJ).bit
 	dfu-util$(EXE) -d 1d50:614a,1d50:614b -a 1 -D ipl/ipl.bin -R
 
+dfu_flash_all_cart: $(PROJ).bit ipl
+	dfu-util$(EXE) -d 1d50:614a,1d50:614b -a 2 -D $(PROJ).bit
+	dfu-util$(EXE) -d 1d50:614a,1d50:614b -a 3 -D ipl/ipl.bin -R
+
 clean:
 	rm -f $(PROJ).json $(PROJ).svf $(PROJ).bit $(PROJ)_out.config
 	rm -rf verilator-build

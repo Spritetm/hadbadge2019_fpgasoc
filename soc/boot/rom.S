@@ -74,6 +74,10 @@ irq_table:
 irq_stack_ptr:
 	.word 0x40002000
 
+.global cart_boot_flag
+cart_boot_flag:
+	.word 0
+
 do_reset:
 	//LEDS: 1 for init
 	li a1, MISC_OFFSET
