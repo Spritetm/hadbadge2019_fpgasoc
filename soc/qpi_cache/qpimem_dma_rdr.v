@@ -56,18 +56,17 @@ module qpimem_dma_rdr #(
 	input qpi_is_idle
 );
 
+localparam [ADDR_WIDTH-1:0] BURST_END_MASK = (BURST_LEN - 1) << 2;
 
 reg [ADDR_WIDTH-1:0] out_addr;
-wire [$clog2(FIFO_WORDS)-1:0] fifo_rptr;
-wire [$clog2(FIFO_WORDS)-1:0] fifo_wptr;
-assign fifo_rptr = out_addr[$clog2(FIFO_WORDS)-1+2:2]; //word addr
-assign fifo_wptr = qpi_addr[$clog2(FIFO_WORDS)-1+2:2]; //word addr
+reg [$clog2(FIFO_WORDS)-1:0] fifo_rptr; // incremented with out_addr
+reg [$clog2(FIFO_WORDS)-1:0] fifo_wptr; // incremented with qpi_addr
 assign ready = (fifo_rptr != fifo_wptr);
 assign all_done = (out_addr >= addr_end);
 wire qpi_done;
 assign qpi_done = (qpi_addr >= addr_end);
 
-qpimem_dma_rd_fifomem fifomem(
+qpimem_dma_rd_fifomem #(.FIFO_WORDS(FIFO_WORDS)) fifomem(
 	.clk(clk),
 	.w_en(qpi_next_word),
 	.w_addr(fifo_wptr),
@@ -81,27 +80,35 @@ reg restarting;
 always @(posedge clk) begin
 	if (rst) begin
 		out_addr <= 0;
+		fifo_rptr <= 0;
 		qpi_addr <= 0;
+		fifo_wptr <= 0;
 		qpi_do_read <= 0;
 		restarting <= 1;
 	end else begin
 		//If we're reading, move out_addr
 		if (ready && do_read) begin
 			out_addr <= out_addr + 4; //we read one word at a time
+			fifo_rptr <= fifo_rptr + 1;
 		end
 
 		//handle qpi logic
 		if (!run) begin
 			//End qpi transaction, but do not touch read side of fifo.
 			qpi_addr <= addr_start;
+			fifo_wptr <= 0;
 			out_addr <= addr_start;
+			fifo_rptr <= 0;
 			qpi_do_read <= 0;
 			restarting <= 1;
 		end else if (restarting) begin
 			restarting <= !qpi_is_idle; //we can begin when qpi has finished current transaction
 		end else if (qpi_next_word) begin
 			qpi_addr <= qpi_addr + 4; //we read one word at a time
-			if ((fifo_wptr & (BURST_LEN-1)) == (BURST_LEN-1)) begin
+			fifo_wptr <= fifo_wptr + 1;
+			// Stop burst just before addresses ending with 'b000000. This ensures
+			// that we do not try to burst across PSRAM page boundaries
+			if (qpi_addr & BURST_END_MASK == BURST_END_MASK) begin
 				qpi_do_read <= 0; //abort burst
 			end
 			if ((qpi_addr+4) >= addr_end) begin
