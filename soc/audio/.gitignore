@@ -7,3 +7,6 @@ dac
 dump.vcd
 oscillator
 envelope
+audio_registers.html
+edit.sh
+scratch

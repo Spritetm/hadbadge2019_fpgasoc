@@ -8,17 +8,16 @@ Voices 5-8 are mellow triangle voices, good for chords.
 Drums are Kick, Snare, a noisy hat/cymbal, and a cheesy Cowbell.  
 Finally, there is a raw PCM channel which takes 14-bit samples at whatever speed you send 'em.
 
-Inputs from userland will be the MIDI note/pitch and a gate duration for the note.
-Simply put the note/duration data in the corresponding register and it goes.  
+The oscillators take a pitch increment (scale: TBD) from userland.  A lookup or formula in the IPL should take care of turning this into pitches for the user.
+An IPL function should also take care of durations, but I haven't decided yet how to handle that: timer in HW or SW?
+But the user experience should be `synth_play(voice, note, duration);`
+
 Note that if you select a long release, it will "spill over" the time that you've selected as duration -- it's the time that you're holding down the key on a keyboard.  
 
-This general layout should be kinda musical, make it easy to write a MIDI player or tracker (todo!), and generally be fun.  
+This general layout should be kinda musical, make it easy to write a MIDI player or tracker (todo!), and generally be fun. How would it be easiest to write a tracker?  What can I do to support that?
 
-A lightweight overlayer in the IPL could make this even more accessible.  We'll see what happens.
+Configurables include attack and release on the amplitude envelope.  IPL functions for these will need to be written, once the configurable hardware gets done.
 
-Configurables include attack and release on the amplitude envelope.
-
-This should probably combine with a timer / sequencer to play the notes.  
 
 ## Layout: 
 
@@ -40,14 +39,15 @@ This should probably combine with a timer / sequencer to play the notes.
 
 Offsets:
 
-0. Note and duration.  Low 8 bits are MIDI note 0-127 (yes, it's a 7 bit number).  Bit 8 is gate -- useful.  High 16 bits are the duration in clocks.   
+0. Pitch accumulator and duration.  Low 16 bits are the pitch.  High 16 bits are the duration in clocks.   (Do I need to squish a gate in here?)
 
-1. Attack and release.  Both in range 0-255.  (8 bits each, oh the waste of address space!)  Figure out what's relevant for drums here.
+1. Attack and release.  Both in range 0-255.  (8 bits each, oh the waste of address space!)  Figure out what's relevant for drums here.  Still have  16 bits free?
 
 2. Detune and filter cutoff. Misc voice parameters? (TBD, if space allows.  Might use detune to control pulse width of the pulse...)  Ditto on drums.
 
 3. TBD, reserved, not for production use, dragons.
 
+(Better too much space for parameters than too little?  The cost is two extra wires.)
 
 ## Config
 

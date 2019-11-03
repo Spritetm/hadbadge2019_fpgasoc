@@ -23,6 +23,9 @@ localparam BITDEPTH    = 14;
 localparam BITFRACTION = 6;
 localparam SAMPLECLOCK_DIV = 8;
 localparam SAMPLEFREQ  = 8000000 / 2**SAMPLECLOCK_DIV;  // 31,250 Hz or 32 us
+localparam INCREMENTBITS = 16;
+localparam ARBITS = 8;
+localparam NUMVOICES = 8;
 
 reg sample_clock       = 0;
 reg [SAMPLECLOCK_DIV-1:0] sample_count = 0;
@@ -32,11 +35,11 @@ integer i;
 
 
 // Control lines
-reg voice_gate [7:0];
-wire [BITDEPTH-1:0] voice_out [7:0];
-reg [6:0] voice_note [7:0];
-reg [7:0] voice_attack [7:0];
-reg [7:0] voice_release [7:0];
+reg voice_gate [NUMVOICES-1:0];
+wire [BITDEPTH-1:0] voice_out [NUMVOICES-1:0];
+reg [INCREMENTBITS-1:0] voice_increment [NUMVOICES-1:0];
+reg [ARBITS-1:0] voice_attack [NUMVOICES-1:0];
+reg [ARBITS-1:0] voice_release [NUMVOICES-1:0];
 
 always @(posedge clk) begin
         if (rst) begin
@@ -46,9 +49,9 @@ always @(posedge clk) begin
 		ready_n <= 0;
 		for (i=0; i<8; i=i+1) begin
 			voice_gate[i]   <= 0; // all off
-			voice_note[i]    <= 7'd60; // middle c
-			voice_attack[i]  <= 8'hf0; // snappy
-			voice_release[i] <= 8'hf0; // snappy
+			voice_increment[i]    <= 'd6000; // no idea! 
+			voice_attack[i]  <= 'hf0; // snappy
+			voice_release[i] <= 'hf0; // snappy
 		end
 
         end
@@ -57,7 +60,7 @@ always @(posedge clk) begin
                 sample_clock <= sample_count[SAMPLECLOCK_DIV-1];
 		if (wen) begin
 			voice_gate[addr] <= data_in[0];
-			voice_note[addr] <= 7'd60 + addr;
+			voice_increment[addr] <= 6000  + 1000 *  addr;
 			/* mydata <= data_in; */
 			ready_n <= 1; // handled data
 		end
@@ -91,7 +94,7 @@ generate
 		voice #(.VOICE(0)) osc (
 			.sample_clock(sample_clock),
 			.rst(rst),
-			.note(voice_note[synth_num]),
+			.pitch_increment(voice_increment[synth_num]),
 			.envelope_attack(voice_attack[synth_num]),
 			.envelope_decay(voice_release[synth_num]),
 			.gate(voice_gate[synth_num]),
@@ -105,7 +108,7 @@ generate
 		voice #(.VOICE(3)) osc (
 			.sample_clock(sample_clock),
 			.rst(rst),
-			.note(voice_note[synth_num]),
+			.pitch_increment(voice_increment[synth_num]),
 			.envelope_attack(voice_attack[synth_num]),
 			.envelope_decay(voice_release[synth_num]),
 			.gate(voice_gate[synth_num]),
@@ -119,7 +122,7 @@ generate
 		voice #(.VOICE(1)) osc (
 			.sample_clock(sample_clock),
 			.rst(rst),
-			.note(voice_note[synth_num]),
+			.pitch_increment(voice_increment[synth_num]),
 			.envelope_attack(voice_attack[synth_num]),
 			.envelope_decay(voice_release[synth_num]),
 			.gate(voice_gate[synth_num]),

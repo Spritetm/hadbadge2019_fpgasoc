@@ -9,7 +9,7 @@ module voice #(
 )(
 	input sample_clock,
 	input rst,
-  	input [6:0] note,
+  	input [15:0] pitch_increment,
   	input [7:0] envelope_attack,
   	input [7:0] envelope_decay,
 	input gate,
@@ -17,13 +17,13 @@ module voice #(
 	output [BITDEPTH-1:0] out
 );
 
-wire [15:0] pitch_increment;
-midi_note_to_accumulator m (
-	.clk(sample_clock),
-	.reset(rst),
-	.midi_note(note),
-	.increment(pitch_increment)
-);
+/* wire [15:0] pitch_increment; */
+/* midi_note_to_accumulator m ( */
+/* 	.clk(sample_clock), */
+/* 	.reset(rst), */
+/* 	.midi_note(note), */
+/* 	.increment(pitch_increment) */
+/* ); */
 
 wire [BITDEPTH-1:0] osc_out;
 oscillator #( .BITDEPTH(BITDEPTH), .BITFRACTION(BITFRACTION), .VOICE(VOICE)) myosc 

@@ -1,10 +1,10 @@
 [*]
 [*] GTKWave Analyzer v3.3.94 (w)1999-2018 BSI
-[*] Sun Nov  3 11:32:18 2019
+[*] Sun Nov  3 11:48:25 2019
 [*]
 [dumpfile] "/home/elliot/projects/fpga_badge/hadbadge2019_fpgasoc/soc/soctrace.vcd"
-[dumpfile_mtime] "Sun Nov  3 10:25:44 2019"
-[dumpfile_size] 171015614
+[dumpfile_mtime] "Sun Nov  3 11:48:06 2019"
+[dumpfile_size] 154544382
 [optimize_vcd]
 [savefile] "/home/elliot/projects/fpga_badge/hadbadge2019_fpgasoc/soc/audio/synth.gtkw"
 [timestart] 21
@@ -155,15 +155,8 @@ TOP.soc.synth.voice_gate(7)
 TOP.soc.synth.voice_out(0)[13:0]
 TOP.soc.synth.voice_out(4)[13:0]
 @22
-TOP.soc.synth.voice_note(0)[6:0]
-TOP.soc.synth.voice_note(4)[6:0]
 TOP.soc.synth.genblk1(0).osc.pitch_increment[15:0]
-TOP.soc.synth.genblk1(0).osc.m.midi_note[6:0]
-TOP.soc.synth.genblk1(0).osc.m.note_latch[6:0]
 @23
 TOP.soc.synth.genblk3(4).osc.pitch_increment[15:0]
-@22
-TOP.soc.synth.genblk3(4).osc.m.midi_note[6:0]
-TOP.soc.synth.genblk3(4).osc.m.note_latch[6:0]
 [pattern_trace] 1
 [pattern_trace] 0
