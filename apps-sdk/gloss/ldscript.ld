@@ -102,6 +102,10 @@ PROVIDE ( gfx_load_fb_mem = 0x40002094 );
 PROVIDE ( gfx_load_tiles_mem = 0x40002098 );
 PROVIDE ( user_memfn_set = 0x4000209C );
 PROVIDE ( gfx_load_tilemap_mem = 0x400020A0 );
+PROVIDE ( gfx_load_fb_tga = 0x400020A4 );
+PROVIDE ( gfx_load_fb_tga_mem = 0x400020A8 );
+PROVIDE ( gfx_load_tiles_tga = 0x400020AC );
+PROVIDE ( gfx_load_tiles_tga_mem = 0x400020B0 );
 
 PROVIDE ( interrupt_vector_table = 0x40000020 );
 PROVIDE ( irq_stack_ptr = 0x400000a0 );

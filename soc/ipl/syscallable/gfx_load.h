@@ -93,3 +93,77 @@ inline static uint8_t png_resolve_pixel(const unsigned char *pdat, int x, int y,
 		return 0;
 	}
 }
+
+/*
+Note on TGA files: Type 1 and 9 (indexed colors, either with or without RLE compression)
+are supported by these routines. Tga files in general load quicker and require way, way
+less memory to load than pngs. The downside is that they tend to be larger.
+
+An added advantage is that targa files can be read using streaming techniques rather than
+needing the file to be entirely in memory, which also helps with speed and memory usage.
+*/
+
+/**
+ Callback for the targa file format reader. The reader should read up to len bytes and return a pointer
+ to the result. The targa routines guarantee that they will never read more than 256 bytes, so you
+ can allocate a static buffer for that in arg if you need it.
+
+ @param len Length of data to read
+ @param[out] retlen Length actually read
+ @param arg Opaque argument as passed to gfx_load_*_tga
+ @return Pointer to read data
+ */
+typedef uint8_t* (*tga_read_fn_t)(int len, int *retlen, void *arg);
+
+/**
+ Load a tga file, using a reader callback, into a buffer that can be used as a framebuffer. As a side effect,
+ also writes out the palette.
+ @param fbmem Memory to write pixeldata into. Can be an actual framebuffer.
+ @param palmem Memory to write the RGBA palette data into. Data will be written
+               incrementally from palmem[0] on.
+ @param fbbpp Bit-per-pixel of the framebuffer memory. Either 4 or 8, for 16-color or 256-color tgas.
+ @param readfn Reader function
+ @param arg Opaque arg passed to readfn
+ @returns 0 on success, other on failure.
+ */
+int gfx_load_fb_tga(uint8_t *fbmem, uint32_t *palmem, int fbbpp, int pitch, tga_read_fn_t readfn, void *arg);
+
+/**
+ Load a tga file, already in memory, into a buffer that can be used as a framebuffer. As a side effect,
+ also writes out the palette.
+ @param fbmem Memory to write pixeldata into. Can be an actual framebuffer.
+ @param palmem Memory to write the RGBA palette data into. Data will be written
+               incrementally from palmem[0] on.
+ @param fbbpp Bit-per-pixel of the framebuffer memory. Either 4 or 8, for 16-color or 256-color tgas.
+ @param tgastart Pointer to start of tga data
+ @param tgalen Length of tga data
+ @returns 0 on success, other on failure.
+ */
+int gfx_load_fb_tga_mem(uint8_t *fbmem, uint32_t *palmem, int fbbpp, int pitch, char *tgastart, int tgalen);
+
+
+/**
+ Load a tga file, using a reader callback, into a buffer that can either be or be copied to tile memory. 
+ As a side effect, also writes out the palette.
+ @param tilemem Memory to write pixeldata into. Can be (a pointer into) the actual tile memory.
+ @param palettemem Memory to write the RGBA palette data into. Data will be written
+               incrementally from palmem[0] on.
+ @param readfn Reader function
+ @param arg Opaque arg passed to readfn
+ @returns 0 on success, other on failure
+*/
+int gfx_load_tiles_tga(uint32_t *tilemem, uint32_t *palettemem, tga_read_fn_t readfn, void *arg);
+
+/**
+ Load a tga file, already in memory, into a buffer that can either be or be copied to tile memory. 
+ As a side effect, also writes out the palette.
+ @param tilemem Memory to write pixeldata into. Can be (a pointer into) the actual tile memory.
+ @param palettemem Memory to write the RGBA palette data into. Data will be written
+               incrementally from palmem[0] on.
+ @param tgastart Pointer to start of tga data
+ @param tgalen Length of tga data
+ @returns 0 on success, other on failure
+*/
+int gfx_load_tiles_tga_mem(uint32_t *tilemem, uint32_t *palmem, char *tgastart, int tgalen);
+
+

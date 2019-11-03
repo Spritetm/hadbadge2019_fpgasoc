@@ -29,10 +29,10 @@ export CC AR LD OBJCOPY CFLAGS ASFLAGS LDFLAGS APPNAME
 
 default: $(TARGET_BIN)
 
-bgnd.o: bgnd.png
+bgnd.o: bgnd.tga
 	$(OBJCOPY) -I binary -O elf32-littleriscv -B riscv $< $@
 
-tileset-default.o: tileset-default.png
+tileset-default.o: tileset-default.tga
 	$(OBJCOPY) -I binary -O elf32-littleriscv -B riscv $< $@
 
 
@@ -87,7 +87,7 @@ gdb: $(TARGET_ELF)
 	$(GDB) -b 115200 -ex "target remote /dev/ttyUSB0" $(APPNAME).elf
 
 .PHONY: gloss/libgloss.a
-gloss/libgloss.a:
+gloss/libgloss.a: gloss/
 	$(MAKE) -C gloss
 
 include $(wildcard $(DEPFILES))

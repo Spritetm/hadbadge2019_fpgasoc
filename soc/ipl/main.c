@@ -85,10 +85,10 @@ void boot_cart_fpga_bitstream() {
 	MISC_REG(MISC_FLASH_SEL_REG)=MISC_FLASH_SEL_CARTFLASH|MISC_FLASH_SEL_FPGARELOAD_MAGIC;
 }
 
-extern char _binary_bgnd_png_start;
-extern char _binary_bgnd_png_end;
-extern char _binary_tileset_default_png_start;
-extern char _binary_tileset_default_png_end;
+extern char _binary_bgnd_tga_start;
+extern char _binary_bgnd_tga_end;
+extern char _binary_tileset_default_tga_start;
+extern char _binary_tileset_default_tga_end;
 
 #define FB_PAL_OFFSET 256
 
@@ -200,7 +200,7 @@ void read_menu_items(menu_data_t *s) {
 void load_tiles() {
 	//ToDo: loading pngs takes a long time... move over to pcx instead.
 	printf("Loading tiles...\n");
-	gfx_load_tiles_mem(GFXTILES, &GFXPAL[0], &_binary_tileset_default_png_start, (&_binary_tileset_default_png_end-&_binary_tileset_default_png_start));
+	gfx_load_tiles_tga_mem(GFXTILES, &GFXPAL[0], &_binary_tileset_default_tga_start, (&_binary_tileset_default_tga_end-&_binary_tileset_default_tga_start));
 	printf("Tiles initialized\n");
 }
 
@@ -237,7 +237,7 @@ int show_main_menu(char *app_name, int *ret_flags) {
 
 	printf("Loading bgnd...\n");
 	//This is the Hackaday logo background
-	gfx_load_fb_mem(lcdfb, &GFXPAL[FB_PAL_OFFSET], 4, 512, &_binary_bgnd_png_start, (&_binary_bgnd_png_end-&_binary_bgnd_png_start));
+	gfx_load_fb_tga_mem(lcdfb, &GFXPAL[FB_PAL_OFFSET], 4, 512, &_binary_bgnd_tga_start, (&_binary_bgnd_tga_end-&_binary_bgnd_tga_start));
 
 	//Nuke the palette animation indexes to be black.
 	for (int x=0; x<10; x++) GFXPAL[FB_PAL_OFFSET+6+x]=0;
@@ -376,7 +376,7 @@ int show_main_menu(char *app_name, int *ret_flags) {
 	return 0;
 }
 
-void start_app(char *app) {
+void start_app(const char *app) {
 	uintptr_t max_app_addr=0;
 	uintptr_t la=load_new_app(app, &max_app_addr);
 	if (la==0) {

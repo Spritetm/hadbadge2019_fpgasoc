@@ -36,7 +36,6 @@ static void set_tmx_tilemap_ent(uint32_t *tilemap, int tilemaph, int tilemapw, i
 		if (tileval&(1<<31)) attr|=GFX_TILEMAP_ENT_FLIP_X;
 		if (tileval&(1<<30)) attr|=GFX_TILEMAP_ENT_FLIP_Y;
 		if (tileval&(1<<29)) attr|=GFX_TILEMAP_ENT_SWAP_XY;
-		if (attr!=0) printf("attr %x\n", attr);
 		//Set the tile.
 		tilemap[ty*tilemaph+tx]=tileno|attr;
 	}
@@ -201,3 +200,243 @@ int gfx_load_tiles_mem(uint32_t *tilemem, uint32_t *palettemem, char *pngstart, 
 	user_memfn_free(decoded);
 	return 0;
 }
+
+typedef struct __attribute__((packed)) {
+	uint8_t idlength;
+	uint8_t colormaptype;
+	uint8_t datatypecode;
+	uint16_t colormaporigin;
+	uint16_t colormaplength;
+	uint8_t colormapdepth;
+	uint16_t xorigin;
+	uint16_t yorigin;
+	uint16_t width;
+	uint16_t height;
+	uint8_t bpp;
+	uint8_t imagedescriptor;
+} tga_hdr_t;
+
+
+static int tga_load_clut(uint32_t *palmem, tga_hdr_t *hdr, int loadmax, tga_read_fn_t readfn, void *arg) {
+	int sz=0;
+	if (hdr->colormapdepth==16) {
+		sz=hdr->colormaplength*2;
+	} else if (hdr->colormapdepth==24) {
+		sz=hdr->colormaplength*3;
+	} else if (hdr->colormapdepth==32) {
+		sz=hdr->colormaplength*4;
+	}
+	if (sz==0) return 1;
+	uint8_t *colormap=malloc(sz);
+	//Copy over color map... we promised never to read more than 256 bytes, so this possibly needs to happen in chunks.
+	for (int i=0; i<sz; i+=256) {
+		int r;
+		int len=(sz-i);
+		if (len>256) len=256;
+		uint8_t *m=readfn(len, &r, arg);
+		if (r!=len) {
+			free(colormap);
+			return 1;
+		}
+		memcpy(&colormap[i], m, len);
+	}
+	
+	uint8_t *p=colormap;
+	for (int i=0; i<hdr->colormaplength; i++) {
+		int r, g, b, a;
+		if (hdr->colormapdepth==16) {
+			int c=(*p++);
+			c|=((*p++)<<8);
+			b=((c>>0)&0x1F)*8;
+			g=((c>>5)&0x1F)*8;
+			r=((c>>10)&0x1F)*8;
+			a=((c>>15)&0x1F)*255;
+		} else if (hdr->colormapdepth==24) {
+			b=*p++;
+			g=*p++;
+			r=*p++;
+			a=255;
+		} else if (hdr->colormapdepth==32) {
+			b=*p++;
+			g=*p++;
+			r=*p++;
+			a=*p++;
+		}
+		palmem[i]=(r<<0)|(g<<8)|(b<<16)|(a<<24);
+	}
+	free(colormap);
+	return 0;
+}
+
+
+typedef struct {
+	tga_read_fn_t readfn;
+	void *arg;
+	uint8_t *bufptr;
+	int bufpos;
+	uint8_t reps;
+	uint8_t rle_byte;
+	uint8_t is_rle;
+	uint8_t running;
+} tga_decoder_t;
+
+
+static uint8_t tga_get_next_raw_byte(tga_decoder_t *dec) {
+	if (!dec->running || dec->bufpos==256) {
+		dec->running=1;
+		dec->bufpos=0;
+		int r;
+		dec->bufptr=dec->readfn(256, &r, dec->arg);
+	}
+	return dec->bufptr[dec->bufpos++];
+}
+
+static uint8_t tga_get_next_pixel(tga_decoder_t *dec) {
+	if (!dec->is_rle) {
+		return tga_get_next_raw_byte(dec);
+	} else {
+		if (dec->reps==0 || dec->reps==0x80) {
+			dec->reps=tga_get_next_raw_byte(dec);
+			dec->rle_byte=tga_get_next_raw_byte(dec);
+			return dec->rle_byte; //need to return it in both cases
+		} else {
+			dec->reps--;
+			if (dec->reps&0x80) {
+				return dec->rle_byte;
+			} else {
+				return tga_get_next_raw_byte(dec);
+			}
+		}
+	}
+}
+
+static int gfx_load_tga_common(tga_read_fn_t readfn, void *arg, tga_hdr_t *hdr, tga_decoder_t *dec) {
+	int r;
+	uint8_t buf[256];
+	uint8_t *rd=readfn(sizeof(tga_hdr_t), &r, arg);
+	if (r<sizeof(tga_hdr_t)) return 1;
+	memcpy(hdr, rd, sizeof(tga_hdr_t));
+	if (hdr->datatypecode!=1 && hdr->datatypecode!=9) {
+		fprintf(stderr, "Not a supported TGA type.\n");
+		return 1;
+	}
+	if (hdr->idlength) {
+		//skip id field
+		readfn(hdr->idlength, &r, arg);
+		if (r!=hdr->idlength) return 1;
+	}
+	memset(dec, 0, sizeof(tga_decoder_t));
+	dec->readfn=readfn;
+	dec->arg=arg;
+	dec->is_rle=(hdr->datatypecode==9);
+	return 0;
+}
+
+int gfx_load_fb_tga(uint8_t *fbmem, uint32_t *palmem, int fbbpp, int pitch, tga_read_fn_t readfn, void *arg) {
+	tga_hdr_t hdr;
+	tga_decoder_t dec;
+	int r=gfx_load_tga_common(readfn, arg, &hdr, &dec);
+	if (r) return r;
+	r=tga_load_clut(palmem, &hdr, fbbpp==4?16:256, readfn, arg);
+	if (r) return r;
+
+	int from_top=hdr.imagedescriptor&(1<<5);
+	
+	int p=0;
+	if (fbbpp==8) {
+		if (!from_top) p=pitch*(hdr.height-1);
+		for (int y=0; y<hdr.height; y++) {
+			for (int x=0; x<hdr.width; x++) {
+				fbmem[p+x]=tga_get_next_pixel(&dec);
+			}
+			if (from_top) {
+				p-=pitch;
+			} else {
+				p+=pitch;
+			}
+		}
+	} else { //fbbpp=4
+		if (!from_top) p=pitch*(hdr.height-1)/2;
+		for (int y=0; y<hdr.height; y++) {
+			for (int x=0; x<hdr.width/2; x++) {
+				int c1=tga_get_next_pixel(&dec);
+				int c2=tga_get_next_pixel(&dec);
+				fbmem[p+x]=(c2<<4)|c1;
+			}
+			if (from_top) {
+				p+=pitch/2;
+			} else {
+				p-=pitch/2;
+			}
+		}
+	}
+	return 0;
+}
+
+int gfx_load_tiles_tga(uint32_t *tilemem, uint32_t *palettemem, tga_read_fn_t readfn, void *arg) {
+	tga_hdr_t hdr;
+	tga_decoder_t dec;
+	int r=gfx_load_tga_common(readfn, arg, &hdr, &dec);
+	if (r) return r;
+	r=tga_load_clut(palettemem, &hdr, 16, readfn, arg);
+	if (r) return r;
+
+	int from_top=hdr.imagedescriptor&(1<<5);
+	
+	int tilepitch=(hdr.width/16);
+	
+	int ry=from_top?0:hdr.height-1;
+	for (int y=0; y<hdr.height; y++) {
+		int in_tile_y=ry&15;
+		uint32_t *tmptr=&tilemem[((ry&15)+(ry/16)*tilepitch*16)*2];
+		for (int x=0; x<hdr.width; x+=16) {
+			uint64_t tp;
+			for (int z=0; z<16; z++) {
+				int c=tga_get_next_pixel(&dec);
+				if (c>15) c=0;
+				tp=(tp>>4)|((uint64_t)c<<60UL);
+			}
+			tmptr[0]=tp;
+			tmptr[1]=tp>>32;
+			tmptr+=32;
+		}
+		if (from_top) ry++; else ry--;
+	}
+	return 0;
+}
+
+
+typedef struct {
+	uint8_t *ptr;
+	int len;
+	int pos;
+} tga_mem_rdr_t;
+
+static uint8_t* tga_mem_rdr_cb(int len, int *retlen, void *arg) {
+	tga_mem_rdr_t *rdr=(tga_mem_rdr_t*)arg;
+	if (len > rdr->len) len=rdr->len;
+	*retlen=len;
+	uint8_t *ret=rdr->ptr;
+	rdr->ptr+=len;
+	rdr->len-=len;
+	return ret;
+}
+
+int gfx_load_fb_tga_mem(uint8_t *fbmem, uint32_t *palmem, int fbbpp, int pitch, char *tgastart, int tgalen) {
+	tga_mem_rdr_t rdr={
+		.ptr=tgastart,
+		.len=tgalen,
+		.pos=0
+	};
+	return gfx_load_fb_tga(fbmem, palmem, fbbpp, pitch, tga_mem_rdr_cb, &rdr);
+}
+
+int gfx_load_tiles_tga_mem(uint32_t *tilemem, uint32_t *palmem, char *tgastart, int tgalen) {
+	tga_mem_rdr_t rdr={
+		.ptr=tgastart,
+		.len=tgalen,
+		.pos=0
+	};
+	return gfx_load_tiles_tga(tilemem, palmem, tga_mem_rdr_cb, &rdr);
+}
+
