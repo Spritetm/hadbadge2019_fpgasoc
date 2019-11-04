@@ -316,7 +316,7 @@ fill the palette memory), the fields are
 #define GFX_BGNDCOL_REG 0x2C
 /** Offset of all the sprites. Defaults to (64, 64) meaning that
     a sprite placed on x=64, y=64 will appear in the top left
-    corner.
+    corner. */
 #define GFX_SPRITE_OFF_REG 0x30
 /** [12:0]: Sprite X position that maps to left of screen */
 #define GFX_SPRITE_OFF_X_OFF 0
