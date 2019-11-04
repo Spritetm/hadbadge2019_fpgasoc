@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "mach_defines.h"
 #include "sdk.h"
@@ -14,6 +15,7 @@ extern char _binary_sega_tileset_png_end;
 
 //Pointer to the framebuffer memory.
 uint8_t *fbmem;
+static FILE *console;
 
 #define FB_WIDTH 512
 #define FB_HEIGHT 320
@@ -82,11 +84,8 @@ void main(int argc, char **argv) {
 	//Allocate framebuffer memory
 	fbmem=malloc(320*512/2);
 
-	for (uint8_t i=0; i<16;i++) {
-		MISC_REG(MISC_LED_REG)=(i<<i);
-		__INEFFICIENT_delay(100);
-	}
-
+	// Turn off top row LEDs
+	MISC_REG(MISC_LED_REG)=0;
 
 	//Set up the framebuffer address.
 	GFX_REG(GFX_FBADDR_REG)=((uint32_t)fbmem)&0xFFFFFF;
@@ -143,94 +142,97 @@ void main(int argc, char **argv) {
 	//Clear sprites that IPL may have loaded
 	memset(GFXSPRITES,0,0x4000);
 
-	//The user can still see nothing of this graphics goodness, so let's re-enable the framebuffer and
-	//tile layer A (the default layer for the console).
-	//Normal FB enabled (vice 8 bit) because background is loaded into the framebuffer above in 4 bit mode.
-	//TILEA is where text is printed by default
-	 GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_LAYEREN_TILEA|GFX_LAYEREN_TILEB|GFX_LAYEREN_SPR;
-
 	/********************************************************************************
 	 * Put your user code in there, return when it's time to exit back to bage menu *
 	 * *****************************************************************************/
 	uint8_t tilegrid_width = 30;
 	uint8_t tilegrid_height = 20;
 
-	uint8_t horizontal_index = 15;
-	uint8_t vertical_index = 10;
+	uint8_t horizontal_pos = 3;
+	uint8_t vertical_pos = 8;
+	uint8_t x_offset = 0;
 
-	//Draw top tilelayer
+	// Fill top tilelayer with blank white, some will be overwritten layer.
 	for (uint8_t x=0; x<30; x++) {
 		for (uint8_t y=0; y<20; y++) {
-			__tile_b_set(x,y,235);
+			__tile_b_set(x,y,200); // Tile 200 = white
 		}
 	}
+
+	// Draw top tilelayer transparency elements
 	for (uint8_t x=0; x<16; x++) {
-		__tile_b_set(x+1,5,128+x);
-		__tile_b_set(x+1,6,144+x);
-		__tile_b_set(x+1,7,160+x);
-		__tile_b_set(x+1,8,176+x);
+		x_offset = x+horizontal_pos;
+		__tile_b_set(x_offset,vertical_pos,128+x);
+		__tile_b_set(x_offset,vertical_pos+1,144+x);
+		__tile_b_set(x_offset,vertical_pos+2,160+x);
+		__tile_b_set(x_offset,vertical_pos+3,176+x);
 	}
-	for (uint8_t x=0; x<12; x++) {
-		__tile_b_set(x+17,5,192+x);
-		__tile_b_set(x+17,6,208+x);
-		__tile_b_set(x+17,7,224+x);
-		__tile_b_set(x+17,8,240+x);
-	}
-	//14 9 Supercon location
-	for (uint8_t x=0; x<11; x++) {
-		__tile_b_set(x+9,14,256+x);
-		__tile_b_set(x+9,15,272+x);
+	for (uint8_t x=0; x<8; x++) {
+		x_offset = x+16+horizontal_pos;
+		__tile_b_set(x_offset,vertical_pos,192+x);
+		__tile_b_set(x_offset,vertical_pos+1,208+x);
+		__tile_b_set(x_offset,vertical_pos+2,224+x);
+		__tile_b_set(x_offset,vertical_pos+3,240+x);
 	}
 
-	//Set tilelayers for color animation
-	//64 wide isn't enough so we'll make two rows,
-	//one with white, one with blue, and swap them midway through
-	//Colortiles: 235, 204, 205, 206, 207, 220
-	for (uint8_t i=0; i<64; i++) {
+	// Draw animated tilelayer with items to show through transparent parts
+
+	// Top 4 rows to white, center will receive teal bar shortly.
+	for (uint8_t x=0; x<64; x++) {
 		for (uint8_t y=0; y<4; y++) {
-			__tile_a_set(i,y+5,220);
-			__tile_a_set(i,y+9,235);
-		}
-	}
-	for (uint8_t i=0; i<4; i++) {
-		for (uint8_t y=0; y<4; y++) {
-			__tile_a_set(51-i,y+5,207);
-			__tile_a_set(55-i,y+5,206);
-			__tile_a_set(59-i,y+5,205);
-			__tile_a_set(63-i,y+5,204);
-
-			__tile_a_set(51-i,y+9,207);
-			__tile_a_set(55-i,y+9,206);
-			__tile_a_set(59-i,y+9,205);
-			__tile_a_set(63-i,y+9,204);
-		}
-	}
-	for (uint8_t i=32; i<48; i++) {
-		for (uint8_t y=0; y<4; y++) {
-			__tile_a_set(i,y+9,220);
-		}
+			__tile_a_set(x,y,200); // Tile 200 = white
+		}	
 	}
 
-	uint32_t x_layera = 0;
-	uint32_t y_layera = 4096;
-	uint16_t loopcounter = 0;
-	__tile_a_translate(x_layera,4096);
-	while(1)
-	{
-		__INEFFICIENT_delay(600);
-
-		while(loopcounter++ < 736) {
-			if (loopcounter > 480) {
-				//Move to blue array as white is no longer showing
-				y_layera = 0;
-			}
-			x_layera -= 64;
-			__tile_a_translate(x_layera,y_layera);
-			if ((MISC_REG(MISC_BTN_REG) & BUTTON_SELECT)) {	return;	}
-			__INEFFICIENT_delay(1);
-		}
-
-		__INEFFICIENT_delay(800);
-		return;
+	// Teal bar in middle of top two (now white) rows
+	for (uint8_t y=0; y<4; y++) {
+		__tile_a_set(31,y,202); // Tile 202 = Teal gradient left
+		__tile_a_set(32,y,203); // Tile 203 = Teal gradient right
 	}
+
+	// After teal bar sweeps, use these bars to fade in/out blue.
+	for (uint8_t x=0; x<64; x++) {
+		// Rows 4-7 to 25% blue
+		for (uint8_t y=4; y<8; y++) {
+			__tile_a_set(x,y,216); // 216 = 25% blue
+		}
+		// Rows 8-11 to 50% blue
+		for (uint8_t y=8; y<12; y++) {
+			__tile_a_set(x,y,217); // 217 = 50% blue
+		}
+		// Rows 12-15 to 75% blue
+		for (uint8_t y=12; y<16; y++) {
+			__tile_a_set(x,y,218); // 218 = 75% blue
+		}
+		// Rows 16-19 to 100% blue
+		for (uint8_t y=16; y<20; y++) {
+			__tile_a_set(x,y,218); // 219 = 100% blue
+		}
+	}
+
+	int16_t x_translate= 64 * 16 * tilegrid_width;
+	int16_t y_translate=-64 * 16 * vertical_pos;
+	__tile_a_translate(x_translate,y_translate);
+
+	// Tiles are set up, we can now enable.
+	 GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_TILEA|GFX_LAYEREN_TILEB;
+
+	// Wait a bit before starting the show
+	__INEFFICIENT_delay(500);
+
+	int16_t step_size = 64;
+	// Teal bar sweeps right
+	for (uint16_t count=0; count<(64*16*tilegrid_width); count+=step_size) {
+		__tile_a_translate(x_translate-count,y_translate);
+		__INEFFICIENT_delay(1);
+	}
+	// Wait...
+	__INEFFICIENT_delay(100);
+
+	// Then fade in blue bars
+	for (uint8_t fade=1; fade <= 4; fade++) {
+		__tile_a_translate(x_translate,y_translate+64*16*4*fade);
+		__INEFFICIENT_delay(50);
+	}
+	__INEFFICIENT_delay(1000);
 }
