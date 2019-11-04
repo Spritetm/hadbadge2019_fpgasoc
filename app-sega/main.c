@@ -37,11 +37,13 @@ uint32_t *GFXSPRITES = (uint32_t *)0x5000C000;
 #define TILEGRID_HEIGHT 20
 
 // Tileset indices for SEGA
-#define SEGA_VERTICAL_POS 8
+#define SEGA_VERTICAL_POS 	8
 #define SEGA_HORIZONTAL_POS 3
-#define TILE_SEGA_ROW1 0x80
-#define TILE_SEGA_ROW2 0xC0
-#define TILE_WHITE TILE_SEGA_ROW1+0x38 // Reusing a tile from "P" in "SUPERCON" that happens to be all white.
+#define TILE_SEGA_ROW1 		0x00
+#define TILE_SEGA_ROW2 		TILE_SEGA_ROW1+0x40
+#define TILE_WHITE 			TILE_SEGA_ROW1+0x38 // Reusing a tile from "P" in "SUPERCON" that happens to be all white.
+#define TILE_SEGA_CYAN 		TILE_SEGA_ROW2+0x08
+#define PAL_SEGA_CYAN 		0 // Warning: palette index may shift as tileset picks up additional elements and colors.
 
 //Borrowed this from lcd.c until a better solution comes along :/
 static void __INEFFICIENT_delay(int n) {
@@ -160,14 +162,14 @@ void main(int argc, char **argv) {
 	uint8_t y_offset = 0;
 	uint8_t tile_index = 0;
 
-	// Fill top tilelayer with opaque white tiles, some will be overwritten soon.
+	// Fill top tilelayer B with opaque white tiles, some will be overwritten soon.
 	for (uint8_t x=0; x<TILEGRID_WIDTH; x++) {
 		for (uint8_t y=0; y<TILEGRID_HEIGHT; y++) {
 			__tile_b_set(x,y,TILE_WHITE);
 		}
 	}
 
-	// Top tilelayer transparency elements replace some of the opaque white tiles
+	// Top tilelayer B transparent "SUPERCON" replace some of the opaque white tiles
 	for (uint8_t y=0; y<4; y++) {
 		y_offset = SEGA_VERTICAL_POS+y;
 		// A full row of tiles in the tileset has "SUPER" and a bit of "C"
@@ -186,65 +188,75 @@ void main(int argc, char **argv) {
 		}
 	}
 
-	// Draw animated tilelayer with items to show through transparent parts
+	// Draw animated tilelayer A with items to show through transparent parts
 
-	// Top 4 rows to white, center will receive teal bar shortly.
+	// Top 4 rows to white, center will receive cyan bar shortly.
 	for (uint8_t x=0; x<64; x++) {
 		for (uint8_t y=0; y<4; y++) {
 			__tile_a_set(x,y,TILE_WHITE);
 		}	
 	}
 
-	// Teal bar in middle of top two (now white) rows
+	// Vertical cyan bar in middle of top two (now white) rows
 	for (uint8_t y=0; y<4; y++) {
-		__tile_a_set(31,y,202); // Tile 202 = Teal gradient left
-		__tile_a_set(32,y,203); // Tile 203 = Teal gradient right
+		__tile_a_set(31,y,TILE_SEGA_CYAN);
+		__tile_a_set(32,y,TILE_SEGA_CYAN);
 	}
 
-	// After teal bar sweeps, use these bars to fade in/out blue.
+	// After vertical cyan bar sweeps, use this horizontal cyan bar to fade in
+	// blue via palette animation.
 	for (uint8_t x=0; x<64; x++) {
 		// Rows 4-7 to 25% blue
 		for (uint8_t y=4; y<8; y++) {
-			__tile_a_set(x,y,216); // 216 = 25% blue
-		}
-		// Rows 8-11 to 50% blue
-		for (uint8_t y=8; y<12; y++) {
-			__tile_a_set(x,y,217); // 217 = 50% blue
-		}
-		// Rows 12-15 to 75% blue
-		for (uint8_t y=12; y<16; y++) {
-			__tile_a_set(x,y,218); // 218 = 75% blue
-		}
-		// Rows 16-19 to 100% blue
-		for (uint8_t y=16; y<20; y++) {
-			__tile_a_set(x,y,218); // 219 = 100% blue
+			__tile_a_set(x,y,TILE_SEGA_CYAN);
 		}
 	}
 
+	// Move tile layer A in place for horizontal sweep of vertical cyan bar
 	int16_t x_translate= 64 * 16 * TILEGRID_WIDTH;
 	int16_t y_translate=-64 * 16 * SEGA_VERTICAL_POS;
 	__tile_a_translate(x_translate,y_translate);
 
-	// Tiles are set up, we can now enable.
+	// Tiles are set up, we can now enable layers
 	 GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_TILEA|GFX_LAYEREN_TILEB;
 
-	// Wait a bit before starting the show
+	// Wait a bit before starting the sweep
 	__INEFFICIENT_delay(250);
 
 	int16_t step_size = 64;
-	// Teal bar sweeps right
+	// Cyan bar sweeps right
 	for (uint16_t count=0; count<(64*16*TILEGRID_WIDTH); count+=step_size) {
 		__tile_a_translate(x_translate-count,y_translate);
 		__INEFFICIENT_delay(1);
 	}
-	// Wait...
+
+	// Palette color appears to be in AABBGGRR format:
+	//	0xFFFFFFFF White
+	//	0xFF00FF00 Green
+	//	0xFFFF0000 Blue
+	//  0xFFFF00FF Magenta
+	//  0xFF0000FF Red
+	//  0xFF00FFFF Yellow
+
+	// Modify palette so cyan is now white
+	GFXPAL[PAL_SEGA_CYAN] = 0xFFFFFFFF;
+
+	// Wait to start fading in blue
 	__INEFFICIENT_delay(100);
 
-	// Then fade in blue bars
-	for (uint8_t fade=1; fade <= 4; fade++) {
-		__tile_a_translate(x_translate,y_translate+64*16*4*fade);
-		__INEFFICIENT_delay(50);
+	// Move in the solid cyan (now palette changed to white) horizontal bar for palette animation
+	__tile_a_translate(x_translate,y_translate+64*16*4);
+
+	// Palette animation from 0xFFFFFFFF to 0xFFFF0000
+	uint32_t color = 0xFFFF0000;
+	for (uint8_t fade=0xFF; fade > 0; fade--) {
+		color = 0xFFFF0000;
+		color |= fade;
+		color |= fade << 8;
+		GFXPAL[PAL_SEGA_CYAN] = color;
+		__INEFFICIENT_delay(1);
 	}
-	// Logo complete, allow admiration for a short while before exiting.
+
+	// Logo complete, allow admiration for a short time before exiting.
 	__INEFFICIENT_delay(750);
 }
