@@ -6,19 +6,12 @@
 #include "gfx_load.h"
 #include "cache.h"
 
-//hardware addresses I really need to dump into an include or something...
+// Copy these files into your project to use them
+#include "audiolib.h"
+
+//hardware addresses imported manually
 extern volatile uint32_t MISC[];
 #define MISC_REG(i) MISC[(i)/4]
-
-extern volatile uint32_t SYNTH[];
-#define SYNTHREG(i) SYNTH[i/4]
-
-static inline void button_wait(){
-	//Wait until all buttons are released
-	while (MISC_REG(MISC_BTN_REG)) ;
-	//Wait until button A is pressed
-	while ((MISC_REG(MISC_BTN_REG) & BUTTON_A)==0) ;
-}
 
 static inline void pause(uint32_t duration){
 	for (volatile uint32_t i=0; i<duration; i++){;}
@@ -28,60 +21,72 @@ static inline void pause(uint32_t duration){
 #define LONG     0x00100000
 
 
-
 void main(int argc, char **argv) {
-	//We're running in app context. We have full control over the badge and can do with the hardware what we want. As
-	//soon as main() returns, however, we will go back to the IPL.
+	// So you can play the synthesizer the easy way or the hard way...
+	// For the hard way, see the documentation in soc/audio/README.html or 
+	//  in soc/ipl/gloss/mach_defines.h
+	// But the gist is play registers for the 8 voices are on even 16s
+	// AUDIO_CORE_BASE + 0x30 is the register for voice 3
+	// Write the high 16 bits with the duration and the low 16 bits with the pitch.
+	// And off it goes.  
+	// You just need to feed the synth a string of notes/durations on time.
+	// This could be done in any kind of repeating regular loop that fits.
+
+	/* Voices are (from mach_defines.h) */ 
+	/* #define AUDIO_VOICE_SAW1   0x00 */
+	/* #define AUDIO_VOICE_SAW2   0x10 */
+	/* #define AUDIO_VOICE_PULSE  0x20 */
+	/* #define AUDIO_VOICE_SQUARE 0x30 */
+	/* #define AUDIO_VOICE_TRI1   0x40 */
+	/* #define AUDIO_VOICE_TRI2   0x50 */
+	/* #define AUDIO_VOICE_TRI3   0x60 */
+	/* #define AUDIO_VOICE_TRI4   0x70 */
 
 	// set volume
-	SYNTHREG(0xF0) = 0x00000200; // full volume for four voices
+	SYNTHREG(AUDIO_CONFIG_VOLUME) = 0x0200; // a good volume for four voices
 
+	/* The 'hard' way: voice 4, duration in 1.35 ms, pitch in crazy units */
+	/* SYNTHREG(0x40) = 0x001516DC; */	
+	/* ... or the easy way */
+	SYNTHREG(AUDIO_VOICE_TRI1) = AUDIO_PITCH(5852) + AUDIO_DURATION(0x0015);
+	SYNTHREG(AUDIO_VOICE_TRI2) = AUDIO_PITCH(7374) + AUDIO_DURATION(0x0025);
+	SYNTHREG(AUDIO_VOICE_TRI3) = AUDIO_PITCH(8769) + AUDIO_DURATION(0x0035);
+	SYNTHREG(AUDIO_VOICE_TRI4) = AUDIO_PITCH(11705) + AUDIO_DURATION(0x0045);
+	pause(MIDDLE);
+	/* or the musical way */
 
-	SYNTHREG(0x40) = 0x00151800;	
-	SYNTHREG(0x50) = 0x00251E00;	
-	SYNTHREG(0x60) = 0x00352400;	
-	SYNTHREG(0x70) = 0x00453000;	
-	pause(MIDDLE);
-	SYNTHREG(0x04) = 0x00000311;	
-	SYNTHREG(0x00) = 0x04680C00;	
+	// set a slow attack/release on SAW1
+	// SYNTHREG(AUDIO_VOICE_SAW1 + AUDIO_CONFIG_REG_OFFSET) = 0x00000311;	
+	set_dynamics(0, 0x03, 0x11);
+	// instrument 0 (SAW1) play C3, note 48, for 1000 ms
+	play_midi_note(0, 48, 1000);
 	pause(LONG);
-	SYNTHREG(0x40) = 0x008A1200;	
+	play_midi_note(4, 52, 200);	
 	pause(SHORT);
-	SYNTHREG(0x50) = 0x008A1680;	
+	play_midi_note(5, 55, 200);	
 	pause(SHORT);
-	SYNTHREG(0x60) = 0x008A1800;	
+	play_midi_note(6, 60, 200);	
 	pause(SHORT);
-	SYNTHREG(0x70) = 0x008A2400;	
+	play_midi_note(7, 64, 200);	
 	pause(SHORT);
-	SYNTHREG(0x40) = 0x008A1800;	
+	play_midi_note(4, 52, 200);	
 	pause(SHORT);
-	SYNTHREG(0x50) = 0x008A1680;	
+	play_midi_note(5, 55, 200);	
 	pause(SHORT);
-	SYNTHREG(0x24) = 0x00000301;	
-	SYNTHREG(0x20) = 0x04681200;	
-	SYNTHREG(0x60) = 0x008A1200;	
-	pause(SHORT);
-	SYNTHREG(0x70) = 0x008A2400;	
-	pause(MIDDLE);
-	pause(SHORT);
-	SYNTHREG(0x34) = 0x00000301;	
-	SYNTHREG(0x30) = 0x04680C00;	
+	set_dynamics(3, 0x03, 0x01);
+	play_midi_note(3, 48, 1000);
 	pause(LONG);
 	pause(LONG);
 	pause(LONG);
-	
+
 
 	// random noise in PCM channel as test
 	// super loud!
-	SYNTHREG(0xF0) = 0x00000010; 
-	uint32_t noise;
+	set_volume(0x0010);
 	for (uint32_t i=0; i<5000; i++){
-		SYNTHREG(0xC0) = MISC_REG(MISC_RNG_REG);
+		SYNTHREG(AUDIO_PCM) = MISC_REG(MISC_RNG_REG);
+		// or pcm_audio(MISC_REG(MISC_RNG_REG));
 		for (volatile uint32_t j=1; j<100; j++){;}  // measures at 11.65 kHz on my scope
 	}
-		
-
-	
-
 }
 
