@@ -265,17 +265,24 @@ int show_main_menu(char *app_name, int *ret_flags) {
 
 
 	while(!done) {
+		//Record what frame we are on right now.
 		uint32_t cur_vbl_ctr=GFX_REG(GFX_VBLCTR_REG);
-		p++;
 
+		//This does the 'radar' effect around the skull'n'wrenches. The radar waves are encoded in the
+		//pallete, in entries that have been blanked out earlier (index 10 - 16). If bgnd_pal_state is one
+		//of those entries, we copy color index 5 into it (the brown from the main skull) otherwise we keep
+		//blanking it.
 		bgnd_pal_state++;
 		if (bgnd_pal_state==200) bgnd_pal_state=0;
 		for (int x=0; x<10; x++) {
 			GFXPAL[FB_PAL_OFFSET+6+x] = (x==bgnd_pal_state)?GFXPAL[FB_PAL_OFFSET+5]:GFXPAL[FB_PAL_OFFSET+0];
 		}
 
+		//The menu header is printed to tilemap A. We jiggle it around by moving the entirety of tilemap A around.
+		p++;
 		gfx_set_xlate_val(0, 240,24, 1+sin(p*0.2)*0.1, sin(p*0.11)*0.1);
 
+		//This sets up all the sprites for the sinusodial scroller at the bottom.
 		int sprno=0;
 		for (int x=-(scrpos%SCR_PITCH); x<480; x+=SCR_PITCH) {
 			float a=x*0.02+scrpos*0.1;
