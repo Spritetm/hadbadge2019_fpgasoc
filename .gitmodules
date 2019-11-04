@@ -19,3 +19,6 @@
 [submodule "soc/ipl/yxml"]
 	path = soc/ipl/yxml
 	url = https://g.blicky.net/yxml.git
+[submodule "app-badgetris"]
+	path = app-badgetris
+	url = https://github.com/szczys/badgetris-2019supercon.git
