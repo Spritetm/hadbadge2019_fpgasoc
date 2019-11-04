@@ -32,6 +32,17 @@ uint32_t *GFXSPRITES = (uint32_t *)0x5000C000;
 //Used to debounce buttons
 #define BUTTON_READ_DELAY		15
 
+// Tile grid constants
+#define TILEGRID_WIDTH 30
+#define TILEGRID_HEIGHT 20
+
+// Tileset indices for SEGA
+#define SEGA_VERTICAL_POS 8
+#define SEGA_HORIZONTAL_POS 3
+#define TILE_SEGA_ROW1 0x80
+#define TILE_SEGA_ROW2 0xC0
+#define TILE_WHITE TILE_SEGA_ROW1+0x38 // Reusing a tile from "P" in "SUPERCON" that happens to be all white.
+
 //Borrowed this from lcd.c until a better solution comes along :/
 static void __INEFFICIENT_delay(int n) {
 	for (int i=0; i<n; i++) {
@@ -145,34 +156,34 @@ void main(int argc, char **argv) {
 	/********************************************************************************
 	 * Put your user code in there, return when it's time to exit back to bage menu *
 	 * *****************************************************************************/
-	uint8_t tilegrid_width = 30;
-	uint8_t tilegrid_height = 20;
-
-	uint8_t horizontal_pos = 3;
-	uint8_t vertical_pos = 8;
 	uint8_t x_offset = 0;
+	uint8_t y_offset = 0;
+	uint8_t tile_index = 0;
 
-	// Fill top tilelayer with blank white, some will be overwritten layer.
-	for (uint8_t x=0; x<30; x++) {
-		for (uint8_t y=0; y<20; y++) {
-			__tile_b_set(x,y,200); // Tile 200 = white
+	// Fill top tilelayer with opaque white tiles, some will be overwritten soon.
+	for (uint8_t x=0; x<TILEGRID_WIDTH; x++) {
+		for (uint8_t y=0; y<TILEGRID_HEIGHT; y++) {
+			__tile_b_set(x,y,TILE_WHITE);
 		}
 	}
 
-	// Draw top tilelayer transparency elements
-	for (uint8_t x=0; x<16; x++) {
-		x_offset = x+horizontal_pos;
-		__tile_b_set(x_offset,vertical_pos,128+x);
-		__tile_b_set(x_offset,vertical_pos+1,144+x);
-		__tile_b_set(x_offset,vertical_pos+2,160+x);
-		__tile_b_set(x_offset,vertical_pos+3,176+x);
-	}
-	for (uint8_t x=0; x<8; x++) {
-		x_offset = x+16+horizontal_pos;
-		__tile_b_set(x_offset,vertical_pos,192+x);
-		__tile_b_set(x_offset,vertical_pos+1,208+x);
-		__tile_b_set(x_offset,vertical_pos+2,224+x);
-		__tile_b_set(x_offset,vertical_pos+3,240+x);
+	// Top tilelayer transparency elements replace some of the opaque white tiles
+	for (uint8_t y=0; y<4; y++) {
+		y_offset = SEGA_VERTICAL_POS+y;
+		// A full row of tiles in the tileset has "SUPER" and a bit of "C"
+		//  spread across 16 tiles wide and 4 tiles high.
+		for (uint8_t x=0; x<0x10; x++) {
+			x_offset = SEGA_HORIZONTAL_POS+x;
+			tile_index = TILE_SEGA_ROW1+x+0x10*y;
+			__tile_b_set(x_offset, y_offset, tile_index);
+		}
+
+		// Following half row (8 tiles wide, 4 high) has the rest of "C" and "ON"
+		for (uint8_t x=0; x<0x8; x++) {
+			x_offset = SEGA_HORIZONTAL_POS+0x10+x;
+			tile_index = TILE_SEGA_ROW2+x+0x10*y;
+			__tile_b_set(x_offset, y_offset, tile_index);
+		}
 	}
 
 	// Draw animated tilelayer with items to show through transparent parts
@@ -180,7 +191,7 @@ void main(int argc, char **argv) {
 	// Top 4 rows to white, center will receive teal bar shortly.
 	for (uint8_t x=0; x<64; x++) {
 		for (uint8_t y=0; y<4; y++) {
-			__tile_a_set(x,y,200); // Tile 200 = white
+			__tile_a_set(x,y,TILE_WHITE);
 		}	
 	}
 
@@ -210,19 +221,19 @@ void main(int argc, char **argv) {
 		}
 	}
 
-	int16_t x_translate= 64 * 16 * tilegrid_width;
-	int16_t y_translate=-64 * 16 * vertical_pos;
+	int16_t x_translate= 64 * 16 * TILEGRID_WIDTH;
+	int16_t y_translate=-64 * 16 * SEGA_VERTICAL_POS;
 	__tile_a_translate(x_translate,y_translate);
 
 	// Tiles are set up, we can now enable.
 	 GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_TILEA|GFX_LAYEREN_TILEB;
 
 	// Wait a bit before starting the show
-	__INEFFICIENT_delay(500);
+	__INEFFICIENT_delay(250);
 
 	int16_t step_size = 64;
 	// Teal bar sweeps right
-	for (uint16_t count=0; count<(64*16*tilegrid_width); count+=step_size) {
+	for (uint16_t count=0; count<(64*16*TILEGRID_WIDTH); count+=step_size) {
 		__tile_a_translate(x_translate-count,y_translate);
 		__INEFFICIENT_delay(1);
 	}
@@ -234,5 +245,6 @@ void main(int argc, char **argv) {
 		__tile_a_translate(x_translate,y_translate+64*16*4*fade);
 		__INEFFICIENT_delay(50);
 	}
-	__INEFFICIENT_delay(1000);
+	// Logo complete, allow admiration for a short while before exiting.
+	__INEFFICIENT_delay(750);
 }
