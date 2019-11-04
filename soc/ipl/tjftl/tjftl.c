@@ -1,18 +1,13 @@
 //tjflt - Tiny Janky / Journalling Flash Translation Layer
 /*
- * Copyright 2019 Jeroen Domburg <jeroen@spritesmods.com>
- * This is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this software.  If not, see <https://www.gnu.org/licenses/>.
+ * Copyright 2019 Jeroen Domburg <jeroen@spritesmods.com>. Licensed under 
+ * the beer-ware license.
+ * ----------------------------------------------------------------------------
+ * "THE BEER-WARE LICENSE" (Revision 42):
+ * <jeroen@spritesmods.com> wrote this file.  As long as you retain this notice you
+ * can do whatever you want with this stuff. If we meet some day, and you think
+ * this stuff is worth it, you can buy me a beer in return. -Jeroen
+ * ----------------------------------------------------------------------------
  */
 
 #include <stdio.h>
@@ -96,6 +91,7 @@ struct tjftl_t {
 	int current_write_block;
 	int current_gc_block;
 	int free_blk_cnt; //This has the amount of blocks that are invalid/erased/entirely empty.
+	int prefer_first_sectors; //if this is 1, the first few sectors aren't entirely used. Prefer those so detecting a tjftl is easier.
 #if CACHE_LBALOC
 	uint32_t *lba_cache;
 #endif
@@ -252,6 +248,20 @@ static void cache_update(tjftl_t *tj, int lba, int blkno, int sec) {
 #endif
 }
 
+//Check the first 4 blocks. If 2 of them have valid tjftl headers, we assume this is a tjftl
+//partition.
+int tjftl_detect(flashcb_read_t rf, void *arg) {
+	tjftl_block_t blkh;
+	int valid_blocks=0;
+	for (int blk=0; blk<4; blk++) {
+		int addr=blk*BLKSZ;
+		bool ret=rf(addr, (uint8_t*)&blkh, sizeof(tjftl_block_t), arg);
+		if (!ret) return 0; //flash error = not detected
+		if (blkh_valid(&blkh)) valid_blocks++;
+	}
+	return valid_blocks>=2;
+}
+
 static bool garbage_collect(tjftl_t *tj);
 
 tjftl_t *tjftl_init(flashcb_read_t rf, flashcb_erase_32k_t ef, flashcb_program_t pf, void *arg, int size, int sect_cnt, int verbose) {
@@ -276,6 +286,7 @@ tjftl_t *tjftl_init(flashcb_read_t rf, flashcb_erase_32k_t ef, flashcb_program_t
 	ret->current_write_block=-1;
 	ret->current_gc_block=-1;
 	ret->free_blk_cnt=0;
+	ret->prefer_first_sectors=0;
 	bool all_ok=true;
 	for (int i=0; i<ret->backing_blks; i++) {
 		tjftl_block_t blkh;
@@ -287,6 +298,7 @@ tjftl_t *tjftl_init(flashcb_read_t rf, flashcb_erase_32k_t ef, flashcb_program_t
 				blk_fill_cache(ret, &blkh, i);
 			}
 		} else {
+			if (i<4) ret->prefer_first_sectors=1;
 			ret->free_blk_cnt++;
 		}
 	}
@@ -454,7 +466,13 @@ bool tjftl_write(tjftl_t *tj, int lba, const uint8_t *buf) {
 	if (tj->current_write_block == -1) {
 		//We don't have a block that can accept another sector. We need to do some effort to find one...
 		//Let's look for a block that is either entirely empty, is invalid, or has some empty sectors in it.
-		int find_start=rand()%tj->backing_blks; //random starting point, yay wear leveling!
+		int find_start;
+		if (tj->prefer_first_sectors) {
+			find_start=0; //start allocating at the beginning
+		} else {
+			find_start=rand()%tj->backing_blks; //random starting point, yay wear leveling!
+		}
+
 		int blkno=find_start;
 		TJ_MSG("tjfl_write: find new empty block, start at: %d, free_cnt=%d\n", blkno, tj->free_blk_cnt);
 		do {
@@ -478,6 +496,7 @@ bool tjftl_write(tjftl_t *tj, int lba, const uint8_t *buf) {
 				if (blkno>=tj->backing_blks) blkno=0;
 			}
 		} while (tj->current_write_block == -1 && blkno!=find_start);
+		if (blkno>4) tj->prefer_first_sectors=0;
 	} else {
 		//We already have an active block. Grab its header.
 		ret=read_blkhdr(tj, tj->current_write_block, &blkh);

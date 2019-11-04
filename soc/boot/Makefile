@@ -2,8 +2,6 @@
 
 include ../../toolchain-settings.mk
 
-CHMOD := chmod
-
 CFLAGS += -ggdb -I../ipl
 
 OBJS:=rom.o irq.o gdbstub.o loadipl.o ipl_flash.o
@@ -37,7 +35,6 @@ rom.elf: $(OBJS) sections.lds
 rom.bin: rom.elf
 	$(OBJCOPY) -O binary $< $@
 	$(OBJDUMP) -S $< > rom.disasm
-	$(CHMOD) -x $@
 
 clean:
 	rm -f rom.bin rom.elf $(OBJS)

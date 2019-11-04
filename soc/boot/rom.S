@@ -74,6 +74,10 @@ irq_table:
 irq_stack_ptr:
 	.word 0x40002000
 
+.global cart_boot_flag
+cart_boot_flag:
+	.word 0
+
 do_reset:
 	//LEDS: 1 for init
 	li a1, MISC_OFFSET
@@ -98,7 +102,7 @@ do_reset:
 	lw a2, MISC_SOC_VER(a2)
 	srli a2, a2, 15 //mask out 15th bit
 	andi a2, a2, 1
-	andi a2, a2, 0
+//	andi a2, a2, 0
 	beq a2, zero, is_real_badge
 
 	li a2, MISC_OFFSET

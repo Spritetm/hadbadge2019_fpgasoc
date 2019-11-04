@@ -6,3 +6,5 @@ Most of the files in this repo have an explicit license, depending where they co
 Specifically:
 - soc/usb, the USB hardware definitions, are under LGPLv3, See LICENSE.lgplv3
 - Parts of soc/hdmi are under MIT, see LICENSE.mit
+- tjfl is under the beer-ware license, see LICENSE.beerware
+- FatFS comes with its own license, see LICENSE.fatfs

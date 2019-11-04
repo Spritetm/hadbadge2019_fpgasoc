@@ -89,3 +89,15 @@ _start:
 	j gfx_load_tiles_mem
 .global user_memfn_set
 	j user_memfn_set
+.global gfx_load_tilemap_mem
+	j gfx_load_tilemap_mem
+.global gfx_load_fb_tga
+	j gfx_load_fb_tga
+.global gfx_load_fb_tga_mem
+	j gfx_load_fb_tga_mem
+.global gfx_load_tiles_tga
+	j gfx_load_tiles_tga
+.global gfx_load_tiles_tga_mem
+	j gfx_load_tiles_tga_mem
+
+

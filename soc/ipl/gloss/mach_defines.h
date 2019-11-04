@@ -234,7 +234,8 @@ fill the palette memory), the fields are
 /** Register describing the pitch and palette offset of the framebuffer */
 #define GFX_FBPITCH_REG 0x04
 /** Bits [15:0]: Pitch (length of one row of pixel data) of the framebuffer bitmap. 
-    Note the pitch is in pixels. Field length is */
+    Note the pitch is in pixels. Must be a multiple of 4 for 8-bit pixels or 8 for
+    4-bit pixels, or else display artifacts will be evident. */
 #define GFX_FBPITCH_PITCH_OFF 0
 /** Bits [24:15]: Palette offset. This is added to the nibbles or bytes retrieved 
     from framebuffer, and the result is used as an address into the palette memory
@@ -303,15 +304,20 @@ fill the palette memory), the fields are
 #define GFX_VIDPOS_X_OFF 0
 /** [32:16]: Y position being currently processed */
 #define GFX_VIDPOS_Y_OFF 16
+/** Read-only: Amount of vertical blanks processed. This increases 
+    when the line renderer is done processing a frame and is waiting
+    for the next one to begin. As this is a 32-bit value and counts 
+    up at 60Hz it will overflow every 2 years or so.*/
+#define GFX_VBLCTR_REG 0x28
 /** Background color register. If all the layers are disabled, or 
     if a pixel is transparent or translucent in all layers, this
     color 'shines through'. This is a RGBA color, but the alpha
     probably isn't that useful.*/
-#define GFX_BGNDCOL_REG 0x28
+#define GFX_BGNDCOL_REG 0x2C
 /** Offset of all the sprites. Defaults to (64, 64) meaning that
     a sprite placed on x=64, y=64 will appear in the top left
     corner.
-#define GFX_SPRITE_OFF_REG 0x28
+#define GFX_SPRITE_OFF_REG 0x30
 /** [12:0]: Sprite X position that maps to left of screen */
 #define GFX_SPRITE_OFF_X_OFF 0
 /** [28:16]: Sprite Y position that maps to top of screen */
@@ -340,10 +346,12 @@ fill the palette memory), the fields are
 #define GFX_TILEMAP_ENT_FLIP_X (1<<9)
 /** Bit [10]: Flip tile vertically */
 #define GFX_TILEMAP_ENT_FLIP_Y (1<<10)
-/** Bit [17:11]: Palette offset. If this is set to i, the 16 colors of 
+/** Bit [10]: Swap x and y of tile (diagonal flip). This happens before the other flips. */
+#define GFX_TILEMAP_ENT_SWAP_XY (1<<11)
+/** Bit [17:12]: Palette offset. If this is set to i, the 16 colors of 
     the tile will be looked up in the palette memory starting from entry 
-    (i*4). */
-#define GFX_TILEMAP_ENT_PAL_OFF 11
+    (i*8). */
+#define GFX_TILEMAP_ENT_PAL_OFF 12
 
 /** Memory address of the sprites. This is contains 256 2x32-bit
     words containing the sprite data for 256 sprites. Note that 

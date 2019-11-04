@@ -27,6 +27,7 @@
 #include <math.h>
 #include <string.h>
 #include "tusb.h"
+#include "usb_descriptors.h"
 #include "hexdump.h"
 #include "fs.h"
 #include "flash.h"
@@ -68,12 +69,26 @@ void verilator_start_trace() {
 	MISC_REG(MISC_SOC_VER)=1;
 }
 
+extern uint32_t rom_cart_boot_flag;
+
+int booted_from_cartridge() {
+	return rom_cart_boot_flag;
+}
+
 void cdc_task();
 
-extern char _binary_bgnd_png_start;
-extern char _binary_bgnd_png_end;
-extern char _binary_tileset_default_png_start;
-extern char _binary_tileset_default_png_end;
+
+void boot_cart_fpga_bitstream() {
+	MISC_REG(MISC_FLASH_SEL_REG)=MISC_FLASH_SEL_CARTFLASH;
+	volatile int w;
+	for (w=0; w<16; w++) ;
+	MISC_REG(MISC_FLASH_SEL_REG)=MISC_FLASH_SEL_CARTFLASH|MISC_FLASH_SEL_FPGARELOAD_MAGIC;
+}
+
+extern char _binary_bgnd_tga_start;
+extern char _binary_bgnd_tga_end;
+extern char _binary_tileset_default_tga_start;
+extern char _binary_tileset_default_tga_end;
 
 #define FB_PAL_OFFSET 256
 
@@ -109,6 +124,8 @@ void set_sprite(int no, int x, int y, int sx, int sy, int tileno, int palstart) 
 
 #define ITEM_FLAG_SELECTABLE (1<<0)
 #define ITEM_FLAG_ON_CART (1<<1)
+#define ITEM_FLAG_BITSTREAM (1<<2)
+#define ITEM_FLAG_FORMAT (1<<3)
 
 typedef struct {
 	int no_items;
@@ -135,6 +152,24 @@ void menu_add_apps(menu_data_t *s, char *path, int flag) {
 	closedir(d);
 }
 
+int cart_has_fpga_image() {
+	const char magic[]="\xFF\x00Part: LFE5U-45F-8CABGA381";
+	char buf[128];
+	flash_wake(FLASH_SEL_CART);
+	flash_read(FLASH_SEL_CART, 0, buf, sizeof(magic));
+	return memcmp(buf, magic, sizeof(magic))==0;
+}
+
+//If the first 512 bytes of the tjftl partition are 0xff, we assume it's an unerased cart and we're free
+//to create the tjftl part. If not, we assume it's used for 'other' stuff and we hide the option.
+int cart_tjftl_creatable() {
+	char buf[512];
+	flash_read(FLASH_SEL_CART, 0x200000, buf, 512);
+	for (int x=0; x<512; x++) {
+		if (buf[x]!=0xff) return 0;
+	}
+	return 1;
+}
 
 void read_menu_items(menu_data_t *s) {
 	//First, clean struct
@@ -145,17 +180,33 @@ void read_menu_items(menu_data_t *s) {
 	if (has_cart) {
 		s->flag[s->no_items]=0;
 		s->item[s->no_items++]=strdup("- CARTRIDGE -");
-		//ToDo: load files from cart
+		if (cart_has_fpga_image()) {
+			s->flag[s->no_items]=ITEM_FLAG_SELECTABLE|ITEM_FLAG_ON_CART|ITEM_FLAG_BITSTREAM;
+			s->item[s->no_items++]=strdup("Boot FPGA bitstream");
+		}
+		if (fs_cart_ftl_active()) {
+			//Add cart items
+			menu_add_apps(s, "cart:", ITEM_FLAG_SELECTABLE|ITEM_FLAG_ON_CART);
+		} else if (cart_tjftl_creatable()) {
+			s->flag[s->no_items]=ITEM_FLAG_SELECTABLE|ITEM_FLAG_ON_CART|ITEM_FLAG_FORMAT;
+			s->item[s->no_items++]=strdup("Format filesystem");
+		}
 		s->flag[s->no_items]=0;
 		s->item[s->no_items++]=strdup("- INTERNAL -");
 	}
-	menu_add_apps(s, "/", 0);
+	menu_add_apps(s, "int:", ITEM_FLAG_SELECTABLE);
 }
 
+void load_tiles() {
+	//ToDo: loading pngs takes a long time... move over to pcx instead.
+	printf("Loading tiles...\n");
+	gfx_load_tiles_tga_mem(GFXTILES, &GFXPAL[0], &_binary_tileset_default_tga_start, (&_binary_tileset_default_tga_end-&_binary_tileset_default_tga_start));
+	printf("Tiles initialized\n");
+}
 
 #define SCR_PITCH 20 //Scoller letter pitch
 
-int show_main_menu(char *app_name) {
+int show_main_menu(char *app_name, int *ret_flags) {
 	menu_data_t menu={0};
 
 	//First read of available items
@@ -173,10 +224,7 @@ int show_main_menu(char *app_name) {
 	GFX_REG(GFX_LAYEREN_REG)=0;
 
 	//Load up the default tileset and font.
-	//ToDo: loading pngs takes a long time... move over to pcx instead.
-	printf("Loading tiles...\n");
-	gfx_load_tiles_mem(GFXTILES, &GFXPAL[0], &_binary_tileset_default_png_start, (&_binary_tileset_default_png_end-&_binary_tileset_default_png_start));
-	printf("Tiles initialized\n");
+	load_tiles();
 
 	//Open the console driver for output to screen.
 	FILE *console=fopen("/dev/console", "w");
@@ -189,7 +237,7 @@ int show_main_menu(char *app_name) {
 
 	printf("Loading bgnd...\n");
 	//This is the Hackaday logo background
-	gfx_load_fb_mem(lcdfb, &GFXPAL[FB_PAL_OFFSET], 4, 512, &_binary_bgnd_png_start, (&_binary_bgnd_png_end-&_binary_bgnd_png_start));
+	gfx_load_fb_tga_mem(lcdfb, &GFXPAL[FB_PAL_OFFSET], 4, 512, &_binary_bgnd_tga_start, (&_binary_bgnd_tga_end-&_binary_bgnd_tga_start));
 
 	//Nuke the palette animation indexes to be black.
 	for (int x=0; x<10; x++) GFXPAL[FB_PAL_OFFSET+6+x]=0;
@@ -215,17 +263,26 @@ int show_main_menu(char *app_name) {
 						"                       ";
 	int scrpos=0;
 
-	while(!done) {
-		p++;
 
+	while(!done) {
+		//Record what frame we are on right now.
+		uint32_t cur_vbl_ctr=GFX_REG(GFX_VBLCTR_REG);
+
+		//This does the 'radar' effect around the skull'n'wrenches. The radar waves are encoded in the
+		//pallete, in entries that have been blanked out earlier (index 10 - 16). If bgnd_pal_state is one
+		//of those entries, we copy color index 5 into it (the brown from the main skull) otherwise we keep
+		//blanking it.
 		bgnd_pal_state++;
 		if (bgnd_pal_state==200) bgnd_pal_state=0;
 		for (int x=0; x<10; x++) {
 			GFXPAL[FB_PAL_OFFSET+6+x] = (x==bgnd_pal_state)?GFXPAL[FB_PAL_OFFSET+5]:GFXPAL[FB_PAL_OFFSET+0];
 		}
 
+		//The menu header is printed to tilemap A. We jiggle it around by moving the entirety of tilemap A around.
+		p++;
 		gfx_set_xlate_val(0, 240,24, 1+sin(p*0.2)*0.1, sin(p*0.11)*0.1);
 
+		//This sets up all the sprites for the sinusodial scroller at the bottom.
 		int sprno=0;
 		for (int x=-(scrpos%SCR_PITCH); x<480; x+=SCR_PITCH) {
 			float a=x*0.02+scrpos*0.1;
@@ -233,8 +290,6 @@ int show_main_menu(char *app_name) {
 		}
 		if (scrtxt[scrpos/SCR_PITCH+sprno]==0) scrpos=0;
 		scrpos+=2;
-//		set_sprite(65, 0, 0, 16, 16, 132, 0);
-
 
 		int usbstate=MISC_REG(MISC_GPEXT_IN_REG)&(1<<31);
 		if (usbstate!=old_usbstate) {
@@ -277,11 +332,12 @@ int show_main_menu(char *app_name) {
 			selected+=movedir;
 			if (selected<0) selected=menu.no_items-1;
 			if (selected>=menu.no_items) selected=0;
-		} while((menu.flag[selected] & ITEM_FLAG_SELECTABLE)!=0);
+			if (movedir==0) movedir=1; //if we loop we need to go somewhere
+		} while((menu.flag[selected] & ITEM_FLAG_SELECTABLE)==0);
 
 		if (need_redraw) {
 			fprintf(console, "\033C");
-			
+
 			int start=selected-5;
 			for (int i=0; i<10; i++) {
 				const char *itm;
@@ -291,14 +347,22 @@ int show_main_menu(char *app_name) {
 			}
 		}
 
-		while ((GFX_REG(GFX_VIDPOS_REG)>>16)<318) {
+		//Idle doing USB stuff while the current frame is still active.
+		do {
 			cdc_task();
 			tud_task();
-		}
+		} while (GFX_REG(GFX_VBLCTR_REG) <= cur_vbl_ctr+1); //we run at 30fps
 		old_btn=btn;
 	}
 	
-	if (selected>=0) strcpy(app_name, menu.item[selected]);
+	if (selected>=0) {
+		if (menu.flag[selected]&ITEM_FLAG_ON_CART) {
+			sprintf(app_name, "cart:%s", menu.item[selected]);
+		} else {
+			sprintf(app_name, "int:%s", menu.item[selected]);
+		}
+		*ret_flags=menu.flag[selected];
+	}
 	for (int i=0; i<menu.no_items; i++) free(menu.item[i]);
 
 	//Set tilemaps to default 1-to-1 mapping
@@ -316,9 +380,10 @@ int show_main_menu(char *app_name) {
 	//..and close it.
 	fclose(console);
 	free(lcdfb);
+	return 0;
 }
 
-void start_app(char *app) {
+void start_app(const char *app) {
 	uintptr_t max_app_addr=0;
 	uintptr_t la=load_new_app(app, &max_app_addr);
 	if (la==0) {
@@ -326,8 +391,12 @@ void start_app(char *app) {
 		return;
 	}
 	sbrk_app_set_heap_start(max_app_addr);
+	user_memfn_set(NULL, NULL, NULL);
+	syscall_reinit();
 	main_cb maincall=(main_cb)la;
 	maincall(0, NULL);
+	user_memfn_set(malloc, realloc, free);
+	syscall_reinit();
 }
 
 static void
@@ -352,7 +421,7 @@ void main() {
 	irq_stack_ptr=int_stack+(IRQ_STACK_SIZE/sizeof(uint32_t));
 
 	//Initialize USB subsystem
-	printf("IPL main function.\n");
+	printf("IPL main function. Booted from %s.\n", booted_from_cartridge()?"cartridge":"internal memory");
 	usb_setup_serial_no();
 	tusb_init();
 	printf("USB inited.\n");
@@ -364,19 +433,43 @@ void main() {
 	//Initialize the LCD
 	lcd_init(simulated());
 
+	//See if there's an autoexec.elf we can run.
+	const char *autoexec;
+	if (booted_from_cartridge()) {
+		autoexec="cart:autoexec.elf";
+	} else {
+		autoexec="int:autoexec.elf";
+	}
+	FILE *f=fopen(autoexec, "r");
+	if (f!=NULL) {
+		fclose(f);
+		printf("Found %s. Executing\n", autoexec);
+		load_tiles();
+		usb_msc_off();
+		start_app(autoexec);
+		printf("%s done.\n", autoexec);
+	} else {
+		printf("No %s found; not running\n", autoexec);
+	}
+
 	while(1) {
 		MISC_REG(MISC_LED_REG)=0xfffff;
 		printf("IPL running.\n");
 		char app_name[256]="*na*";
-		show_main_menu(app_name);
-		printf("IPL: starting app %s\n", app_name);
-		usb_msc_off();
-		syscall_reinit();
-		user_memfn_set(NULL, NULL, NULL);
-		start_app(app_name);
-		syscall_reinit();
-		user_memfn_set(malloc, realloc, free);
-		printf("IPL: App %s returned.\n", app_name);
+		int flags=0;
+		show_main_menu(app_name, &flags);
+		if (flags&ITEM_FLAG_BITSTREAM) {
+			printf("Booting cart bitstream...\n");
+			boot_cart_fpga_bitstream();
+		} else if (flags&ITEM_FLAG_FORMAT) {
+			printf("Formatting cart...\n");
+			fs_cart_initialize_fat();
+		} else {
+			printf("IPL: starting app %s\n", app_name);
+			usb_msc_off();
+			start_app(app_name);
+			printf("IPL: App %s returned.\n", app_name);
+		}
 	}
 }
 
@@ -414,3 +507,59 @@ void tud_cdc_rx_cb(uint8_t itf) {
 	(void)itf;
 }
 
+// Invoked on DFU_DETACH request to reboot to the bootloader
+void tud_dfu_rt_reboot_to_dfu(void)
+{
+	volatile uint32_t *psram  = (volatile uint32_t *)(MACH_RAM_START);
+	volatile uint32_t *reboot = (volatile uint32_t *)(MISC_OFFSET + MISC_FLASH_SEL_REG);
+
+	// Debug
+	printf("REBOOT\n");
+
+	// Set MAGIC value in PSRAM
+	psram[0] = 0x46464444;
+	psram[1] = 0x21215555;
+	cache_flush((void*)&psram[0], (void*)&psram[2]);
+
+	// Reboot
+	*reboot = 0xD0F1A500;
+
+	// Wait indefinitely
+	while (1);
+}
+
+// Invoked when received VENDOR control request
+bool tud_vendor_control_request_cb(uint8_t rhport, tusb_control_request_t const * request)
+{
+  switch (request->bRequest)
+  {
+    case VENDOR_REQUEST_MICROSOFT:
+      if ( request->wIndex == 7 )
+      {
+        // Get Microsoft OS 2.0 compatible descriptor
+        uint16_t total_len;
+        memcpy(&total_len, desc_ms_os_20+8, 2);
+
+        return tud_control_xfer(rhport, request, (void*) desc_ms_os_20, total_len);
+      }else
+      {
+        return false;
+      }
+
+    default:
+      // stall unknown request
+      return false;
+  }
+
+  return true;
+}
+
+// Invoked when DATA Stage of VENDOR's request is complete
+bool tud_vendor_control_complete_cb(uint8_t rhport, tusb_control_request_t const * request)
+{
+  (void) rhport;
+  (void) request;
+
+  // nothing to do
+  return true;
+}

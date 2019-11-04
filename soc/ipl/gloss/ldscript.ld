@@ -64,6 +64,7 @@ ENTRY(_start)
 
 PROVIDE ( interrupt_vector_table = 0x40000020 );
 PROVIDE ( irq_stack_ptr = 0x400000a0 );
+PROVIDE ( rom_cart_boot_flag = 0x400000a4 );
 
 PROVIDE ( UART =        0x10000000 );
 PROVIDE ( MISC =        0x20000000 );

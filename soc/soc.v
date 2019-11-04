@@ -62,6 +62,7 @@ module soc(
 		output psramb_oe,
 		
 		output flash_nce,
+		output flash_selected,
 		output flash_sclk,
 		input [3:0] flash_sin,
 		output [3:0] flash_sout,
@@ -173,11 +174,11 @@ module soc(
 			.PROGADDR_IRQ ('h40000010),
 			.TWO_STAGE_SHIFT(0),
 			.BARREL_SHIFTER(1),
-			.ENABLE_COUNTERS(0),
-			.ENABLE_COUNTERS64(0),
+			.ENABLE_COUNTERS(1),
+			.ENABLE_COUNTERS64(1),
 			.ENABLE_REGS_16_31(1),
 			.ENABLE_REGS_DUALPORT(1),
-			.ENABLE_MUL(0),
+			.ENABLE_MUL(0), //note: we do this externally using a rv32 pcpi thing
 			.ENABLE_FAST_MUL(0),
 			.ENABLE_DIV(1),
 			.ENABLE_IRQ(1),
@@ -841,6 +842,7 @@ module soc(
 
 		.spi_clk(flash_sclk),
 		.spi_ncs(flash_nce),
+		.spi_selected(flash_selected),
 		.spi_sout(flash_sout),
 		.spi_sin(flash_sin),
 		.spi_oe(flash_oe),

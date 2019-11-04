@@ -2,15 +2,34 @@
 # Setups the RISC-V toolchain
 #
 
+# Deal with Windows
+ifeq ($(OS),Windows_NT)
+
+	# We need the suffix (depends on exact shell you use, but some need it
+	# and all allow it, so always set it)
+EXE := .exe
+
+	# Skip auto-detect. Not all env will have 'which' and most likely you're
+	# using the prebuild toolchain. Always possible to override with CROSS=xxx
+ifeq ("$(CROSS)", "")
+CROSS := riscv64-unknown-elf-
+endif
+endif
+
+	# WSL still needs .exe suffix
+ifneq ("$(WSL_DISTRO_NAME)", "")
+EXE := .exe
+endif
+
 # Find a toolchain
-POSSIBLE_CROSS = riscv-none-embed- riscv32-unknown-elf- riscv64-unknown-elf-
+POSSIBLE_CROSS := riscv-none-embed- riscv32-unknown-elf- riscv64-unknown-elf-
 
 ifneq ("$(RISCV_TOOLCHAIN_PATH)", "")
 POSSIBLE_CROSS := $(addprefix $(RISCV_TOOLCHAIN_PATH)/, $(POSSIBLE_CROSS))
 endif
 
 ifeq ("$(CROSS)", "")
-CROSS := $(shell for c in $(POSSIBLE_CROSS); do which $${c}gcc >/dev/null 2>&1 && echo $${c} && break; done)
+CROSS := $(shell for c in $(POSSIBLE_CROSS); do which $${c}gcc$(EXE) >/dev/null 2>&1 && echo $${c} && break; done)
 endif
 
 ifeq ("$(CROSS)", "")
@@ -20,14 +39,14 @@ $(error Aborting: Need a RISC-V toolchain)
 endif
 
 # Set prefixes and paths to all tools.
-CC := $(CROSS)gcc
-AR := $(CROSS)gcc-ar
-LD := $(CROSS)ld
-OBJCOPY := $(CROSS)objcopy
-OBJDUMP := $(CROSS)objdump
-SIZE := $(CROSS)size
-STRIP := $(CROSS)strip
-GDB := $(CROSS)gdb
+CC := $(CROSS)gcc$(EXE)
+AR := $(CROSS)gcc-ar$(EXE)
+LD := $(CROSS)ld$(EXE)
+OBJCOPY := $(CROSS)objcopy$(EXE)
+OBJDUMP := $(CROSS)objdump$(EXE)
+SIZE := $(CROSS)size$(EXE)
+STRIP := $(CROSS)strip$(EXE)
+GDB := $(CROSS)gdb$(EXE)
 
 ASFLAGS := -march=rv32imac -mabi=ilp32
 CFLAGS  := -march=rv32imac -mabi=ilp32 -flto -Os

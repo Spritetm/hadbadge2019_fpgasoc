@@ -115,7 +115,7 @@ int main(int argc, char **argv) {
 		tb->psrama_sin = sina;
 		tb->psramb_sin = sinb;
 		if (do_trace) trace->dump(tracepos*21+10);
-//		do_trace = tb->trace_en;
+		do_trace = tb->trace_en;
 		if (vid && pixel_clk) {
 			vid->next_pixel(tb->vid_red, tb->vid_green, tb->vid_blue, &fetch_next, &next_line, &next_field);
 			tb->vid_fetch_next=fetch_next;

@@ -149,8 +149,9 @@ parameter REG_SEL_TILEA_INC_ROW = 6;
 parameter REG_SEL_TILEB_INC_COL = 7;
 parameter REG_SEL_TILEB_INC_ROW = 8;
 parameter REG_SEL_VIDPOS = 9;
-parameter REG_SEL_BGNDCOL = 10;
-parameter REG_SEL_SPRITE_OFF = 11;
+parameter REG_SEL_VBLCTR = 10;
+parameter REG_SEL_BGNDCOL = 11;
+parameter REG_SEL_SPRITE_OFF = 12;
 
 //Reminder: we have 64x64 tiles of 16x16 pixels, so in total a field of 1024x1024 pixels. Say we have one overflow bit, we need 11 bit
 //for everything... that leaves 5 bits for sub-pixel addressing in scaling modes. That sounds OK.
@@ -191,6 +192,7 @@ reg [15:0] tileb_colinc_y;
 reg [15:0] tileb_rowinc_x;
 reg [15:0] tileb_rowinc_y;
 wire [8:0] sprite_pix;
+reg [31:0] vblctr;
 
 always @(*) begin
 	cpu_sel_tilemem = 0;
@@ -222,6 +224,8 @@ always @(*) begin
 			dout = {tileb_rowinc_x, tileb_rowinc_y};
 		end else if (addr[5:2]==REG_SEL_VIDPOS) begin
 			dout = {7'h0, vid_ypos, 7'h0, vid_xpos};
+		end else if (addr[5:2]==REG_SEL_VBLCTR) begin
+			dout = vblctr;
 		end else if (addr[5:2]==REG_SEL_BGNDCOL) begin
 			dout = bgnd_color;
 		end else if (addr[5:2]==REG_SEL_SPRITE_OFF) begin
@@ -439,10 +443,15 @@ always @(*) begin
 	sprite_tilemem_ack=0;
 
 	if (cycle==0) begin
-		tilepix_x = tileb_data[9] ? (15-tileb_x[9:6]) : tileb_x[9:6];
-		tilepix_y = tileb_data[10] ? (15-tileb_y[9:6]) : tileb_y[9:6];
+		if (tileb_data[11]) begin
+			tilepix_y = tileb_data[9] ? (15-tileb_x[9:6]) : tileb_x[9:6];
+			tilepix_x = tileb_data[10] ? (15-tileb_y[9:6]) : tileb_y[9:6];
+		end else begin
+			tilepix_x = tileb_data[9] ? (15-tileb_x[9:6]) : tileb_x[9:6];
+			tilepix_y = tileb_data[10] ? (15-tileb_y[9:6]) : tileb_y[9:6];
+		end
 		tilemem_no = tileb_data[8:0];
-		pal_addr = tilemem_pixel + {tilea_data[17:11], 2'b0}; //from tilemap a
+		pal_addr = tilemem_pixel + {tilea_data[17:12], 3'b0}; //from tilemap a
 		alphamixer_rate = layer_en[0] ? pal_data[31:24] : 0; //fb
 		alphamixer_in_b = bgnd_color; //background
 	end else if (cycle==1) begin
@@ -450,7 +459,7 @@ always @(*) begin
 		tilepix_y = sprite_tilemem_y;
 		tilemem_no = sprite_tilemem_no;
 		sprite_tilemem_ack = 1;
-		pal_addr = tilemem_pixel + {tileb_data[17:11], 2'b0}; //from tilemap b
+		pal_addr = tilemem_pixel + {tileb_data[17:12], 3'b0}; //from tilemap b
 		alphamixer_rate = layer_en[1] ? pal_data[31:24] : 0; //tilemap a
 		alphamixer_in_b = alphamixer_out; //bgnd+fb
 	end else if (cycle==2) begin
@@ -463,8 +472,13 @@ always @(*) begin
 		alphamixer_rate = layer_en[2] ? pal_data[31:24] : 0; //tilemap b
 		alphamixer_in_b = alphamixer_out; //bgnd+fb+tilemap_a
 	end else begin //cycle==3
-		tilepix_x = tilea_data[9] ? (15-tilea_x[9:6]) : tilea_x[9:6];
-		tilepix_y = tilea_data[10] ? (15-tilea_y[9:6]) : tilea_y[9:6];
+		if (tilea_data[11]) begin
+			tilepix_y = tilea_data[9] ? (15-tilea_x[9:6]) : tilea_x[9:6];
+			tilepix_x = tilea_data[10] ? (15-tilea_y[9:6]) : tilea_y[9:6];
+		end else begin
+			tilepix_x = tilea_data[9] ? (15-tilea_x[9:6]) : tilea_x[9:6];
+			tilepix_y = tilea_data[10] ? (15-tilea_y[9:6]) : tilea_y[9:6];
+		end
 		tilemem_no = tilea_data[8:0];
 		pal_addr = {fb_pixel+fb_pal_offset}; //from fb
 		alphamixer_rate = layer_en[3] ? pal_data[31:24] : 0; //sprite
@@ -475,6 +489,7 @@ end
 assign vid_data_out = alphamixer_out[23:0];
 reg ready_delayed;
 assign ready = ready_delayed & ((wstrb!=0) || ren);
+reg in_render_vbl;
 
 always @(posedge clk) begin
 	if (reset) begin
@@ -506,6 +521,8 @@ always @(posedge clk) begin
 		bgnd_color <= 0;
 		sprite_yoff <= 64;
 		sprite_xoff <= 64;
+		vblctr <= 0;
+		in_render_vbl <= 0;
 	end else begin
 		/* CPU interface */
 		ready_delayed <= ((wstrb!=0) | ren);
@@ -559,6 +576,10 @@ always @(posedge clk) begin
 		//Line renderer proper statemachine.
 		if (write_vid_addr[19:9]>=320) begin
 			//We're finished with this frame. Wait until the video generator starts drawing the next frame.
+			if (in_render_vbl == 0) begin
+				vblctr <= vblctr + 1;
+			end
+			in_render_vbl <= 1;
 			dma_run <= 0;
 			tilea_linestart_x <= tilea_xoff + tilea_rowinc_x;
 			tilea_linestart_y <= tilea_yoff + tilea_rowinc_y;
@@ -575,6 +596,7 @@ always @(posedge clk) begin
 				//Not yet, keep idling
 			end
 		end else if (write_vid_addr[10:9] != curr_vid_addr[10:9] || preload) begin
+			in_render_vbl <= 0;
 			//If we're here, there is room in the line memory to write a new line into.
 			dma_run <= layer_en[0];
 			if (dma_ready || (fb_is_8bit==0 && write_vid_addr[3:0]!=0) || (fb_is_8bit==1 && write_vid_addr[2:0]!=0) || layer_en[0]==0) begin

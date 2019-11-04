@@ -1,9 +1,6 @@
 [submodule "soc/picorv32"]
 	path = soc/picorv32
 	url = https://github.com/cliffordwolf/picorv32.git
-[submodule "soc/app/UGUI"]
-	path = soc/ipl/UGUI
-	url = https://github.com/PocketSprite/UGUI.git
 [submodule "TinyFPGA-Bootloader"]
 	path = TinyFPGA-Bootloader
 	url = https://github.com/Spritetm/hadbadge2019_tinyfpgabootloader.git
@@ -19,3 +16,9 @@
 [submodule "soc/ipl/lodepng"]
 	path = soc/ipl/lodepng
 	url = https://github.com/lvandeve/lodepng.git
+[submodule "soc/ipl/yxml"]
+	path = soc/ipl/yxml
+	url = https://g.blicky.net/yxml.git
+[submodule "app-badgetris"]
+	path = app-badgetris
+	url = https://github.com/szczys/badgetris-2019supercon.git

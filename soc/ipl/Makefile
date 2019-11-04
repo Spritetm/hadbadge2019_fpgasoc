@@ -7,20 +7,21 @@ TARGET_ELF := $(APPNAME).elf
 TARGET_BIN := $(APPNAME).bin
 TARGET_MAP := $(APPNAME).map
 TARGET_SVF := $(APPNAME).svf
-OBJS = main.o lcd.o UGUI/ugui.o
+OBJS = main.o lcd.o
 OBJS += tinyusb/src/device/usbd.o tinyusb/src/device/usbd_control.o tinyusb/src/tusb.o
 OBJS += tinyusb/src/common/tusb_fifo.o
 OBJS += tinyusb/src/class/msc/msc_device.o tinyusb/src/class/midi/midi_device.o
 OBJS += tinyusb/src/class/cdc/cdc_device.o tinyusb/src/class/hid/hid_device.o
+OBJS += tinyusb/src/class/dfu/dfu_rt_device.o
 OBJS += dcd_tntusb.o usb_descriptors.o hexdump.o flash.o
 OBJS += fatfs/source/ff.o fatfs/source/ffunicode.o loadapp.o elfload/elfload.o
 OBJS += elfload/elfreloc_riscv.o lodepng.o bgnd.o tileset-default.o
-OBJS += tjftl/tjftl.o fs.o gfx_load.o user_memfn.o
+OBJS += tjftl/tjftl.o fs.o gfx_load.o user_memfn.o yxml/yxml.o
 LIBS := gloss/libgloss.a
 LIBS_TOOLCHAIN := -lm -lgcc
 LDSCRIPT := gloss/ldscript.ld
 
-CFLAGS += -ggdb -I. -Isyscallable -Ilodepng -IUGUI -Iusb -Igloss -Itinyusb/src -Ifatfs/source -I../tinyusb/src -I../
+CFLAGS += -ggdb -I. -Isyscallable -Ilodepng -IUGUI -Iusb -Igloss -Itinyusb/src -Ifatfs/source -I../tinyusb/src -I../ -Iyxml
 LDFLAGS += -Wl,-T,$(LDSCRIPT) -Wl,-Map,$(TARGET_MAP) -Lgloss
 
 export CC AR LD OBJCOPY CFLAGS ASFLAGS LDFLAGS APPNAME
@@ -28,10 +29,10 @@ export CC AR LD OBJCOPY CFLAGS ASFLAGS LDFLAGS APPNAME
 
 default: $(TARGET_BIN)
 
-bgnd.o: bgnd.png
+bgnd.o: bgnd.tga
 	$(OBJCOPY) -I binary -O elf32-littleriscv -B riscv $< $@
 
-tileset-default.o: tileset-default.png
+tileset-default.o: tileset-default.tga
 	$(OBJCOPY) -I binary -O elf32-littleriscv -B riscv $< $@
 
 
@@ -76,11 +77,17 @@ $(TARGET_SVF): $(TARGET_BIN)
 flash: $(TARGET_BIN)
 	tinyprog -p $(TARGET_BIN) -a 0x300000
 
+dfu_flash: $(TARGET_BIN)
+	dfu-util$(EXE) -d 1d50:614a,1d50:614b -a 1 -R -D $<
+
+dfu_flash_cart: $(TARGET_BIN)
+	dfu-util$(EXE) -d 1d50:614a,1d50:614b -a 3 -R -D $<
+
 gdb: $(TARGET_ELF)
 	$(GDB) -b 115200 -ex "target remote /dev/ttyUSB0" $(APPNAME).elf
 
 .PHONY: gloss/libgloss.a
-gloss/libgloss.a:
+gloss/libgloss.a: gloss/
 	$(MAKE) -C gloss
 
 include $(wildcard $(DEPFILES))

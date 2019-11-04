@@ -29,12 +29,29 @@ typedef struct {
 } ipl_t;
 
 #define IPL_FLASH_LOC 0x300000
+#define IPL_CART_FLASH_LOC 0x180000
 #define IPL_MAGIC 0x1337b33f
+
+extern uint32_t cart_boot_flag;
 
 void load_ipl() {
 	ipl_t *ipl=(ipl_t*)MEM_IPL_START;
-	flash_wake(FLASH_SEL_INT);
+	flash_wake(FLASH_SEL_CURRENT);
+	uint64_t curr_uid=flash_get_uid(FLASH_SEL_CURRENT);
+	flash_wake(FLASH_SEL_CART);
+	uint64_t cart_uid=flash_get_uid(FLASH_SEL_CART);
 	
+	if (curr_uid==cart_uid ) {
+		cart_boot_flag=1;
+		//We booted from the cartridge. See if there's a viable IPL there, if so load it.
+		flash_read(FLASH_SEL_CART, IPL_CART_FLASH_LOC, (uint8_t*)ipl, sizeof(ipl_t));
+		if (ipl->magic == IPL_MAGIC) {
+			flash_read(FLASH_SEL_CART, IPL_CART_FLASH_LOC, (uint8_t*)ipl, ipl->size);
+			return;
+		}
+	}
+	//No cart boot or no valid IPL on cart. Load IPL from internal memory.
+	flash_wake(FLASH_SEL_INT);
 	flash_read(FLASH_SEL_INT, IPL_FLASH_LOC, (uint8_t*)ipl, sizeof(ipl_t));
 	if (ipl->magic != IPL_MAGIC) return;
 	flash_read(FLASH_SEL_INT, IPL_FLASH_LOC, (uint8_t*)ipl, ipl->size);

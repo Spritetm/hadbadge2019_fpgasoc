@@ -1,0 +1,4 @@
+build/
+*.map
+*.elf
+*.sym

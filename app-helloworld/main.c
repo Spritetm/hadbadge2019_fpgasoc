@@ -12,6 +12,9 @@
 extern char _binary_bgnd_png_start;
 extern char _binary_bgnd_png_end;
 
+extern char _binary_tilemap_tmx_start;
+extern char _binary_tilemap_tmx_end;
+
 //Pointer to the framebuffer memory.
 uint8_t *fbmem;
 
@@ -53,20 +56,20 @@ void main(int argc, char **argv) {
 	//ipl/gloss/console_out.c for more info.
 	FILE *f;
 	f=fopen("/dev/console", "w");
-	setvbuf(f, NULL, _IOLBF, 1024); //make console line buffered
+	setvbuf(f, NULL, _IONBF, 0); //make console line unbuffered
 	//Note that without the setvbuf command, no characters would be printed until 1024 characters are
-	//buffered.
+	//buffered. You normally don't want this.
 	fprintf(f, "\033C"); //clear the console. Note '\033' is the escape character.
 	fprintf(f, "\0335X"); //set Xpos to 5
 	fprintf(f, "\0338Y"); //set Ypos to 8
-	fprintf(f, "Hello World!\n"); // Print a nice greeting.
-	//Note that without the newline at the end, all printf's would stay in the buffer.
+	fprintf(f, "Hello World!"); // Print a nice greeting.
 	
 	//The user can still see nothing of this graphics goodness, so let's re-enable the framebuffer and
 	//tile layer A (the default layer for the console). Also indicate the framebuffer we have is
 	//8-bit.
 	GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB_8BIT|GFX_LAYEREN_FB|GFX_LAYEREN_TILEA;
 
+	gfx_load_tilemap_mem(GFXTILEMAPA, 64, 64, 1, &_binary_tilemap_tmx_start, &_binary_tilemap_tmx_end-&_binary_tilemap_tmx_start, 0);
 	
 	printf("Hello World ready. Press a button to exit.\n");
 	//Wait until all buttons are released
