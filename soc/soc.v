@@ -363,6 +363,9 @@ module soc(
 	wire pic_ready;
 	reg pic_select;
 
+	reg synth_select;
+	wire synth_ready;
+
 	wire [31:0] soc_version;
 `ifdef verilator
 	assign soc_version = 'h8000;
@@ -421,6 +424,7 @@ module soc(
 		lcd_select = 0;
 		usb_select = 0;
 		pic_select = 0;
+		synth_select = 0;
 		linerenderer_select=0;
 		bus_error = 0;
 		mem_rdata = 'hx;
@@ -495,6 +499,9 @@ module soc(
 		end else if (mem_addr[31:28]=='h7) begin
 			pic_select = mem_valid;
 			mem_rdata = pic_rdata;
+		end else if (mem_addr[31:28]=='h8) begin
+			synth_select = mem_valid;
+			mem_rdata = 0;
 		end else begin
 			//Bus error. Raise IRQ if memory is accessed.
 			mem_rdata = 'hDEADBEEF;
@@ -511,7 +518,7 @@ module soc(
 `endif
 
 	assign mem_ready = ram_ready || uart_ready || irda_ready || misc_select ||
-			lcd_ready || linerenderer_ready || usb_ready || pic_ready || bus_error;
+			lcd_ready || linerenderer_ready || usb_ready || pic_ready || synth_ready || bus_error;
 
 	dsadc dsadc (
 		.clk(clk48m),
@@ -668,6 +675,16 @@ module soc(
 		.wen(pic_select && mem_wstrb==4'b1111),
 		.ren(pic_select && mem_wstrb==4'b0000),
 		.ready(pic_ready)
+	);
+	synth_interface synth (
+		.clk(clk48m),
+		.rst(rst),
+		.addr(mem_addr),
+		.data_in(mem_wdata),
+		.wen(synth_select && mem_wstrb==4'b1111),
+		.ren(synth_select && mem_wstrb==4'b0000),
+		.ready(synth_ready),
+		.pwmout(pwmout)
 	);
 
 	wire qpi_do_read;
@@ -994,5 +1011,4 @@ IRQs used:
 
 
 	//Unused pins
-	assign pwmout = 0;
 endmodule

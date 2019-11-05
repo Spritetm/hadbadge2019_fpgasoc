@@ -52,6 +52,9 @@ extern uint32_t GFXTILEMAPA[];
 extern uint32_t GFXTILEMAPB[];
 extern uint32_t GFXSPRITES[];
 
+extern volatile uint32_t SYNTH[];
+#define SYNTHREG(i) SYNTH[i/4]
+
 uint8_t *lcdfb;
 
 
@@ -410,11 +413,13 @@ usb_setup_serial_no(void)
 extern uint32_t *irq_stack_ptr;
 
 #define IRQ_STACK_SIZE (16*1024)
+
 void main() {
 	syscall_reinit();
 	user_memfn_set(malloc, realloc, free);
 	verilator_start_trace();
 	//When testing in Verilator, put code that pokes your hardware here.
+	
 
 	//Initialize IRQ stack to be bigger than the bootrom stack
 	uint32_t *int_stack=malloc(IRQ_STACK_SIZE);
@@ -432,6 +437,14 @@ void main() {
 
 	//Initialize the LCD
 	lcd_init(simulated());
+	
+    // Basic startup chime.
+	SYNTHREG(0xF0) = 0x00000200;
+	SYNTHREG(0x40) = 0x00151800;	
+	SYNTHREG(0x50) = 0x00251E00;	
+	SYNTHREG(0x60) = 0x00352400;	
+	SYNTHREG(0x70) = 0x00453000;	
+    
 
 	//See if there's an autoexec.elf we can run.
 	const char *autoexec;

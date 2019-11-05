@@ -409,3 +409,111 @@ pixel (0,1) of a tile is stored in bits [3:0] of word 2
 #define USB_DATA_BASE_RX (USB_CORE_OFFSET+USB_RXMEM)
 #define USB_DATA_BASE_TX (USB_CORE_OFFSET+USB_TXMEM)
 
+/* -------------------- Audio / Synthesizer defines ------------------- */
+/* 
+The FPGA SoC has a dedicated synthesizer (loosely inspired by the SID) and
+an audio output subsystem.  The board itself has a single logic output pin 
+that passes through a lowpass RC filter into an amplifier.
+
+The rest is done in code.
+
+The synthesizer has eight simultaneous voices, mixed together with fixed 
+volume in two groups.  Each voice has its own attack and release parameters, 
+and can be set to sound for a given duration.  Attack and release are each 
+eight bit values, set in per-voice configuration registers.
+
+Sending a duration and pitch to a voice's "play" register makes it start 
+immediately into its attack phase, play for the duration, and then taper
+slowly off according to the release value. Note that you are responsible
+for timing.  The synth just handles duration.
+
+There is a README in the soc/audio subdirectory if you want to know more,
+but this should get you started.
+
+## Layout:
+
+80000000 Voice 0 : Sawtooth
+80000010 Voice 1 : Sawtooth
+80000020 Voice 2 : Pulse + Sub
+80000030 Voice 3 : Square
+80000040 Voice 4 : Triangle
+80000050 Voice 5 : Triangle
+80000060 Voice 6 : Triangle
+80000070 Voice 7 : Triangle
+
+800000C0 Raw PCM input: 14-bit samples, but hit it with whatever you got 
+         Sample rate is determined by whatever you push in,
+
+800000D0 Drums (Still TBD) Bits: Kick drum, Snare, Hat/Cymbal, Cowbell
+
+800000F0 Config register
+
+## Voice Registers: for voice and drums X
+
+0x800000X0: PLAY register: 
+	    0xDDDDPPPP Pitch accumulator and duration. 
+0x800000X4: CONFIG register: 
+	    0x0000RRAA Attack and release are both 0-255	    
+0x800000X8: Filter parameters, reserved.
+0x800000XC: Beats me.
+
+## PCM Register: just write raw data in
+
+800000C0:  PCM_PLAY:
+	   0x0000PPPP 16-bit PCM data, mixed with the synth voices 
+           Note: PCM can get loud. Try global volumes around 0x0100.
+
+## Config Register:
+0x800000F0: VOLume
+	    0x0000VVVV Sixteen bit global volume. 
+	    0x200 is nominal for four simultaneous voices
+	    If it's distorting, turn it down.
+
+## Examples:
+   SYNTHREG(AUDIO_CONFIG_VOLUME) = 0x100; 
+   will set master volume a little lower, good for PCM or many voices
+   (see audio.c and audio.h in IPL for tables)
+
+   SYNTHREG(AUDIO_VOICE_SAW1 + AUDIO_CONFIG_REG_OFFSET) = \
+			AUDIO_ATTACK(10) + AUDIO_RELEASE(255);
+   sets the SAW1 voice to a very slow attack and a nearly instant release
+   
+   SYNTHREG(AUDIO_VOICE_SAW1) = AUDIO_PITCH(0x0C00) + AUDIO_DURATION(0x0120);
+   will play the sawtooth voice 1 for around 100 ms at around 137 Hz
+*/
+
+#define AUDIO_CORE_BASE         0x80000000
+#define AUDIO_PLAY_REG_OFFSET   0x0
+#define AUDIO_CONFIG_REG_OFFSET 0x4
+#define AUDIO_FILTER_REG_OFFSET 0x8 // (TBD)
+#define AUDIO_MISC_REG_OFFSET   0xC // (TBD)
+
+#define AUDIO_VOICE_SAW1   0x00
+#define AUDIO_VOICE_SAW2   0x10
+#define AUDIO_VOICE_PULSE  0x20
+#define AUDIO_VOICE_SQUARE 0x30
+#define AUDIO_VOICE_TRI1   0x40
+#define AUDIO_VOICE_TRI2   0x50
+#define AUDIO_VOICE_TRI3   0x60
+#define AUDIO_VOICE_TRI4   0x70
+
+#define AUDIO_PITCH(x)    (x)
+#define AUDIO_DURATION(x) (x << 16)
+
+#define AUDIO_ATTACK(x)   (x)
+#define AUDIO_RELEASE(x)  (x << 8)
+
+#define AUDIO_PCM           0xC0
+#define AUDIO_DRUMS         0xD0
+#define AUDIO_CONFIG_VOLUME 0xF0
+
+
+
+
+
+
+
+
+
+
+
