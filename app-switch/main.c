@@ -190,6 +190,29 @@ void main(int argc, char **argv) {
 		}
 	}
 
+    #define B_Y_START 64*16*2
+	int16_t y_translate = B_Y_START;
+
+	__tile_b_translate(0,y_translate);
+
+	// Tiles are set up, we can now enable layers
+	 GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_LAYEREN_TILEA|GFX_LAYEREN_TILEB;
+
+	// Wait a bit before starting animation
+	__INEFFICIENT_delay(100);
+
+	// Animate right joycon upwards
+	for (; y_translate < B_Y_START+(B_Y_START/4); y_translate+=16) {
+		__tile_b_translate(0,y_translate);
+		__INEFFICIENT_delay(1);
+	}
+
+	// Animate right joycon down until even.
+	for (; y_translate > 0; y_translate-=32) {
+		__tile_b_translate(0,y_translate);
+		__INEFFICIENT_delay(1);
+	}
+
 	// Place "Supercon" on layer B
 	for (uint8_t x = 0; x < 12; x++) {
 		x_offset = SWITCH_SUPERCON_X+x;
@@ -200,8 +223,19 @@ void main(int argc, char **argv) {
 		}
 	}
 
-	// Tiles are set up, we can now enable layers
-	 GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_LAYEREN_TILEA|GFX_LAYEREN_TILEB;
+	// Animate both tilemaps downwards a bit.
+	for (int16_t bounce=0; bounce < B_Y_START/2; bounce+=32) {
+		__tile_a_translate(0,y_translate-bounce);
+		__tile_b_translate(0,y_translate-bounce);
+		__INEFFICIENT_delay(1);
+	}
+
+	// And back up to neutral position
+	for (int16_t bounce=B_Y_START/2; bounce > 0; bounce-=32) {
+		__tile_a_translate(0,y_translate-bounce);
+		__tile_b_translate(0,y_translate-bounce);
+		__INEFFICIENT_delay(1);
+	}
 
 	// Logo complete, allow admiration for a short time before exiting.
 	__INEFFICIENT_delay(750);
