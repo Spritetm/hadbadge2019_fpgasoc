@@ -121,14 +121,14 @@ SRC += $(addprefix pic/, \
 	# Synth
 SRC += $(addprefix audio/, \
 	amplifier.v      \
-       	ar.v              \
-       	dac.v             \
+	ar.v              \
+	dac.v             \
 	envelope.v       \
 	lfsr.v           \
 	mixer4.v \
-       	oscillator.v      \
-       	synth_interface.v \
-       	voice.v           \
+	oscillator.v      \
+	synth_interface.v \
+	voice.v           \
 )
 
 
