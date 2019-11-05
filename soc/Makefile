@@ -28,9 +28,9 @@ SRC_SYNTH = \
 	$(NULL)
 
 SRC_SIM = \
-	mul_18x18_sim.v \
+	sim/mul_18x18_sim.v \
+	sim/ecp5_io_sim.v \
 	psram_emu.cpp \
-	trellis_io_sim.v \
 	uart_emu.cpp \
 	uart_emu_gdb.cpp \
 	verilator_main.cpp \
@@ -56,10 +56,6 @@ SRC += $(addprefix qpi_cache/, \
 	qspi_phy_2x_ecp5.v \
 	simple_mem.v \
 	simple_mem_words.v \
-)
-
-SRC_SIM += $(addprefix qpi_cache/, \
-	ecp5_ioregs_sim.v \
 )
 
 	# Video

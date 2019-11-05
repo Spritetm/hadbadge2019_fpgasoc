@@ -92,6 +92,7 @@ module qspi_phy_2x_ecp5 #(
 	);
 
 		// IOB
+`ifndef VERILATOR
 	TRELLIS_IO #(
 		.DIR("BIDIR")
 	) phy_io_I[3:0] (
@@ -100,6 +101,7 @@ module qspi_phy_2x_ecp5 #(
 		.T(spi_io_tr),
 		.O(spi_io_ir)
 	);
+`endif
 
 		// Input DDR
 	IDDRX1F phy_io_regi_I[3:0] (
