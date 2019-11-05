@@ -214,7 +214,7 @@ verilator: verilator-build/Vsoc ipl boot/ $(EXTRA_DEPEND)
 
 verilator-build/Vsoc: $(SRC) $(SRC_SIM) $(BRAMFILE)
 	verilator -Iusb -CFLAGS "-ggdb `sdl2-config --cflags`" -LDFLAGS "`sdl2-config --libs`" --assert \
-			--trace --Mdir verilator-build -Wno-style -Wno-fatal -cc --top-module soc \
+			--trace --trace-fst --Mdir verilator-build -Wno-style -Wno-fatal -cc --top-module soc \
 			--threads 2 -O3 --noassert --exe $(SRC) $(SRC_SIM)
 	$(MAKE) OPT_FAST="-O2 -fno-stack-protector" -C verilator-build -f Vsoc.mk
 

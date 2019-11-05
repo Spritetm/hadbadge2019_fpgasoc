@@ -18,6 +18,7 @@
 #include "Vsoc.h"
 #include <verilated.h>
 #include <verilated_vcd_c.h>
+#include <verilated_fst_c.h>
 #include "psram_emu.hpp"
 #include "uart_emu.hpp"
 #include "uart_emu_gdb.hpp"
@@ -48,9 +49,9 @@ int main(int argc, char **argv) {
 	// Create an instance of our module under test
 	Vsoc *tb = new Vsoc;
 	//Create trace
-	VerilatedVcdC *trace = new VerilatedVcdC;
+	VerilatedFstC *trace = new VerilatedFstC;
 	tb->trace(trace, 99);
-	trace->open("soctrace.vcd");
+	trace->open("soctrace.fst");
 
 	tb->btn=0xff; //no buttons pressed
 	int do_trace=1;
