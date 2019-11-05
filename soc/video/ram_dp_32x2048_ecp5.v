@@ -24,8 +24,9 @@ module ram_dp_32x2048 (DataInA, DataInB, AddressA, AddressB, ClockA,
 
     wire scuba_vhi;
     wire scuba_vlo;
+	assign scuba_vhi = 1;
+	assign scuba_vlo = 0;
 
-    defparam ram_dp_32x2048_0_0_1.INIT_DATA = "STATIC" ;
     defparam ram_dp_32x2048_0_0_1.ASYNC_RESET_RELEASE = "SYNC" ;
     defparam ram_dp_32x2048_0_0_1.INITVAL_3F = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
     defparam ram_dp_32x2048_0_0_1.INITVAL_3E = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
@@ -132,11 +133,8 @@ module ram_dp_32x2048 (DataInA, DataInB, AddressA, AddressB, ClockA,
              /* synthesis MEM_LPC_FILE="ram_dp_32x2048.lpc" */
              /* synthesis MEM_INIT_FILE="INIT_ALL_0s" */;
 
-    VHI scuba_vhi_inst (.Z(scuba_vhi));
 
-    VLO scuba_vlo_inst (.Z(scuba_vlo));
 
-    defparam ram_dp_32x2048_0_1_0.INIT_DATA = "STATIC" ;
     defparam ram_dp_32x2048_0_1_0.ASYNC_RESET_RELEASE = "SYNC" ;
     defparam ram_dp_32x2048_0_1_0.INITVAL_3F = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;
     defparam ram_dp_32x2048_0_1_0.INITVAL_3E = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000" ;

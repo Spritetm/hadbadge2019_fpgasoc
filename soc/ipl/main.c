@@ -51,6 +51,7 @@ extern uint32_t GFXTILES[];
 extern uint32_t GFXTILEMAPA[];
 extern uint32_t GFXTILEMAPB[];
 extern uint32_t GFXSPRITES[];
+extern uint32_t GFXCOPPEROPS[];
 
 extern volatile uint32_t SYNTH[];
 #define SYNTHREG(i) SYNTH[i/4]
@@ -266,6 +267,28 @@ int show_main_menu(char *app_name, int *ret_flags) {
 						"                       ";
 	int scrpos=0;
 
+	const uint32_t copperlist[]={
+		COPPER_OP_WAIT(0, 160),
+		COPPER_OP_WRITE(&GFX_REG(GFX_TILEB_OFF), 1),
+		64*1,
+		COPPER_OP_WAIT(0, 161),
+		COPPER_OP_WRITE(&GFX_REG(GFX_TILEB_OFF), 1),
+		64*2,
+		COPPER_OP_WAIT(0, 162),
+		COPPER_OP_WRITE(&GFX_REG(GFX_TILEB_OFF), 1),
+		64*3,
+		COPPER_OP_WAIT(0, 163),
+		COPPER_OP_WRITE(&GFX_REG(GFX_TILEB_OFF), 1),
+		64*4,
+		COPPER_OP_WRITE(&GFXPAL[FB_PAL_OFFSET+8], 1),
+		0xffffffff,
+		COPPER_OP_WAIT(0, 0),
+		COPPER_OP_WRITE(&GFX_REG(GFX_TILEB_OFF), 1),
+		0,
+		COPPER_OP_RESET
+	};
+	for (int i=0; i<sizeof(copperlist)/4; i++) GFXCOPPEROPS[i]=copperlist[i];
+	GFX_REG(GFX_COPPER_CTL_REG)=GFX_COPPER_CTL_RUN;
 
 	while(!done) {
 		//Record what frame we are on right now.

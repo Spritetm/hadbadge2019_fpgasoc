@@ -79,7 +79,7 @@ cost us (512+32*32)=1536 cycles. That fits and allows us to do X-scaling as well
 
 module vid_linerenderer (
 	input clk, reset,
-	output irq,
+	output reg irq_copper,
 
 	//Slave iface from cpu
 	input [24:0] addr,
@@ -222,50 +222,52 @@ reg ready_delayed;
 
 always @(*) begin
 	if (copper_write_ct != 0) begin
-		addr_muxed <= copper_addr;
-		din_muxed <= copper_data;
-		wstrb_muxed <= 'hf;
-		ready <= 0;
+		addr_muxed = copper_addr;
+		din_muxed = copper_data;
+		wstrb_muxed = 'hf;
+		ready = 0;
 	end else begin
-		addr_muxed <= addr;
-		din_muxed <= din;
-		wstrb_muxed <= wstrb;
-		ready <= ready_delayed & ((wstrb!=0) || ren);
+		addr_muxed = addr;
+		din_muxed = din;
+		wstrb_muxed = wstrb;
+		ready = ready_delayed & ((wstrb!=0) || ren);
 	end
 end
 
 //Note: copper_pc corresponds to the current output of the copper memory. copper_pc_next is the next pc. Same for other _next registers
 
 always @(*) begin
-	irq <= 0;
-	copper_halts_gfx <= 0;
-	copper_addr_next <= copper_addr;
+	irq_copper = 0;
+	copper_halts_gfx = 0;
+	copper_addr_next = copper_addr;
+	copper_write_ct_next = copper_write_ct;
+	copper_pc_next = copper_pc;
 
 	if (!copper_run) begin
-		copper_pc_next <= 0;
-		copper_write_ct_next <= 0;
+		copper_pc_next = 0;
+		copper_write_ct_next = 0;
 	end else if (copper_write_ct != 0) begin
-		copper_halts_gfx <= 1;
-		copper_pc_next <= copper_pc + 1;
-		copper_addr_next <= copper_addr + 4;
-		copper_write_ct_next <= copper_write_ct_next - 1;
+		copper_halts_gfx = 1;
+		copper_pc_next = copper_pc + 1;
+		copper_addr_next = copper_addr + 4;
+		copper_write_ct_next = copper_write_ct_next - 1;
 	end else if (copper_data[31:28]==COPPER_OP_WAIT) begin
 		//Wait for specified x/y coord
 		if (copper_data[24:16]==vid_ypos && copper_data[8:0]==vid_xpos) begin
-			copper_pc_next <= copper_pc + 1;
+			copper_pc_next = copper_pc + 1;
 		end else begin
-			copper_pc_next <= copper_pc; //wait
+			copper_pc_next = copper_pc; //wait
 		end
 	end else if (copper_data[31:29]==COPPER_OP_RESET) begin
-		copper_pc_next <= 0;
+		copper_pc_next = 0;
 	end else if (copper_data[31:29]==COPPER_OP_IRQ) begin
-		copper_pc_next <= copper_pc + 1;
-		irq <= 1;
+		copper_pc_next = copper_pc + 1;
+		irq_copper <= 1;
 	end else if (copper_data[31]==0) begin //COPPER_OP_WRITE
-		copper_halts_gfx <= 1;
-		copper_addr_next <= {copper_data[31:2], 2'h0};
-		copper_write_ct_next <= copper_data[1:0]+1;
-		copper_pc_next <= copper_pc + 1;
+		copper_halts_gfx = 1;
+		copper_addr_next = {copper_data[31:2], 2'h0};
+		copper_write_ct_next = copper_data[1:0]+1;
+		copper_pc_next = copper_pc + 1;
 	end
 end
 

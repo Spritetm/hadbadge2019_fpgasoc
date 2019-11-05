@@ -317,6 +317,8 @@ fill the palette memory), the fields are
 #define GFX_SPRITE_OFF_X_OFF 0
 /** [28:16]: Sprite Y position that maps to top of screen */
 #define GFX_SPRITE_Y_OFF 16
+#define GFX_COPPER_CTL_REG 0x34
+#define GFX_COPPER_CTL_RUN (1<<31)
 
 
 /** Memory address of the palette memory. This is a 512-entry
@@ -388,6 +390,14 @@ pixel (8,0) of a tile is stored in bits [3:0] of word 1
 pixel (0,1) of a tile is stored in bits [3:0] of word 2
 */
 #define GFX_OFFSET_TILEMEM 0x50010000
+
+#define GFX_OFFSET_COPPERMEM 0x50020000
+
+#define COPPER_OP_WAIT(x, y) (0x80000000 | (y<<16) | (x))
+#define COPPER_OP_RESET 0x90000000
+#define COPPER_OP_IRQ 0xA0000000
+#define COPPER_OP_WRITE(addr, ct) (((uint32_t)addr&0xfffffff0)|(ct-1))
+
 
 /* -------------- USB peripheral defines --------------------- */
 

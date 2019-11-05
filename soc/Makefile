@@ -5,7 +5,7 @@ BADGE_VER ?= 2
 PROJ=soc
 #Seed for nextpnr. Change this to another random value if you happen to run 
 #into a situation that mis-synths or takes extremely long to synth the SoC.
-SEED = 9
+SEED = 10
 
 # Sources
 	# Base
@@ -73,6 +73,7 @@ SRC_SYNTH += $(addprefix video/, \
 	vid_spritemem_ecp5.v \
 	vid_tilemapmem_ecp5.v \
 	vid_tilemem_ecp5.v \
+	ram_dp_32x2048_ecp5.v \
 )
 
 SRC_SIM += $(addprefix video/, \
@@ -84,6 +85,7 @@ SRC_SIM += $(addprefix video/, \
 	vid_sprite_linebuf_sim.v \
 	vid_spritemem_sim.v \
 	video_renderer.cpp \
+	ram_dp_32x2048_sim.v \
 )
 
 	# UART
