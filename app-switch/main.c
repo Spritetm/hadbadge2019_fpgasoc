@@ -166,7 +166,42 @@ void main(int argc, char **argv) {
 	/********************************************************************************
 	 * Put your user code in there, return when it's time to exit back to bage menu *
 	 * *****************************************************************************/
+	uint8_t x_offset = 0;
+	uint8_t y_offset = 0;
+	uint8_t tile_index = 0;
 
+	// Place switch icon left tiles on layer A
+	for (uint8_t x = 0; x < 4; x++) {
+		x_offset = SWITCH_LEFT_X+x;
+		for (uint8_t y = 0; y < 8; y++) {
+			y_offset = SWITCH_LEFT_Y+y;
+			tile_index = TILE_SWITCH_LEFT + x + 0x10*y;
+			__tile_a_set(x_offset, y_offset, tile_index);
+		}
+	}
+
+	// Place switch icon right tiles on layer B
+	for (uint8_t x = 0; x < 4; x++) {
+		x_offset = SWITCH_RIGHT_X+x;
+		for (uint8_t y = 0; y < 8; y++) {
+			y_offset = SWITCH_RIGHT_Y+y;
+			tile_index = TILE_SWITCH_RIGHT + x + 0x10*y;
+			__tile_b_set(x_offset, y_offset, tile_index);
+		}
+	}
+
+	// Place "Supercon" on layer B
+	for (uint8_t x = 0; x < 12; x++) {
+		x_offset = SWITCH_SUPERCON_X+x;
+		for (uint8_t y = 0; y < 2; y++) {
+			y_offset = SWITCH_SUPERCON_Y+y;
+			tile_index = TILE_SWITCH_SUPERCON + x + 0X10*y;
+			__tile_b_set(x_offset, y_offset, tile_index);
+		}
+	}
+
+	// Tiles are set up, we can now enable layers
+	 GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_LAYEREN_TILEA|GFX_LAYEREN_TILEB;
 
 	// Logo complete, allow admiration for a short time before exiting.
 	__INEFFICIENT_delay(750);
