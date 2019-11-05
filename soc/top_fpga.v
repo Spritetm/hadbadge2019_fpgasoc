@@ -92,7 +92,10 @@ module top_fpga(
 	wire adc4;
 	assign adc4 = ~adcref4;
 
+	wire clk24m;
 	wire clk48m;
+	wire clk96m;
+	wire rst_soc;
 
 	wire clkint;
 	OSCG #(
@@ -100,13 +103,6 @@ module top_fpga(
 	) oscint (
 		.OSC(clkint)
 	);
-
-	wire [3:0] psrama_sout;
-	wire [3:0] psrama_sin;
-	wire psrama_oe;
-	wire [3:0] psramb_sout;
-	wire [3:0] psramb_sin;
-	wire psramb_oe;
 
 	wire vid_pixelclk;
 	wire vid_fetch_next;
@@ -157,8 +153,11 @@ module top_fpga(
 `endif
 
 	soc soc (
+		.clk24m(clk24m),
 		.clk48m(clk48m),
+		.clk96m(clk96m),
 		.clkint(clkint),
+		.rst(rst_soc),
 		.btn(btn),
 		.led(led),
 		.uart_tx(uart_tx),
@@ -180,17 +179,12 @@ module top_fpga(
 		.lcd_rst(lcd_rst),
 		.lcd_fmark(lcd_fmark),
 		.lcd_blen(lcd_blen),
+		.psrama_sio(psrama_sio),
 		.psrama_nce(psrama_nce),
 		.psrama_sclk(psrama_sclk),
-		.psrama_sout(psrama_sout),
-		.psrama_sin(psrama_sin),
-		.psrama_oe(psrama_oe),
+		.psramb_sio(psramb_sio),
 		.psramb_nce(psramb_nce),
 		.psramb_sclk(psramb_sclk),
-		.psramb_sin(psramb_sin),
-		.psramb_sout(psramb_sout),
-		.psramb_oe(psramb_oe),
-
 		.flash_nce(flash_cs),
 		.flash_selected(flash_selected),
 		.flash_sclk(flash_sclk),
@@ -237,12 +231,14 @@ module top_fpga(
 		.pmod_oe(pmod_oe)
 	);
 
-
-	pll_8_48 pll(
-		.clki(clk),
-		.clko(clk48m)
+	sysmgr sysmgr_I (
+		.clk_in(clk),
+		.rst_in(1'b0),
+		.clk_24m(clk24m),
+		.clk_48m(clk48m),
+		.clk_96m(clk96m),
+		.rst_out(rst_soc)
 	);
-//	assign clk=clk48m;
 
 	hdmi_encoder hdmi_encoder(
 		.clk_8m(clk),
@@ -259,11 +255,6 @@ module top_fpga(
 	);
 
 	genvar i;
-	//Note: TRELLIS_IO has a T-ristate input, which does the opposite of OE.
-	for (i=0; i<4; i++) begin
-		TRELLIS_IO #(.DIR("BIDIR")) psrama_sio_tristate[i] (.I(psrama_sout[i]),.T(!psrama_oe),.B(psrama_sio[i]),.O(psrama_sin[i]));
-		TRELLIS_IO #(.DIR("BIDIR")) psramb_sio_tristate[i] (.I(psramb_sout[i]),.T(!psramb_oe),.B(psramb_sio[i]),.O(psramb_sin[i]));
-	end
 
 	TRELLIS_IO #(.DIR("BIDIR")) flash_tristate_mosi (.I(flash_sout[0]),.T(flash_bus_qpi && !flash_oe),.B(flash_mosi),.O(flash_sin[0]));
 	TRELLIS_IO #(.DIR("BIDIR")) flash_tristate_miso (.I(flash_sout[1]),.T(!flash_bus_qpi || !flash_oe),.B(flash_miso),.O(flash_sin[1]));

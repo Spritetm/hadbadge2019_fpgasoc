@@ -18,6 +18,7 @@
 #include "Vsoc.h"
 #include <verilated.h>
 #include <verilated_vcd_c.h>
+#include <verilated_fst_c.h>
 #include "psram_emu.hpp"
 #include "uart_emu.hpp"
 #include "uart_emu_gdb.hpp"
@@ -48,9 +49,9 @@ int main(int argc, char **argv) {
 	// Create an instance of our module under test
 	Vsoc *tb = new Vsoc;
 	//Create trace
-	VerilatedVcdC *trace = new VerilatedVcdC;
+	VerilatedFstC *trace = new VerilatedFstC;
 	tb->trace(trace, 99);
-	trace->open("soctrace.vcd");
+	trace->open("soctrace.fst");
 
 	tb->btn=0xff; //no buttons pressed
 	int do_trace=1;
@@ -59,11 +60,11 @@ int main(int argc, char **argv) {
 	Psram_emu psramb=Psram_emu(8*1024*1024);
 	psrama.force_qpi(); psramb.force_qpi();
 	//ToDo: load elfs so we can mark ro sections as read-only
-	psrama.load_file_nibbles("boot/rom.bin", 0, false, false);
-	psramb.load_file_nibbles("boot/rom.bin", 0, false, true);
+	psrama.load_file_interleaved("boot/rom.bin", 0, false, false);
+	psramb.load_file_interleaved("boot/rom.bin", 0, false, true);
 
-	psrama.load_file_nibbles("ipl/ipl.bin", 0x2000, false, false);
-	psramb.load_file_nibbles("ipl/ipl.bin", 0x2000, false, true);
+	psrama.load_file_interleaved("ipl/ipl.bin", 0x2000, false, false);
+	psramb.load_file_interleaved("ipl/ipl.bin", 0x2000, false, true);
 
 	Uart_emu uart=Uart_emu(64);
 //	Uart_emu_gdb uart=Uart_emu_gdb(64);
@@ -80,6 +81,8 @@ int main(int argc, char **argv) {
 	int pixel_clk=0;
 	int clkint=0;
 	int abort_timer=0;
+	tb->rst = 1;
+
 	while(1) {
 		ts++;
 		clkint+=123;
@@ -91,30 +94,45 @@ int main(int argc, char **argv) {
 			if (abort_timer==32) break;
 		}
 		tb->uart_rx=uart_get(ts*21);
-		int sina, sinb, rx;
-		do_abort |= psrama.eval(tb->psrama_sclk, tb->psrama_nce, tb->psrama_sout, tb->psrama_oe, &sina);
-		do_abort |= psramb.eval(tb->psramb_sclk, tb->psramb_nce, tb->psramb_sout, tb->psramb_oe, &sinb);
-		uart.eval(tb->clk48m, tb->uart_tx, &rx);
-		tb->uart_rx=rx;
-		pixel_clk=!pixel_clk;
-		tb->vid_pixelclk=pixel_clk?1:0;
-		tb->irda_rx=tb->irda_tx;
-		tb->adc4=tb->adcrefout?0:1;
-		tb->clk48m = 1;
-		tb->flash_sin = ts&0xf;
-		tb->eval();
-		tb->psrama_sin=sina;
-		tb->psramb_sin=sinb;
-		if (do_trace) trace->dump(tracepos*21);
-		do_abort |= psrama.eval(tb->psrama_sclk, tb->psrama_nce, tb->psrama_sout, tb->psrama_oe, &sina);
-		do_abort |= psramb.eval(tb->psramb_sclk, tb->psramb_nce, tb->psramb_sout, tb->psramb_oe, &sinb);
-		uart.eval(tb->clk48m, tb->uart_tx, &rx);
-		tb->uart_rx=rx;
-		tb->clk48m = 0;
-		tb->eval();
-		tb->psrama_sin = sina;
-		tb->psramb_sin = sinb;
-		if (do_trace) trace->dump(tracepos*21+10);
+		int rx;
+
+		if (ts > 10)
+			tb->rst = 0;
+
+		for (int c=0; c<4; c++)
+		{
+			int v;
+
+			do_abort |= psrama.eval(tb->psrama_sclk, tb->psrama_nce,
+				tb->soc__DOT__qspi_phy_psrama_I__DOT__spi_io_or,
+				tb->soc__DOT__qspi_phy_psrama_I__DOT__spi_io_tr,
+				&v
+			);
+			tb->soc__DOT__qspi_phy_psrama_I__DOT__spi_io_ir = v;
+
+			do_abort |= psramb.eval(tb->psramb_sclk, tb->psramb_nce,
+				tb->soc__DOT__qspi_phy_psramb_I__DOT__spi_io_or,
+				tb->soc__DOT__qspi_phy_psramb_I__DOT__spi_io_tr,
+				&v
+			);
+			tb->soc__DOT__qspi_phy_psramb_I__DOT__spi_io_ir = v;
+
+			uart.eval(tb->clk48m, tb->uart_tx, &rx);
+
+			tb->uart_rx = rx;
+			tb->irda_rx = tb->irda_tx;
+			tb->flash_sin = ts & 0xf;
+
+			pixel_clk = !pixel_clk;
+			tb->vid_pixelclk=pixel_clk?1:0;
+			tb->adc4=tb->adcrefout?0:1;
+			tb->clk48m = (c >> 1) & 1;
+			tb->clk96m = (c     ) & 1;
+			tb->eval();
+
+			if (do_trace) trace->dump(tracepos*20 + c*5);
+		}
+
 		do_trace = tb->trace_en;
 		if (vid && pixel_clk) {
 			vid->next_pixel(tb->vid_red, tb->vid_green, tb->vid_blue, &fetch_next, &next_line, &next_field);

@@ -53,7 +53,7 @@ int Psram_emu::load_file(const char *file, int offset, bool is_ro) {
 	return 0;
 }
 
-int Psram_emu::load_file_nibbles(const char *file, int offset, bool is_ro, bool msb_nibble) {
+int Psram_emu::load_file_interleaved(const char *file, int offset, bool is_ro, bool msb) {
 	FILE *f=fopen(file, "rb");
 	if (f==NULL) {
 		perror(file);
@@ -66,10 +66,10 @@ int Psram_emu::load_file_nibbles(const char *file, int offset, bool is_ro, bool 
 	fread(buf, 1, fsize, f);
 	fclose(f);
 	for (int i=0; i<fsize; i+=2) {
-		if (msb_nibble) {
-			m_mem[(offset+i)/2]=((buf[i]>>4)<<4)+(buf[i+1]>>4);
+		if (msb) {
+			m_mem[(offset+i)/2]= buf[i+1];
 		} else {
-			m_mem[(offset+i)/2]=((buf[i]&0xf)<<4)+(buf[i+1]&0xf);
+			m_mem[(offset+i)/2]= buf[i];
 		}
 	}
 	if (is_ro) {
@@ -160,7 +160,7 @@ int Psram_emu::eval(int clk, int ncs, int sin, int oe, int *sout) {
 		m_sout_cur=m_sout_next;
 	}
 	m_oldclk=clk;
-	*sout=ncs?0:m_sout_next;
+	*sout=ncs?0:m_sout_cur;
 	return 0;
 }
 

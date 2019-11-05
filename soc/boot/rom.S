@@ -139,21 +139,37 @@ kill:
 is_real_badge:
 
 //Bitbang PSRAM port initialization command
-bbpsraminit:
-	la a1, psram_init
-	li a2, MISC_OFFSET //bitbang port
-bbloop:
-	lbu a3, 0(a1)
-	sw a3, MISC_PSRAMOVRA_REG(a2)
-	sw a3, MISC_PSRAMOVRB_REG(a2)
-	addi a1, a1, 1
-	bne zero, a3, bbloop
+psram_init:
+	// Debug
+	li a2, MISC_OFFSET
+	li a1, 0x2
+	sw a1, MISC_LED_REG(a2)
 
-	//flush cache to psram
+	// Load base offset
+	li a1, PSRAM_CMD_OFFSET
+
+	// Request manual control
+	li a2, 2
+	sw a2, PSRAM_CMD_CSR(a1)
+
+	// Send single command
+	li a2, 0x3535
+	sw a2, PSRAM_CMD_SPI_WR_16B(a1)
+
+	// Release manual control
+	li a2, 4
+	sw a2, PSRAM_CMD_CSR(a1)
+
+	// Wait for completion
+1:
+	lw a2, PSRAM_CMD_CSR(a1)
+	andi a2, a2, 16
+	beq zero, a2, 1b
+
+	// Flush cache to psram
 	li a1, MACH_FLUSH_REGION
 	li a2, MACH_RAM_SIZE
 	sw a2, 0(a1)
-
 
 //Memtest
 memtest_start:
@@ -286,20 +302,4 @@ jtagwait:
 secondcpu:
 secondcpuhang:
 	j secondcpuhang
-
-
-
-//Bitbang SPI port to get the PSRAM to QPI mode (command 0x35)
-psram_init:
-	.byte 0xDC, 0xCC //lower sck
-	.byte 0xCC, 0xEC //bit 7
-	.byte 0xCC, 0xEC //bit 6
-	.byte 0xCD, 0xED //bit 5
-	.byte 0xCD, 0xED //bit 4
-	.byte 0xCC, 0xEC //bit 3
-	.byte 0xCD, 0xED //bit 2
-	.byte 0xCC, 0xEC //bit 1
-	.byte 0xCD, 0xED //bit 0
-	.byte 0xDD, 0x4F //raise sck, clear override
-	.byte 0
 
