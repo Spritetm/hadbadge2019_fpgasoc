@@ -184,7 +184,7 @@ void main(int argc, char **argv) {
 	uint8_t y_offset = 0;
 	uint8_t tile_index = 0;
 
-	// Place tiles for Xbox sphere (circle)
+	// Place tiles for Xbox sphere (actually circle since we're 2D)
 	for (uint8_t x = 0; x < 16; x++) {
 		x_offset = XBOX_X + x;
 		for (uint8_t y = 0; y < 16; y++) {
@@ -203,7 +203,7 @@ void main(int argc, char **argv) {
 
 	for (uint8_t i = 0; i < 60; i++) {
 		scale -= 0.1;
-		gfx_set_xlate_val(0, 240, 128, scale, 0); // End position	
+		gfx_set_xlate_val(0, 240, 128, scale, 0);
 		__INEFFICIENT_delay(1);
 	}
 
