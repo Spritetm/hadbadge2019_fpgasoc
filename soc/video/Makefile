@@ -1,6 +1,7 @@
 SRC := ram_dp_24x2048_sim.v video_mem.v vid_linerenderer.v vid.v ../qpi_cache/qpimem_dma_rdr.v
 SRC += vid_palettemem_sim.v vid_tilemapmem_sim.v vid_tilemem_sim.v vgapal.c ../mul_18x18_sim.v
 SRC += vid_spriteeng.v vid_sprite_linebuf_sim.v vid_spritemem_sim.v video_alphamixer.v
+SRC += ram_dp_32x2048_sim.v
 
 SRC_SIM := video_renderer.cpp verilator_main.cpp verilator_options.cpp verilator_setup.cpp
 
