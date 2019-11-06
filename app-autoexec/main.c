@@ -8,7 +8,7 @@
 #include "gfx_load.h"
 #include "cache.h"
 
-//The background image got linked into the binary of this app, and these two chars are the first
+//The image files that got linked into the binary of this app, and these two chars are the first
 //and one past the last byte of it.
 extern char _binary_switch_bg_png_start;
 extern char _binary_switch_bg_png_end;
@@ -40,7 +40,10 @@ uint32_t *GFXSPRITES = (uint32_t *)0x5000C000;
 #define TILEGRID_WIDTH 30
 #define TILEGRID_HEIGHT 20
 
-// Tileset indices for Switch style splash
+/////////////////////////////////////////////////////////////////////////////
+//
+//  Constants for splash screen inspired by Nintendo Switch
+
 #define SWITCH_LEFT_X 11
 #define SWITCH_LEFT_Y 3
 #define SWITCH_RIGHT_X 15
@@ -101,7 +104,17 @@ uint32_t counter60hz(void) {
 	return GFX_REG(GFX_VBLCTR_REG);
 }
 
-void main(int argc, char **argv) {
+/////////////////////////////////////////////////////////////////////////////
+//
+//  Called by main() to run splash screen inspired by Nintendo Switch. This
+//  function is fully self-contained and can be main() for a standaline app.
+//  Be sure to copy the relevant constant #define above if doing so.
+
+void switch_splash() {	
+
+	/////////////////////////////////////////////////////////////////////////
+	//  Generic badge app boilerplate
+
 	//Allocate framebuffer memory
 	fbmem=malloc(320*512/2);
 
@@ -143,7 +156,6 @@ void main(int argc, char **argv) {
 	cache_flush(fbmem, fbmem+FB_WIDTH*FB_HEIGHT);
 
 	//Copied from IPL not sure why yet
-	GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_LAYEREN_TILEB|GFX_LAYEREN_TILEA|GFX_LAYEREN_SPR;
 	GFXPAL[FB_PAL_OFFSET+0x100]=0x00ff00ff; //Note: For some reason, the sprites use this as default bgnd. ToDo: fix this...
 	GFXPAL[FB_PAL_OFFSET+0x1ff]=0x40ff00ff; //so it becomes this instead.
 
@@ -163,9 +175,9 @@ void main(int argc, char **argv) {
 	//Clear sprites that IPL may have loaded
 	memset(GFXSPRITES,0,0x4000);
 
-	/********************************************************************************
-	 * Put your user code in there, return when it's time to exit back to bage menu *
-	 * *****************************************************************************/
+	/////////////////////////////////////////////////////////////////////////
+	//  Code specific to Switch splash
+
 	uint8_t x_offset = 0;
 	uint8_t y_offset = 0;
 	uint8_t tile_index = 0;
@@ -196,7 +208,7 @@ void main(int argc, char **argv) {
 	__tile_b_translate(0,y_translate);
 
 	// Tiles are set up, we can now enable layers
-	 GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_LAYEREN_TILEA|GFX_LAYEREN_TILEB;
+	GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_LAYEREN_TILEA|GFX_LAYEREN_TILEB;
 
 	// Wait a bit before starting animation
 	__INEFFICIENT_delay(100);
@@ -239,4 +251,12 @@ void main(int argc, char **argv) {
 
 	// Logo complete, allow admiration for a short time before exiting.
 	__INEFFICIENT_delay(750);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+//
+//  Randomly choose one of available splash screens to display
+
+void main(int argc, char **argv) {
+	switch_splash();
 }

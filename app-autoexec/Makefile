@@ -1,7 +1,7 @@
 #This is an example Makefile to build the 'Hello world' example.
 
 #The name of the app. The resulting file will be called APPNAME.elf.
-APPNAME = switchsplash
+APPNAME = autoexec
 
 #Option 1 of indicating what files to compile: tell the SDK what directories contain
 #source files. The SDK will then compile everything in these directories.
