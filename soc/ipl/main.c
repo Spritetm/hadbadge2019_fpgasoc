@@ -444,6 +444,7 @@ void main() {
 	SYNTHREG(0x50) = 0x00251E00;	
 	SYNTHREG(0x60) = 0x00352400;	
 	SYNTHREG(0x70) = 0x00453000;	
+
     
 	//See if there's an autoexec.elf we can run.
 	const char *autoexec;
