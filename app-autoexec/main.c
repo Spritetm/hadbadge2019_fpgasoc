@@ -258,5 +258,28 @@ void switch_splash() {
 //  Randomly choose one of available splash screens to display
 
 void main(int argc, char **argv) {
-	switch_splash();
+	uint32_t random = 0xFF;
+
+	// Will look at the lowest few bits of the randomly generated number,
+	// number depends on how many possibilities we can launch. With 6
+	// splash screens, the next highest power of two is 8, so we look at
+	// 3 bits. (2^3 = 8) If the number is too big, rather than consuming
+	// CPU cycles to do math and scale it down, we'll toss that number and
+	// grab another one. Reading registers are cheap and fast.
+	uint32_t bitmask = 0x7; // Lowest three bits
+	while(random >= 6) {
+		random = MISC_REG(MISC_RNG_REG) & bitmask;
+	}
+
+	switch(random) {
+		case 0:
+		case 1:
+		case 2:
+			switch_splash();
+			break;
+		case 3:
+		case 4:
+		case 5:
+			break;
+	}
 }
