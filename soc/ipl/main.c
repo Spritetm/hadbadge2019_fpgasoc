@@ -445,24 +445,26 @@ void main() {
 	SYNTHREG(0x60) = 0x00352400;	
 	SYNTHREG(0x70) = 0x00453000;	
     
-
-	//See if there's an autoexec.elf we can run.
-	const char *autoexec;
-	if (booted_from_cartridge()) {
-		autoexec="cart:autoexec.elf";
-	} else {
-		autoexec="int:autoexec.elf";
-	}
-	FILE *f=fopen(autoexec, "r");
-	if (f!=NULL) {
-		fclose(f);
-		printf("Found %s. Executing\n", autoexec);
-		load_tiles();
-		usb_msc_off();
-		start_app(autoexec);
-		printf("%s done.\n", autoexec);
-	} else {
-		printf("No %s found; not running\n", autoexec);
+	//Skip autoexec when user is holding down START
+	if(!(MISC_REG(MISC_BTN_REG)&BUTTON_START)) {
+		//See if there's an autoexec.elf we can run.
+		const char *autoexec;
+		if (booted_from_cartridge()) {
+			autoexec="cart:autoexec.elf";
+		} else {
+			autoexec="int:autoexec.elf";
+		}
+		FILE *f=fopen(autoexec, "r");
+		if (f!=NULL) {
+			fclose(f);
+			printf("Found %s. Executing\n", autoexec);
+			load_tiles();
+			usb_msc_off();
+			start_app(autoexec);
+			printf("%s done.\n", autoexec);
+		} else {
+			printf("No %s found; not running\n", autoexec);
+		}
 	}
 
 	while(1) {
