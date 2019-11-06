@@ -445,8 +445,8 @@ void main() {
 	SYNTHREG(0x60) = 0x00352400;	
 	SYNTHREG(0x70) = 0x00453000;	
     
-	//Skip autoexec when user is holding down START
-	if(!(MISC_REG(MISC_BTN_REG)&BUTTON_START)) {
+	//Skip autoexec when user is holding down the designated bypass key
+	if(!(MISC_REG(MISC_BTN_REG)&BUTTON_B)) {
 		//See if there's an autoexec.elf we can run.
 		const char *autoexec;
 		if (booted_from_cartridge()) {
