@@ -23,13 +23,20 @@ uint8_t* fbmem;
 #define FB_PAL_OFFSET 256
 
 // Horizontal velocity of player per frame
-#define PLAYER_VELOCITY (0.4f)
+#define PLAYER_VELOCITY 1
+#define PLAYER_Y 290
+#define PLAYER_INDEX 129
+#define PLAYER_SPRITE_INDEX 0
 #define ALIEN_VELOCITY_X (0.05f)
 #define ALIEN_VELOCITY_Y (10.0f)
 
 #define ALIEN_COUNT 24
 #define ALIEN_TOP_INDEX 128
+#define BULLET_SPRITE_INDEX_START 4
 #define BULLET_COUNT 4
+#define BULLET_INDEX 131
+#define BULLET_START_Y (15 * 16)
+#define BULLET_FIRING_PERIOD 10000
 
 // extern volatile uint32_t MISC[];
 // #define MISC_REG(i) MISC[(i) / 4]
@@ -224,31 +231,70 @@ void main(int argc, char** argv) {
     __render_alien(&aliens[i]);
   }
 
-  // Generate the player
-  __tile_a_set(15, 16, 129);
-  __tile_a_set(16, 16, 130);
-  __tile_a_set(15, 17, 145);
-  __tile_a_set(16, 17, 146);
-  __tile_a_set(15, 18, 161);
-  __tile_a_set(16, 18, 162);
-
-  fprintf(console, "\0330X\0330YINVADERS");
+  // Bullet storage
+  bullet_t bullets[BULLET_COUNT];
+  // Start bullets off screen. -16 is a magic value YOLO
+  for (uint8_t i = 0; i < BULLET_COUNT; i++) {
+    bullets[i].y = -16;
+  }
 
   // Primary game loop
   int game_over = 0;
-  float player_dx = 0;
+  int player_x = 0;
   float alien_dx = 0;
   float alien_dy = 0;
   uint32_t last_frame;
+  uint32_t counter = 0;
+  uint32_t next_fire = counter + BULLET_FIRING_PERIOD;
+
   while (!game_over) {
-    if (MISC_REG(MISC_BTN_REG) & BUTTON_LEFT) {
-      player_dx += PLAYER_VELOCITY;
-    }
-    if (MISC_REG(MISC_BTN_REG) & BUTTON_RIGHT) {
-      player_dx -= PLAYER_VELOCITY;
-    }
-    if (MISC_REG(MISC_BTN_REG) & BUTTON_A) {
+    if (MISC_REG(MISC_BTN_REG) & BUTTON_B) {
       game_over = 1;
+    }
+
+    // Periodically move and re-draw
+    if ((counter % 300) == 0) {
+      // Player move left
+      if (MISC_REG(MISC_BTN_REG) & BUTTON_LEFT) {
+        player_x -= PLAYER_VELOCITY;
+      }
+      // Player move right
+      if (MISC_REG(MISC_BTN_REG) & BUTTON_RIGHT) {
+        player_x += PLAYER_VELOCITY;
+      }
+
+      // Player sprites
+      __sprite_set(PLAYER_SPRITE_INDEX, player_x - 16, PLAYER_Y - 16, 16, 16,
+                   PLAYER_INDEX, 0);
+      __sprite_set(PLAYER_SPRITE_INDEX + 1, player_x, PLAYER_Y - 16, 16, 16,
+                   PLAYER_INDEX + 1, 0);
+      __sprite_set(PLAYER_SPRITE_INDEX + 2, player_x - 16, PLAYER_Y, 16, 16,
+                   PLAYER_INDEX + 16, 0);
+      __sprite_set(PLAYER_SPRITE_INDEX + 3, player_x, PLAYER_Y, 16, 16,
+                   PLAYER_INDEX + 17, 0);
+
+      // Bullets move and draw
+      for (uint8_t i = 0; i < BULLET_COUNT; i++) {
+        // Only move if bullets are on screen
+        if (bullets[i].y > -16) {
+          __sprite_set(BULLET_SPRITE_INDEX_START + i, bullets[i].x,
+                       bullets[i].y, 16, 16, BULLET_INDEX, 0);
+          bullets[i].y--;
+        }
+      }
+
+      // Fire a bullet when A pressed
+      if ((MISC_REG(MISC_BTN_REG) & BUTTON_A) && (counter > next_fire)) {
+        // Only fire if we can re-use an offscreen bullet
+        if (bullets[m_bullet_index].y <= -16) {
+          bullets[m_bullet_index].x = player_x;
+          bullets[m_bullet_index].y = BULLET_START_Y;
+          m_bullet_index = (m_bullet_index + 1) % BULLET_COUNT;
+
+          // Limit how often they can shoot
+          next_fire = counter + BULLET_FIRING_PERIOD;
+        }
+      }
     }
 
     alien_dx -= ALIEN_VELOCITY_X;
@@ -257,9 +303,10 @@ void main(int argc, char** argv) {
       alien_dy -= 512;
     }
 
-    __tile_a_translate(player_dx, 0);
+    // Move alien tiles
     __tile_b_translate(alien_dx, alien_dy);
     last_frame = __counter();
+    counter++;
   }
 
   // Print game over
