@@ -9,12 +9,18 @@
 #include "gfx_load.h"
 #include "cache.h"
 
-//The image files that got linked into the binary of this app, and these two chars are the first
+//The background image got linked into the binary of this app, and these two chars are the first
 //and one past the last byte of it.
+extern char _binary_gameboybackground_png_start;
+extern char _binary_gameboybackground_png_end;
+
+// Followed by the tileset
+extern char _binary_gameboytiles_png_start;
+extern char _binary_gameboytiles_png_end;
+
 extern char _binary_switch_bg_png_start;
 extern char _binary_switch_bg_png_end;
 
-// Followed by the tileset
 extern char _binary_switch_tileset_png_start;
 extern char _binary_switch_tileset_png_end;
 
@@ -46,6 +52,15 @@ uint32_t *GFXSPRITES = (uint32_t *)0x5000C000;
 // Tile grid constants
 #define TILEGRID_WIDTH 30
 #define TILEGRID_HEIGHT 20
+
+/////////////////////////////////////////////////////////////////////////////
+//
+//  Constants for splash screen inspired by Nintendo Gameboy (Monochrome)
+
+#define GBM_X 5
+#define GBM_Y 8
+
+#define TILE_GBM    0x0
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -143,6 +158,118 @@ void gfx_set_xlate_val(int layer, int xcenter, int ycenter, float scale, float r
 	GFX_REG(GFX_TILEA_OFF)=(i_start_y<<16)+(i_start_x&0xffff);
 	GFX_REG(GFX_TILEA_INC_COL)=(i_dx_y<<16)+(i_dx_x&0xffff);
 	GFX_REG(GFX_TILEA_INC_ROW)=(i_dy_y<<16)+(i_dy_x&0xffff);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+//
+//  Called by main() to run splash screen inspired by original monochrome
+//  Nintendo Game Boy. This function is fully self-contained and can be main()
+//  for a standaline app.
+//  Be sure to copy the relevant constant #define above if doing so.
+
+void gameboy_monochrome_splash() {
+	//Allocate framebuffer memory
+	fbmem=malloc(320*512/2);
+
+	// Turn off top row LEDs
+	MISC_REG(MISC_LED_REG)=0;
+
+	//Set up the framebuffer address.
+	GFX_REG(GFX_FBADDR_REG)=((uint32_t)fbmem)&0xFFFFFF;
+	//We're going to use a pitch of 512 pixels, and the fb palette will start at 256.
+	GFX_REG(GFX_FBPITCH_REG)=(FB_PAL_OFFSET<<GFX_FBPITCH_PAL_OFF)|(512<<GFX_FBPITCH_PITCH_OFF);
+	//Blank out fb while we're loading stuff.
+	GFX_REG(GFX_LAYEREN_REG)=0;
+
+	//Load up the default tileset and font.
+	//ToDo: loading pngs takes a long time... move over to pcx instead.
+	printf("Loading tiles...\n");
+	int gfx_tiles_err = gfx_load_tiles_mem(GFXTILES, &GFXPAL[0], &_binary_gameboytiles_png_start, (&_binary_gameboytiles_png_end-&_binary_gameboytiles_png_start));
+	printf("Tiles initialized err=%d\n", gfx_tiles_err);
+
+
+	//The IPL leaves us with a tileset that has tile 0 to 127 map to ASCII characters, so we do not need to
+	//load anything specific for this. In order to get some text out, we can use the /dev/console device
+	//that will use these tiles to put text in a tilemap. It uses escape codes to do so, see
+	//ipl/gloss/console_out.c for more info.
+	//Note that without the setvbuf command, no characters would be printed until 1024 characters are
+	//buffered.
+	console=fopen("/dev/console", "w");
+	setvbuf(console, NULL, _IOLBF, 1024); //make console line buffered
+	if (console==NULL) {
+		printf("Error opening console!\n");
+	}
+
+	//we tell it to start writing from entry 0.
+	//Now, use a library function to load the image into the framebuffer memory. This function will also set up the palette entries,
+	//PAL offset changes the colors that the 16-bit png maps to?
+	gfx_load_fb_mem(fbmem, &GFXPAL[FB_PAL_OFFSET], 4, 512, &_binary_gameboybackground_png_start, (&_binary_gameboybackground_png_end-&_binary_gameboybackground_png_start));
+
+	//Flush the memory region to psram so the GFX hw can stream it from there.
+	cache_flush(fbmem, fbmem+FB_WIDTH*FB_HEIGHT);
+
+	//Copied from IPL not sure why yet
+	GFXPAL[FB_PAL_OFFSET+0x100]=0x00ff00ff; //Note: For some reason, the sprites use this as default bgnd. ToDo: fix this...
+	GFXPAL[FB_PAL_OFFSET+0x1ff]=0x40ff00ff; //so it becomes this instead.
+
+	//This makes sure not to read button still pressed from badge menu selection
+	__button_wait_for_release();
+
+	//Set map to tilemap B, clear tilemap, set attr to 0
+	//Not sure yet what attr does, but tilemap be is important as it will have the effect of layering
+	//on top of our scrolling game
+	fprintf(console, "\0331M\033C\0330A\n");
+	//Note that without the newline at the end, all printf's would stay in the buffer.
+
+
+	//Clear both tilemaps
+	memset(GFXTILEMAPA,0,0x4000);
+	memset(GFXTILEMAPB,0,0x4000);
+	//Clear sprites that IPL may have loaded
+	memset(GFXSPRITES,0,0x4000);
+
+	/********************************************************************************
+	 * Put your user code in there, return when it's time to exit back to bage menu *
+	 * *****************************************************************************/
+	uint8_t x_offset = 0;
+	uint8_t y_offset = 0;
+	uint8_t tile_index = 0;
+
+	// Place first row of tiles for "Superc" and part of "o"
+	for (uint8_t x = 0; x < 16; x++) {
+		x_offset = GBM_X + x;
+		for (uint8_t y = 0; y < 4; y++) {
+			y_offset = GBM_Y + y;
+			tile_index = TILE_GBM + x + 0x10*y;
+			__tile_a_set(x_offset, y_offset, tile_index);
+		}
+	}
+
+	// Finish with remaining row for rest of "o" and "n"
+	for (uint8_t x = 0; x < 6; x++) {
+		x_offset = GBM_X + 0x10 + x;
+		for (uint8_t y = 0; y < 4; y++) {
+			y_offset = GBM_Y + y;
+			tile_index = TILE_GBM + x + 0x40 + 0x10*y;
+			__tile_a_set(x_offset, y_offset, tile_index);
+		}
+	}
+
+	// Move A off screen
+	int16_t y_offscreen = 64*16*(GBM_Y+4);
+	__tile_a_translate(0,y_offscreen);
+
+	// Tiles are set up, we can now enable layers
+	GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_LAYEREN_TILEA;
+
+	// Bring A back down
+	for (int16_t y = y_offscreen; y > 0; y -= 8) {
+		__tile_a_translate(0,y);
+		__INEFFICIENT_delay(1);
+	}
+
+	// Logo complete, allow admiration for a short time before exiting.
+	__INEFFICIENT_delay(750);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -409,12 +536,15 @@ void main(int argc, char **argv) {
 	// CPU cycles to do math and scale it down, we'll toss that number and
 	// grab another one. Reading registers are cheap and fast.
 	uint32_t bitmask = 0x7; // Lowest three bits
+
 	while(random >= 6) {
 		random = MISC_REG(MISC_RNG_REG) & bitmask;
 	}
 
 	switch(random) {
 		case 0:
+			gameboy_monochrome_splash();
+			break;
 		case 1:
 		case 2:
 			switch_splash();
