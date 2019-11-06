@@ -1,3 +1,13 @@
+/////////////////////////////////////////////////////////////////////////////
+//
+//	2019 Hackaday Supercon badge startup splash screen app
+//
+//	A compilation of multiple splash screens, each inspired by a piece of
+//	gaming hardware as befitting the Game Boy form factor of the badge.
+//
+//	Designed to be launched upon startup, the main() function will randomly
+//	choose one of the available splash screens to display.
+
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -67,7 +77,7 @@ uint32_t *GFXSPRITES = (uint32_t *)0x5000C000;
 
 /////////////////////////////////////////////////////////////////////////////
 //
-//  Constants for splash screen inspired by Nintendo Gameboy (Monochrome)
+//	Constants for splash screen inspired by Nintendo Gameboy (Monochrome)
 
 #define GBM_X 5
 #define GBM_Y 8
@@ -76,7 +86,7 @@ uint32_t *GFXSPRITES = (uint32_t *)0x5000C000;
 
 /////////////////////////////////////////////////////////////////////////////
 //
-//  Constants for splash screen inspired by Sony PlayStation
+//	Constants for splash screen inspired by Sony PlayStation
 
 #define PS_TEXT_Y 5
 #define PS_WAVE_Y 9
@@ -86,7 +96,7 @@ uint32_t *GFXSPRITES = (uint32_t *)0x5000C000;
 
 /////////////////////////////////////////////////////////////////////////////
 //
-//  Constants for splash screen inspired by SEGA
+//	Constants for splash screen inspired by SEGA
 
 #define SEGA_VERTICAL_POS 	8
 #define SEGA_HORIZONTAL_POS 3
@@ -98,7 +108,7 @@ uint32_t *GFXSPRITES = (uint32_t *)0x5000C000;
 
 /////////////////////////////////////////////////////////////////////////////
 //
-//  Constants for splash screen inspired by Nintendo Switch
+//	Constants for splash screen inspired by Nintendo Switch
 
 #define SWITCH_LEFT_X 11
 #define SWITCH_LEFT_Y 3
@@ -114,14 +124,14 @@ uint32_t *GFXSPRITES = (uint32_t *)0x5000C000;
 
 /////////////////////////////////////////////////////////////////////////////
 //
-//  Constants for splash screen inspired by Xbox One
+//	Constants for splash screen inspired by Xbox One
 
 #define XBOX_X 7
 #define XBOX_Y 0
 
 #define TILE_XBOX    0x0
 
-//  End splash screen constants
+//	End splash screen constants
 //
 /////////////////////////////////////////////////////////////////////////////
 
@@ -196,12 +206,19 @@ void gfx_set_xlate_val(int layer, int xcenter, int ycenter, float scale, float r
 
 /////////////////////////////////////////////////////////////////////////////
 //
-//  Called by main() to run splash screen inspired by original monochrome
-//  Nintendo Game Boy. This function is fully self-contained and can be main()
-//  for a standaline app.
-//  Be sure to copy the relevant constant #define above if doing so.
+//	Called by main() to run splash screen inspired by original monochrome
+//	Nintendo Game Boy. This function is fully self-contained and can be main()
+//	for a standaline app.
+//	Be sure to copy the relevant constant #define above if doing so.
+//
+//	Art by Emily Velasco (Twitter @MLE_Online)
+//	Code by Roger Cheng (Twitter @Regorlas)
+//	Sound by (TBD)
 
 void gameboy_monochrome_splash() {
+	/////////////////////////////////////////////////////////////////////////
+	//	Generic badge app boilerplate
+
 	//Allocate framebuffer memory
 	fbmem=malloc(320*512/2);
 
@@ -262,9 +279,9 @@ void gameboy_monochrome_splash() {
 	//Clear sprites that IPL may have loaded
 	memset(GFXSPRITES,0,0x4000);
 
-	/********************************************************************************
-	 * Put your user code in there, return when it's time to exit back to bage menu *
-	 * *****************************************************************************/
+	/////////////////////////////////////////////////////////////////////////
+	//	Code specific to Game Boy (monochrome) splash
+
 	uint8_t x_offset = 0;
 	uint8_t y_offset = 0;
 	uint8_t tile_index = 0;
@@ -308,10 +325,16 @@ void gameboy_monochrome_splash() {
 
 /////////////////////////////////////////////////////////////////////////////
 //
-//  Called by main() to run splash screen inspired by Game Boy Color. This
-//  function is fully self-contained and can be main() for a standaline app.
+//	Called by main() to run splash screen inspired by Game Boy Color. This
+//	function is fully self-contained and can be main() for a standaline app.
+//
+//	Art and Code by Mike Szczys (Twitter @szczys)
+//	Sound by (TBD)
 
 void gameboy_color_splash() {
+	/////////////////////////////////////////////////////////////////////////
+	//	Generic badge app boilerplate
+
 	//Allocate framebuffer memory
 	fbmem=malloc(320*512/2);
 
@@ -376,9 +399,9 @@ void gameboy_color_splash() {
 	//TILEA is where text is printed by default
 	 GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_LAYEREN_TILEA|GFX_LAYEREN_TILEB|GFX_LAYEREN_SPR;
 
-	/********************************************************************************
-	 * Put your user code in there, return when it's time to exit back to bage menu *
-	 * *****************************************************************************/
+	/////////////////////////////////////////////////////////////////////////
+	//	Code specific to Game Boy Color splash
+
 	uint8_t tilegrid_width = 30;
 	uint8_t tilegrid_height = 20;
 
@@ -464,11 +487,20 @@ void gameboy_color_splash() {
 
 /////////////////////////////////////////////////////////////////////////////
 //
-//  Called by main() to run splash screen inspired by Sony PlayStation. This
-//  function is fully self-contained and can be main() for a standaline app.
-//  Be sure to copy the relevant constant #define above if doing so.
+//	Called by main() to run splash screen inspired by Sony PlayStation. This
+//	function is fully self-contained and can be main() for a standaline app.
+//	Be sure to copy the relevant constant #define above if doing so.
+//
+//	Recreation of distinctive PlayStation font released as Donerware and
+//	available from: https://www.dafont.com/phatboy-slim.font
+//
+//	Art and Code by Roger Cheng (Twitter @Regorlas)
+//	Sound by (TBD)
 
 void playstation_splash() {
+	/////////////////////////////////////////////////////////////////////////
+	//	Generic badge app boilerplate
+
 	//Allocate framebuffer memory
 	fbmem=malloc(320*512/2);
 
@@ -529,9 +561,9 @@ void playstation_splash() {
 	//Clear sprites that IPL may have loaded
 	memset(GFXSPRITES,0,0x4000);
 
-	/********************************************************************************
-	 * Put your user code in there, return when it's time to exit back to bage menu *
-	 * *****************************************************************************/
+	/////////////////////////////////////////////////////////////////////////
+	//	Code specific to PlayStation splash
+
 	uint8_t tile_index = 0;
 
 	// Place tiles for waves
@@ -542,8 +574,7 @@ void playstation_splash() {
 		}
 	}
 
-	// Place tiles that block the logo for fading
-	// Donation-ware PlayStation font from https://www.dafont.com/phatboy-slim.font
+	// Place tiles that block the logo for fading effect
 	for (uint8_t x = 0; x < 18; x++) {
 		__tile_a_set(x+14, PS_TEXT_Y  , TILE_PS_WAVE1+1);
 		__tile_a_set(x+14, PS_TEXT_Y+1, TILE_PS_WAVE1+1);
@@ -571,11 +602,19 @@ void playstation_splash() {
 
 /////////////////////////////////////////////////////////////////////////////
 //
-//  Called by main() to run splash screen inspired by SEGA. This
-//  function is fully self-contained and can be main() for a standaline app.
-//  Be sure to copy the relevant constant #define above if doing so.
+//	Called by main() to run splash screen inspired by SEGA. This
+//	function is fully self-contained and can be main() for a standaline app.
+//	Be sure to copy the relevant constant #define above if doing so.
+//
+//	Recreation of distinct SEGA font via https://fontmeme.com/sega-font/
+//
+//	Art and Code by Roger Cheng (Twitter @Regorlas)
+//	Sound by (TBD)
 
 void sega_splash() {
+	/////////////////////////////////////////////////////////////////////////
+	//	Generic badge app boilerplate
+
 	//Allocate framebuffer memory
 	fbmem=malloc(320*512/2);
 
@@ -636,9 +675,9 @@ void sega_splash() {
 	//Clear sprites that IPL may have loaded
 	memset(GFXSPRITES,0,0x4000);
 
-	/********************************************************************************
-	 * Put your user code in there, return when it's time to exit back to bage menu *
-	 * *****************************************************************************/
+	/////////////////////////////////////////////////////////////////////////
+	//	Code specific to SEGA splash
+
 	uint8_t x_offset = 0;
 	uint8_t y_offset = 0;
 	uint8_t tile_index = 0;
@@ -654,7 +693,7 @@ void sega_splash() {
 	for (uint8_t y=0; y<4; y++) {
 		y_offset = SEGA_VERTICAL_POS+y;
 		// A full row of tiles in the tileset has "SUPER" and a bit of "C"
-		//  spread across 16 tiles wide and 4 tiles high.
+		//	spread across 16 tiles wide and 4 tiles high.
 		for (uint8_t x=0; x<0x10; x++) {
 			x_offset = SEGA_HORIZONTAL_POS+x;
 			tile_index = TILE_SEGA_ROW1+x+0x10*y;
@@ -745,14 +784,16 @@ void sega_splash() {
 
 /////////////////////////////////////////////////////////////////////////////
 //
-//  Called by main() to run splash screen inspired by Nintendo Switch. This
-//  function is fully self-contained and can be main() for a standaline app.
-//  Be sure to copy the relevant constant #define above if doing so.
+//	Called by main() to run splash screen inspired by Nintendo Switch. This
+//	function is fully self-contained and can be main() for a standaline app.
+//	Be sure to copy the relevant constant #define above if doing so.
+//
+//	Art and Code by Roger Cheng (Twitter @Regorlas)
+//	Sound by (TBD)
 
 void switch_splash() {	
-
 	/////////////////////////////////////////////////////////////////////////
-	//  Generic badge app boilerplate
+	//	Generic badge app boilerplate
 
 	//Allocate framebuffer memory
 	fbmem=malloc(320*512/2);
@@ -815,7 +856,7 @@ void switch_splash() {
 	memset(GFXSPRITES,0,0x4000);
 
 	/////////////////////////////////////////////////////////////////////////
-	//  Code specific to Switch splash
+	//	Code specific to Switch splash
 
 	uint8_t x_offset = 0;
 	uint8_t y_offset = 0;
@@ -894,11 +935,17 @@ void switch_splash() {
 
 /////////////////////////////////////////////////////////////////////////////
 //
-//  Called by main() to run splash screen inspired by Xbox One. This
-//  function is fully self-contained and can be main() for a standaline app.
-//  Be sure to copy the relevant constant #define above if doing so.
+//	Called by main() to run splash screen inspired by Xbox One. This
+//	function is fully self-contained and can be main() for a standaline app.
+//	Be sure to copy the relevant constant #define above if doing so.
+//
+//	Art and Code by Roger Cheng (Twitter @Regorlas)
+//	Sound by (TBD)
 
 void xbox_splash() {
+	/////////////////////////////////////////////////////////////////////////
+	//	Generic badge app boilerplate
+
 	//Allocate framebuffer memory
 	fbmem=malloc(320*512/2);
 
@@ -959,9 +1006,9 @@ void xbox_splash() {
 	//Clear sprites that IPL may have loaded
 	memset(GFXSPRITES,0,0x4000);
 
-	/********************************************************************************
-	 * Put your user code in there, return when it's time to exit back to bage menu *
-	 * *****************************************************************************/
+	/////////////////////////////////////////////////////////////////////////
+	//	Code specific to Xbox splash
+
 	uint8_t x_offset = 0;
 	uint8_t y_offset = 0;
 	uint8_t tile_index = 0;
@@ -981,7 +1028,7 @@ void xbox_splash() {
 	gfx_set_xlate_val(0, 240, 128, scale, 0);
 
 	// Tiles are set up, we can now enable layers
-	 GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_LAYEREN_TILEA;
+	GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_LAYEREN_TILEA;
 
 	for (uint8_t i = 0; i < 60; i++) {
 		scale -= 0.1;
@@ -995,13 +1042,13 @@ void xbox_splash() {
 
 /////////////////////////////////////////////////////////////////////////////
 //
-//  Randomly choose one of available splash screens to display
+//	Randomly choose one of available splash screens to display
 
 void main(int argc, char **argv) {
 	uint32_t random = 0xFF;
 
 	// Will look at the lowest few bits of the randomly generated number,
-	// number depends on how many possibilities we can launch. With 6
+	// based on how many possibilities we can launch. With a list of six
 	// splash screens, the next highest power of two is 8, so we look at
 	// 3 bits. (2^3 = 8) If the number is too big, rather than consuming
 	// CPU cycles to do math and scale it down, we'll toss that number and
