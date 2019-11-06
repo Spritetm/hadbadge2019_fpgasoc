@@ -18,7 +18,7 @@ INCLUDEDIRS =
 
 #You can include binaries directly in your app by adding it to BINFILE. See main.c on how
 #to reference to its data.
-BINFILES = gameboybackground.png gameboytiles.png ps_bg.png ps_tiles.png \
+BINFILES = gameboybackground.png gameboytiles.png gbc-tileset.png ps_bg.png ps_tiles.png \
 	sega-tileset.png switch_bg.png switch_tileset.png xbox_bg.png xbox_tiles.png
 
 #Normally, you'd put the APSSDK_DIR in your environment. Here, we know where it is, so
