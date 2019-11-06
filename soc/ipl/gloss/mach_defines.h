@@ -317,7 +317,15 @@ fill the palette memory), the fields are
 #define GFX_SPRITE_OFF_X_OFF 0
 /** [28:16]: Sprite Y position that maps to top of screen */
 #define GFX_SPRITE_Y_OFF 16
-
+/** Copper control register */
+#define GFX_COPPER_CTL_REG 0x34
+/** [31]: Copper enable register. Setting this enables the copper. 
+    Clearing this disables & resets the copper. */
+#define GFX_COPPER_CTL_RUN (1<<31)
+/** [30:0]: Current copper PC. Indicates which word in the copper
+    list (at GFX_OFFSET_COPPERMEM) the copper is currently 
+    processing. Read-only. */
+#define GFX_COPPER_PC_OFF 0
 
 /** Memory address of the palette memory. This is a 512-entry
     memory containing 32-bit RGBA values. */
@@ -388,6 +396,39 @@ pixel (8,0) of a tile is stored in bits [3:0] of word 1
 pixel (0,1) of a tile is stored in bits [3:0] of word 2
 */
 #define GFX_OFFSET_TILEMEM 0x50010000
+
+/**
+ Offset to copper memory. The copper is a tiny video 'coprocessor'
+ with a very limited set of instructions: the main two are to wait 
+ until the  graphics processor has reached a certain (x/y)-coordinate 
+ and to poke words into the GFX registers. This can be used to e.g
+ change palettes, scaling factors, locations etc at a random point
+ during screen rendering, allowing for some creative effects without
+ having to use the CPU. Note that the coppermem region is 2K-words
+ in size. */
+#define GFX_OFFSET_COPPERMEM 0x50020000
+
+/* This instruction makes the coprocessor wait until the graphics
+ processor has reached a certain (x,y) coordinate. Use coordinates
+ (0,0) to wait for a new screen to be drawn. Note that sprites 
+ graphics are actually calculated one line earlier than they are 
+ drawn. */
+#define COPPER_OP_WAIT(x, y) (0x80000000 | (y<<16) | (x))
+
+/* This instruction resets the copper PC to the start of the copper
+ list, making it start over. */
+#define COPPER_OP_RESET 0x90000000
+
+/* This instruction generates an interrupt. */
+#define COPPER_OP_IRQ 0xA0000000
+
+/* This instruction prepares a write of one to four words to consecutive
+ addresses in the graphics subsystem. addr is the same address as the main
+ RiscV processor would use to write into the register. Ct is the number
+ of words that are written, from 1 to 4. The word data follows this 
+ instruction and is written into consecutive addresses. */
+#define COPPER_OP_WRITE(addr, ct) (((uint32_t)addr & 0xfffffffc)|(ct-1))
+
 
 /* -------------- USB peripheral defines --------------------- */
 

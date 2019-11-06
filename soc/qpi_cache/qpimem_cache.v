@@ -1,3 +1,4 @@
+/*verilator tracing_off*/
 /*
  * Copyright (C) 2019  Jeroen Domburg <jeroen@spritesmods.com>
  * All rights reserved.

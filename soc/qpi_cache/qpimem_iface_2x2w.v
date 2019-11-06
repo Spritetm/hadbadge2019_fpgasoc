@@ -1,3 +1,4 @@
+/*verilator tracing_off*/
 /*
  * qpimem_iface_2x2w.v
  *

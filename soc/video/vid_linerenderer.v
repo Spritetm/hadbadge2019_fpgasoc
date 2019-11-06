@@ -79,6 +79,7 @@ cost us (512+32*32)=1536 cycles. That fits and allows us to do X-scaling as well
 
 module vid_linerenderer (
 	input clk, reset,
+	output reg irq_copper,
 
 	//Slave iface from cpu
 	input [24:0] addr,
@@ -86,7 +87,7 @@ module vid_linerenderer (
 	input [3:0] wstrb,
 	input ren,
 	output reg [31:0] dout,
-	output ready,
+	output reg ready,
 	
 	//Video mem iface
 	output reg [19:0] vid_addr, //assume 1 meg-words linebuf mem max
@@ -138,6 +139,7 @@ reg cpu_sel_tilemap_b;
 reg cpu_sel_palette;
 reg cpu_sel_regs;
 reg cpu_sel_sprites;
+reg cpu_sel_copper;
 
 parameter REG_SEL_FB_ADDR = 0;
 parameter REG_SEL_FB_PITCH = 1;
@@ -152,6 +154,7 @@ parameter REG_SEL_VIDPOS = 9;
 parameter REG_SEL_VBLCTR = 10;
 parameter REG_SEL_BGNDCOL = 11;
 parameter REG_SEL_SPRITE_OFF = 12;
+parameter REG_SEL_COPPERCTL_OFF = 13;
 
 //Reminder: we have 64x64 tiles of 16x16 pixels, so in total a field of 1024x1024 pixels. Say we have one overflow bit, we need 11 bit
 //for everything... that leaves 5 bits for sub-pixel addressing in scaling modes. That sounds OK.
@@ -194,6 +197,92 @@ reg [15:0] tileb_rowinc_y;
 wire [8:0] sprite_pix;
 reg [31:0] vblctr;
 
+reg copper_run;
+reg [10:0] copper_pc;
+reg [10:0] copper_pc_next;
+reg [31:0] copper_addr;
+reg [31:0] copper_addr_next;
+reg [2:0] copper_write_ct;
+reg [2:0] copper_write_ct_next;
+wire [31:0] copper_data;
+reg copper_halts_gfx;
+wire [31:0] dout_copper;
+
+parameter COPPER_OP_WAIT = 'h8;
+parameter COPPER_OP_RESET = 'h9;
+parameter COPPER_OP_IRQ = 'hA;
+parameter COPPER_OP_WRITE = 'h0;
+
+//These mux to the CPU interface normally, but swap over to allow copper writes if needed.
+//The copper has a higher priority.
+reg [24:0] addr_muxed;
+reg [31:0] din_muxed;
+reg [3:0] wstrb_muxed;
+reg ready_delayed;
+
+always @(*) begin
+	if (copper_write_ct != 0) begin
+		addr_muxed = copper_addr;
+		din_muxed = copper_data;
+		wstrb_muxed = 'hf;
+		ready = 0;
+	end else begin
+		addr_muxed = addr;
+		din_muxed = din;
+		wstrb_muxed = wstrb;
+		ready = ready_delayed & ((wstrb!=0) || ren);
+	end
+end
+
+//Note: copper_pc corresponds to the current output of the copper memory. copper_pc_next is the next pc. Same for other _next registers
+
+always @(*) begin
+	irq_copper = 0;
+	copper_halts_gfx = 0;
+	copper_addr_next = copper_addr;
+	copper_write_ct_next = copper_write_ct;
+	copper_pc_next = copper_pc;
+
+	if (!copper_run) begin
+		copper_pc_next = 0;
+		copper_write_ct_next = 0;
+	end else if (copper_write_ct != 0) begin
+		copper_halts_gfx = 1;
+		copper_pc_next = copper_pc + 1;
+		copper_addr_next = copper_addr + 4;
+		copper_write_ct_next = copper_write_ct - 1;
+	end else if (copper_data[31:28]==COPPER_OP_WAIT) begin
+		//Wait for specified x/y coord
+		if (copper_data[24:16]==vid_ypos && copper_data[8:0]==vid_xpos) begin
+			copper_pc_next = copper_pc + 1;
+		end else begin
+			copper_pc_next = copper_pc; //wait
+		end
+	end else if (copper_data[31:28]==COPPER_OP_RESET) begin
+		copper_pc_next = 0;
+	end else if (copper_data[31:28]==COPPER_OP_IRQ) begin
+		copper_pc_next = copper_pc + 1;
+		irq_copper <= 1;
+	end else if (copper_data[31]==0) begin //COPPER_OP_WRITE
+		copper_halts_gfx = 1;
+		copper_addr_next = {copper_data[31:2], 2'h0};
+		copper_write_ct_next = copper_data[1:0]+1;
+		copper_pc_next = copper_pc + 1;
+	end
+end
+
+always @(posedge clk) begin
+	if (reset) begin
+		copper_pc <= 0;
+		copper_write_ct <= 0;
+		copper_addr <= 0;
+	end else begin
+		copper_pc <= copper_pc_next;
+		copper_write_ct <= copper_write_ct_next;
+		copper_addr <= copper_addr_next;
+	end
+end
+
 always @(*) begin
 	cpu_sel_tilemem = 0;
 	cpu_sel_tilemap_a = 0;
@@ -201,51 +290,57 @@ always @(*) begin
 	cpu_sel_palette = 0;
 	cpu_sel_regs = 0;
 	cpu_sel_sprites = 0;
+	cpu_sel_copper = 0;
 	dout = 0;
-	if (addr[16:13]=='h0) begin
+	if (addr_muxed[17:13]=='h0) begin
 		cpu_sel_regs = 1;
-		if (addr[5:2]==REG_SEL_FB_ADDR) begin
+		if (addr_muxed[5:2]==REG_SEL_FB_ADDR) begin
 			dout = {8'h4, fb_addr};
-		end else if (addr[5:2]==REG_SEL_FB_PITCH) begin
+		end else if (addr_muxed[5:2]==REG_SEL_FB_PITCH) begin
 			dout = {7'h0, fb_pal_offset, pitch};
-		end else if (addr[5:2]==REG_SEL_LAYER_EN) begin
+		end else if (addr_muxed[5:2]==REG_SEL_LAYER_EN) begin
 			dout = {15'h0, fb_is_8bit, 12'h0,  layer_en};
-		end else if (addr[5:2]==REG_SEL_TILEA_OFF) begin
+		end else if (addr_muxed[5:2]==REG_SEL_TILEA_OFF) begin
 			dout = {tilea_yoff, tilea_xoff};
-		end else if (addr[5:2]==REG_SEL_TILEB_OFF) begin
+		end else if (addr_muxed[5:2]==REG_SEL_TILEB_OFF) begin
 			dout = {tileb_yoff, tileb_xoff};
-		end else if (addr[5:2]==REG_SEL_TILEA_INC_COL) begin
+		end else if (addr_muxed[5:2]==REG_SEL_TILEA_INC_COL) begin
 			dout = {tilea_colinc_x, tilea_colinc_y};
-		end else if (addr[5:2]==REG_SEL_TILEA_INC_ROW) begin
+		end else if (addr_muxed[5:2]==REG_SEL_TILEA_INC_ROW) begin
 			dout = {tilea_rowinc_x, tilea_rowinc_y};
-		end else if (addr[5:2]==REG_SEL_TILEB_INC_COL) begin
+		end else if (addr_muxed[5:2]==REG_SEL_TILEB_INC_COL) begin
 			dout = {tileb_colinc_x, tileb_colinc_y};
-		end else if (addr[5:2]==REG_SEL_TILEB_INC_ROW) begin
+		end else if (addr_muxed[5:2]==REG_SEL_TILEB_INC_ROW) begin
 			dout = {tileb_rowinc_x, tileb_rowinc_y};
-		end else if (addr[5:2]==REG_SEL_VIDPOS) begin
+		end else if (addr_muxed[5:2]==REG_SEL_VIDPOS) begin
 			dout = {7'h0, vid_ypos, 7'h0, vid_xpos};
-		end else if (addr[5:2]==REG_SEL_VBLCTR) begin
+		end else if (addr_muxed[5:2]==REG_SEL_VBLCTR) begin
 			dout = vblctr;
-		end else if (addr[5:2]==REG_SEL_BGNDCOL) begin
+		end else if (addr_muxed[5:2]==REG_SEL_BGNDCOL) begin
 			dout = bgnd_color;
 		end else if (addr[5:2]==REG_SEL_SPRITE_OFF) begin
 			dout = {3'h0, sprite_yoff, 3'h0, sprite_xoff};
+		end else if (addr_muxed[5:2]==REG_SEL_COPPERCTL_OFF) begin
+			dout = {copper_run, 20'h0, copper_pc};
 		end
-	end else if (addr[16:13]=='h1) begin
+	end else if (addr_muxed[17:13]=='h1) begin
 		cpu_sel_palette = 1;
 		dout = dout_palette;
-	end else if (addr[16:14]=='h1) begin //2,3
+	end else if (addr_muxed[17:14]=='h1) begin //2,3
 		cpu_sel_tilemap_a = 1;
 		dout = {14'h0, dout_tilemapa};
-	end else if (addr[16:14]=='h2) begin //4,5
+	end else if (addr_muxed[17:14]=='h2) begin //4,5
 		cpu_sel_tilemap_b = 1;
 		dout = {14'h0, dout_tilemapb};
-	end else if (addr[16:13]=='h6) begin
+	end else if (addr_muxed[17:13]=='h6) begin
 		cpu_sel_sprites = 1;
 		dout = dout_sprites;
-	end else if (addr[16]==1) begin
+	end else if (addr_muxed[17:16]==1) begin
 		cpu_sel_tilemem = 1;
 		dout = dout_tilemem;
+	end else if (addr_muxed[17:16]==2) begin
+		cpu_sel_copper = 1;
+		dout = dout_copper;
 	end
 end
 
@@ -271,11 +366,11 @@ vid_tilemem tilemem(
 	.ResetB(reset),
 	.ClockEnA(1),
 	.ClockEnB(1),
-	.DataInA(din),
+	.DataInA(din_muxed),
 	.DataInB(0),
-	.WrA(&wstrb & cpu_sel_tilemem),
+	.WrA(&wstrb_muxed & cpu_sel_tilemem),
 	.WrB(0),
-	.AddressA(addr[15:2]),
+	.AddressA(addr_muxed[15:2]),
 	.AddressB(tilemem_addr),
 	.QA(dout_tilemem),
 	.QB(tilemem_word)
@@ -288,8 +383,12 @@ vid_tilemem tilemem(
 // 10 - inv y
 // 17-11 - palette offset *4
 
-reg [16:0] tilea_x;
-reg [16:0] tilea_y;
+reg [16:0] tilea_xb;
+reg [16:0] tilea_yb;
+wire [16:0] tilea_x;
+wire [16:0] tilea_y;
+assign tilea_x = tilea_xb + tilea_xoff;
+assign tilea_y = tilea_yb + tilea_yoff;
 wire [17:0] tilea_data;
 wire [11:0] tilemapa_addr;
 assign tilemapa_addr = {tilea_y[15:10], tilea_x[15:10]};
@@ -301,18 +400,22 @@ vid_tilemapmem tilemapa (
 	.ResetB(reset),
 	.ClockEnA(1),
 	.ClockEnB(1),
-	.DataInA(din[17:0]),
+	.DataInA(din_muxed[17:0]),
 	.DataInB(0),
-	.WrA(&wstrb & cpu_sel_tilemap_a),
+	.WrA(&wstrb_muxed & cpu_sel_tilemap_a),
 	.WrB(0),
-	.AddressA(addr[13:2]),
+	.AddressA(addr_muxed[13:2]),
 	.AddressB(tilemapa_addr),
 	.QA(dout_tilemapa),
 	.QB(tilea_data)
 );
 
-reg [16:0] tileb_x;
-reg [16:0] tileb_y;
+reg [16:0] tileb_xb;
+reg [16:0] tileb_yb;
+wire [16:0] tileb_x;
+wire [16:0] tileb_y;
+assign tileb_x = tileb_xb + tileb_xoff;
+assign tileb_y = tileb_yb + tileb_yoff;
 wire [17:0] tileb_data;
 wire [11:0] tilemapb_addr;
 assign tilemapb_addr = {tileb_y[15:10], tileb_x[15:10]};
@@ -324,11 +427,11 @@ vid_tilemapmem tilemapb (
 	.ResetB(reset),
 	.ClockEnA(1),
 	.ClockEnB(1),
-	.DataInA(din[17:0]),
+	.DataInA(din_muxed[17:0]),
 	.DataInB(0),
-	.WrA(&wstrb & cpu_sel_tilemap_b),
+	.WrA(&wstrb_muxed & cpu_sel_tilemap_b),
 	.WrB(0),
-	.AddressA(addr[13:2]),
+	.AddressA(addr_muxed[13:2]),
 	.AddressB(tilemapb_addr),
 	.QA(dout_tilemapb),
 	.QB(tileb_data)
@@ -346,10 +449,10 @@ reg sprite_tilemem_ack;
 vid_spriteeng spriteeng (
 	.clk(clk),
 	.reset(reset),
-	.cpu_addr(addr[10:2]),
-	.cpu_din(din),
+	.cpu_addr(addr_muxed[10:2]),
+	.cpu_din(din_muxed),
 	.cpu_dout(dout_sprites),
-	.cpu_wstrb(cpu_sel_sprites ? wstrb : 0),
+	.cpu_wstrb(cpu_sel_sprites ? wstrb_muxed : 0),
 	.offx(sprite_xoff),
 	.offy(sprite_yoff),
 
@@ -380,15 +483,33 @@ vid_palettemem palettemem(
 	.ResetB(reset),
 	.ClockEnA(1),
 	.ClockEnB(1),
-	.DataInA(din),
+	.DataInA(din_muxed),
 	.DataInB(0),
-	.WrA((wstrb=='hf) && cpu_sel_palette),
+	.WrA((wstrb_muxed=='hf) && cpu_sel_palette),
 	.WrB(0),
-	.AddressA(addr[10:2]),
+	.AddressA(addr_muxed[10:2]),
 	.AddressB(pal_addr),
 	.QA(dout_palette),
 	.QB(pal_data)
 );
+
+ram_dp_32x2048 copper_mem(
+	.ClockA(clk),
+	.ClockB(clk),
+	.ResetA(reset),
+	.ResetB(reset),
+	.ClockEnA(1),
+	.ClockEnB(1),
+	.DataInA(din_muxed),
+	.DataInB(0),
+	.WrA((wstrb_muxed=='hf) && cpu_sel_copper),
+	.WrB(0),
+	.AddressA(addr_muxed[12:2]),
+	.AddressB(copper_pc_next),
+	.QA(dout_copper),
+	.QB(copper_data)
+);
+
 
 reg [31:0] alphamixer_in_b;
 reg [7:0] alphamixer_rate;
@@ -487,8 +608,6 @@ always @(*) begin
 end
 
 assign vid_data_out = alphamixer_out[23:0];
-reg ready_delayed;
-assign ready = ready_delayed & ((wstrb!=0) || ren);
 reg in_render_vbl;
 
 always @(posedge clk) begin
@@ -526,38 +645,40 @@ always @(posedge clk) begin
 	end else begin
 		/* CPU interface */
 		ready_delayed <= ((wstrb!=0) | ren);
-		if ((&wstrb) && cpu_sel_regs) begin
-			if (addr[5:2]==REG_SEL_FB_ADDR) begin
-				fb_addr <= din[23:0];
-			end else if (addr[5:2]==REG_SEL_FB_PITCH) begin
-				pitch <= din[15:0];
-				fb_pal_offset=din[24:16];
-			end else if (addr[5:2]==REG_SEL_LAYER_EN) begin
-				layer_en <= din[3:0];
-				fb_is_8bit <= din[16];
-			end else if (addr[5:2]==REG_SEL_TILEA_OFF) begin
-				tilea_xoff <= din[15:0];
-				tilea_yoff <= din[31:16];
-			end else if (addr[5:2]==REG_SEL_TILEB_OFF) begin
-				tileb_xoff <= din[15:0];
-				tileb_yoff <= din[31:16];
-			end else if (addr[5:2]==REG_SEL_TILEA_INC_COL) begin
-				tilea_colinc_x <= din[15:0];
-				tilea_colinc_y <= din[31:16];
-			end else if (addr[5:2]==REG_SEL_TILEA_INC_ROW) begin
-				tilea_rowinc_x <= din[15:0];
-				tilea_rowinc_y <= din[31:16];
-			end else if (addr[5:2]==REG_SEL_TILEB_INC_COL) begin
-				tileb_colinc_x <= din[15:0];
-				tileb_colinc_y <= din[31:16];
-			end else if (addr[5:2]==REG_SEL_TILEB_INC_ROW) begin
-				tileb_rowinc_x <= din[15:0];
-				tileb_rowinc_y <= din[31:16];
-			end else if (addr[5:2]==REG_SEL_BGNDCOL) begin
-				bgnd_color <= din;
-			end else if (addr[5:2]==REG_SEL_SPRITE_OFF) begin
-				sprite_xoff <= din[12:0];
-				sprite_yoff <= din[28:16];
+		if ((&wstrb_muxed) && cpu_sel_regs) begin
+			if (addr_muxed[5:2]==REG_SEL_FB_ADDR) begin
+				fb_addr <= din_muxed[23:0];
+			end else if (addr_muxed[5:2]==REG_SEL_FB_PITCH) begin
+				pitch <= din_muxed[15:0];
+				fb_pal_offset=din_muxed[24:16];
+			end else if (addr_muxed[5:2]==REG_SEL_LAYER_EN) begin
+				layer_en <= din_muxed[3:0];
+				fb_is_8bit <= din_muxed[16];
+			end else if (addr_muxed[5:2]==REG_SEL_TILEA_OFF) begin
+				tilea_xoff <= din_muxed[15:0];
+				tilea_yoff <= din_muxed[31:16];
+			end else if (addr_muxed[5:2]==REG_SEL_TILEB_OFF) begin
+				tileb_xoff <= din_muxed[15:0];
+				tileb_yoff <= din_muxed[31:16];
+			end else if (addr_muxed[5:2]==REG_SEL_TILEA_INC_COL) begin
+				tilea_colinc_x <= din_muxed[15:0];
+				tilea_colinc_y <= din_muxed[31:16];
+			end else if (addr_muxed[5:2]==REG_SEL_TILEA_INC_ROW) begin
+				tilea_rowinc_x <= din_muxed[15:0];
+				tilea_rowinc_y <= din_muxed[31:16];
+			end else if (addr_muxed[5:2]==REG_SEL_TILEB_INC_COL) begin
+				tileb_colinc_x <= din_muxed[15:0];
+				tileb_colinc_y <= din_muxed[31:16];
+			end else if (addr_muxed[5:2]==REG_SEL_TILEB_INC_ROW) begin
+				tileb_rowinc_x <= din_muxed[15:0];
+				tileb_rowinc_y <= din_muxed[31:16];
+			end else if (addr_muxed[5:2]==REG_SEL_BGNDCOL) begin
+				bgnd_color <= din_muxed;
+			end else if (addr_muxed[5:2]==REG_SEL_SPRITE_OFF) begin
+				sprite_xoff <= din_muxed[12:0];
+				sprite_yoff <= din_muxed[28:16];
+			end else if (addr_muxed[5:2]==REG_SEL_COPPERCTL_OFF) begin
+				copper_run <= din_muxed[31];
 			end
 		end
 
@@ -581,14 +702,14 @@ always @(posedge clk) begin
 			end
 			in_render_vbl <= 1;
 			dma_run <= 0;
-			tilea_linestart_x <= tilea_xoff + tilea_rowinc_x;
-			tilea_linestart_y <= tilea_yoff + tilea_rowinc_y;
-			tilea_x <= tilea_xoff;
-			tilea_y <= tilea_yoff;
-			tileb_linestart_x <= tileb_xoff + tileb_rowinc_x;
-			tileb_linestart_y <= tileb_yoff + tileb_rowinc_y;
-			tileb_x <= tileb_xoff;
-			tileb_y <= tileb_yoff;
+			tilea_linestart_x <= tilea_rowinc_x;
+			tilea_linestart_y <= tilea_rowinc_y;
+			tilea_xb <= 0;
+			tilea_yb <= 0;
+			tileb_linestart_x <= tileb_rowinc_x;
+			tileb_linestart_y <= tileb_rowinc_y;
+			tileb_xb <= 0;
+			tileb_yb <= 0;
 			if (next_field) begin
 				write_vid_addr_next <= 0;
 				dma_start_addr <= fb_addr;
@@ -599,7 +720,7 @@ always @(posedge clk) begin
 			in_render_vbl <= 0;
 			//If we're here, there is room in the line memory to write a new line into.
 			dma_run <= layer_en[0];
-			if (dma_ready || (fb_is_8bit==0 && write_vid_addr[3:0]!=0) || (fb_is_8bit==1 && write_vid_addr[2:0]!=0) || layer_en[0]==0) begin
+			if (!copper_halts_gfx && (dma_ready || (fb_is_8bit==0 && write_vid_addr[3:0]!=0) || (fb_is_8bit==1 && write_vid_addr[2:0]!=0) || layer_en[0]==0)) begin
 				if (((fb_is_8bit==0 && write_vid_addr[2:0] == 7) || (fb_is_8bit==1 && write_vid_addr[1:0]==3)) && cycle==3) begin
 					//We need a new word. Enable read here (at cycle 2) because:
 					// dma_do_read actually goes high next cycle
@@ -616,8 +737,8 @@ always @(posedge clk) begin
 						fb_pixel <= {4'h0, dma_data[vid_xpos[3:0]*4+:4]};
 					end
 				end else if (cycle==1) begin
-					tileb_x <= tileb_x + tileb_colinc_x;
-					tileb_y <= tileb_y + tileb_colinc_y;
+					tileb_xb <= tileb_xb + tileb_colinc_x;
+					tileb_yb <= tileb_yb + tileb_colinc_y;
 				end else if (cycle==3) begin
 					//Move to the next pixel
 					vid_wen <= 1;
@@ -627,18 +748,18 @@ always @(posedge clk) begin
 						write_vid_addr_next[8:0] <= 0;
 						dma_start_addr <= dma_start_addr + (fb_is_8bit?pitch:pitch/2);
 						dma_run <= 0;
-						tilea_x <= tilea_linestart_x;
-						tilea_y <= tilea_linestart_y;
+						tilea_xb <= tilea_linestart_x;
+						tilea_yb <= tilea_linestart_y;
 						tilea_linestart_x <= tilea_linestart_x + tilea_rowinc_x;
 						tilea_linestart_y <= tilea_linestart_y + tilea_rowinc_y;
-						tileb_x <= tileb_linestart_x;
-						tileb_y <= tileb_linestart_y;
+						tileb_xb <= tileb_linestart_x;
+						tileb_yb <= tileb_linestart_y;
 						tileb_linestart_x <= tileb_linestart_x + tileb_rowinc_x;
 						tileb_linestart_y <= tileb_linestart_y + tileb_rowinc_y;
 					end else begin
 						write_vid_addr_next <= write_vid_addr_next + 'h1;
-						tilea_x <= tilea_x + tilea_colinc_x;
-						tilea_y <= tilea_y + tilea_colinc_y;
+						tilea_xb <= tilea_xb + tilea_colinc_x ;
+						tilea_yb <= tilea_yb + tilea_colinc_y;
 					end
 				end
 			end else begin

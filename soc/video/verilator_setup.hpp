@@ -4,12 +4,13 @@
 #include <verilated_vcd_c.h>
 
 // These match constants from ../../ipl/gloss/mach_defines.h
-#define REG_OFF 0x0000
-#define PAL_OFF 0x2000
+#define REG_OFF      0x0000
+#define PAL_OFF      0x2000
 #define TILEMAPA_OFF 0x4000
 #define TILEMAPB_OFF 0x8000
-#define SPRITE_OFF 0xC000
+#define SPRITE_OFF   0xC000
 #define TILEMEM_OFF 0x10000
+#define COPPER_OFF  0x20000
 
 // Trace machinery
 extern uint64_t ts;

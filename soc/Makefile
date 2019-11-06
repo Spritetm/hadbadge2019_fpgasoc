@@ -5,7 +5,7 @@ BADGE_VER ?= 2
 PROJ=soc
 #Seed for nextpnr. Change this to another random value if you happen to run 
 #into a situation that mis-synths or takes extremely long to synth the SoC.
-SEED = 9
+SEED = 10
 
 # Sources
 	# Base
@@ -73,6 +73,7 @@ SRC_SYNTH += $(addprefix video/, \
 	vid_spritemem_ecp5.v \
 	vid_tilemapmem_ecp5.v \
 	vid_tilemem_ecp5.v \
+	ram_dp_32x2048_ecp5.v \
 )
 
 SRC_SIM += $(addprefix video/, \
@@ -84,6 +85,7 @@ SRC_SIM += $(addprefix video/, \
 	vid_sprite_linebuf_sim.v \
 	vid_spritemem_sim.v \
 	video_renderer.cpp \
+	ram_dp_32x2048_sim.v \
 )
 
 	# UART
@@ -208,10 +210,18 @@ clean:
 verilator: verilator-build/Vsoc ipl boot/ $(EXTRA_DEPEND)
 	./verilator-build/Vsoc
 
+ifeq ("$(VCD)","")
+VR_TRACE_OPTS := --trace-fst-thread
+VR_TRACE_CFLAGS := -DVERILATOR_USE_FST=1
+else
+VR_TRACE_OPTS := --trace
+VR_TRACE_CFLAGS := -DVERILATOR_USE_VCD=1
+endif
+
 verilator-build/Vsoc: $(SRC) $(SRC_SIM) $(BRAMFILE)
-	verilator -Iusb -CFLAGS "-ggdb `sdl2-config --cflags`" -LDFLAGS "`sdl2-config --libs`" --assert \
-			--trace --trace-fst --Mdir verilator-build -Wno-style -Wno-fatal -cc --top-module soc \
-			--threads 2 -O3 --noassert --exe $(SRC) $(SRC_SIM)
+	verilator -Iusb -CFLAGS "-ggdb `sdl2-config --cflags` $(VR_TRACE_CFLAGS)" -LDFLAGS "`sdl2-config --libs`" --assert \
+			$(VR_TRACE_OPTS) --Mdir verilator-build -Wno-style -Wno-fatal -cc --top-module soc \
+			-O3 --noassert --exe $(SRC) $(SRC_SIM)
 	$(MAKE) OPT_FAST="-O2 -fno-stack-protector" -C verilator-build -f Vsoc.mk
 
 rom.hex: boot/

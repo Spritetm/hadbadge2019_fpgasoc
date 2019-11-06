@@ -754,10 +754,12 @@ module soc(
 		.ready(ram_ready)
 	);
 
+	wire irq_copper;
 
 	vid_linerenderer linerenderer (
 		.clk(clk48m),
 		.reset(rst),
+		.irq_copper(irq_copper),
 		.addr(mem_addr),
 		.din(mem_wdata),
 		.wstrb(linerenderer_select?mem_wstrb:4'b0000),
@@ -1015,6 +1017,7 @@ IRQs used:
 2 - Unaligned memory access (internal to PicoRV32)
 3 - Bus error - not decoded (e.g. dereferenced NULL)
 4 - USB irq
+5 - GFX copper irq
 */
 
 	//Interrupt logic
@@ -1025,6 +1028,9 @@ IRQs used:
 		end
 		if (usb_irq) begin
 			irq[4] = 1;
+		end
+		if (irq_copper) begin
+			irq[5] = 1;
 		end
 	end
 
