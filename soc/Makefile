@@ -210,10 +210,18 @@ clean:
 verilator: verilator-build/Vsoc ipl boot/ $(EXTRA_DEPEND)
 	./verilator-build/Vsoc
 
+ifeq ("$(VCD)","")
+VR_TRACE_OPTS := --trace-fst-thread
+VR_TRACE_CFLAGS := -DVERILATOR_USE_FST=1
+else
+VR_TRACE_OPTS := --trace
+VR_TRACE_CFLAGS := -DVERILATOR_USE_VCD=1
+endif
+
 verilator-build/Vsoc: $(SRC) $(SRC_SIM) $(BRAMFILE)
-	verilator -Iusb -CFLAGS "-ggdb `sdl2-config --cflags`" -LDFLAGS "`sdl2-config --libs`" --assert \
-			--trace --trace-fst --Mdir verilator-build -Wno-style -Wno-fatal -cc --top-module soc \
-			--threads 2 -O3 --noassert --exe $(SRC) $(SRC_SIM)
+	verilator -Iusb -CFLAGS "-ggdb `sdl2-config --cflags` $(VR_TRACE_CFLAGS)" -LDFLAGS "`sdl2-config --libs`" --assert \
+			$(VR_TRACE_OPTS) --Mdir verilator-build -Wno-style -Wno-fatal -cc --top-module soc \
+			-O3 --noassert --exe $(SRC) $(SRC_SIM)
 	$(MAKE) OPT_FAST="-O2 -fno-stack-protector" -C verilator-build -f Vsoc.mk
 
 rom.hex: boot/

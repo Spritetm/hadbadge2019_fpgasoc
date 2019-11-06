@@ -49,9 +49,16 @@ int main(int argc, char **argv) {
 	// Create an instance of our module under test
 	Vsoc *tb = new Vsoc;
 	//Create trace
+
+#if VERILATOR_USE_VCD
+	VerilatedVcdC *trace = new VerilatedVcdC;
+	tb->trace(trace, 3);
+	trace->open("soctrace.vcd");
+#else
 	VerilatedFstC *trace = new VerilatedFstC;
 	tb->trace(trace, 99);
 	trace->open("soctrace.fst");
+#endif
 
 	tb->btn=0xff; //no buttons pressed
 	int do_trace=1;
@@ -104,17 +111,15 @@ int main(int argc, char **argv) {
 			int v;
 
 			do_abort |= psrama.eval(tb->psrama_sclk, tb->psrama_nce,
-				tb->soc__DOT__qspi_phy_psrama_I__DOT__spi_io_or,
-				tb->soc__DOT__qspi_phy_psrama_I__DOT__spi_io_tr,
-				&v
-			);
+					tb->soc__DOT__qspi_phy_psrama_I__DOT__spi_io_or,
+					tb->soc__DOT__qspi_phy_psrama_I__DOT__spi_io_tr,
+					&v);
 			tb->soc__DOT__qspi_phy_psrama_I__DOT__spi_io_ir = v;
 
 			do_abort |= psramb.eval(tb->psramb_sclk, tb->psramb_nce,
-				tb->soc__DOT__qspi_phy_psramb_I__DOT__spi_io_or,
-				tb->soc__DOT__qspi_phy_psramb_I__DOT__spi_io_tr,
-				&v
-			);
+					tb->soc__DOT__qspi_phy_psramb_I__DOT__spi_io_or,
+					tb->soc__DOT__qspi_phy_psramb_I__DOT__spi_io_tr,
+					&v);
 			tb->soc__DOT__qspi_phy_psramb_I__DOT__spi_io_ir = v;
 
 			uart.eval(tb->clk48m, tb->uart_tx, &rx);

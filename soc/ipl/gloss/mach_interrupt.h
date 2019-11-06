@@ -6,6 +6,7 @@
 #define INT_NO_UNALIG 2
 #define INT_NO_BUSERR 3
 #define INT_NO_USB 4
+#define INT_NO_COPPER 5
 
 //Register file in the format the interrupt handler saves it
 typedef struct {

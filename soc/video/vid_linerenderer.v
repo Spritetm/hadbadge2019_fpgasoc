@@ -250,7 +250,7 @@ always @(*) begin
 		copper_halts_gfx = 1;
 		copper_pc_next = copper_pc + 1;
 		copper_addr_next = copper_addr + 4;
-		copper_write_ct_next = copper_write_ct_next - 1;
+		copper_write_ct_next = copper_write_ct - 1;
 	end else if (copper_data[31:28]==COPPER_OP_WAIT) begin
 		//Wait for specified x/y coord
 		if (copper_data[24:16]==vid_ypos && copper_data[8:0]==vid_xpos) begin
@@ -258,9 +258,9 @@ always @(*) begin
 		end else begin
 			copper_pc_next = copper_pc; //wait
 		end
-	end else if (copper_data[31:29]==COPPER_OP_RESET) begin
+	end else if (copper_data[31:28]==COPPER_OP_RESET) begin
 		copper_pc_next = 0;
-	end else if (copper_data[31:29]==COPPER_OP_IRQ) begin
+	end else if (copper_data[31:28]==COPPER_OP_IRQ) begin
 		copper_pc_next = copper_pc + 1;
 		irq_copper <= 1;
 	end else if (copper_data[31]==0) begin //COPPER_OP_WRITE
@@ -383,8 +383,12 @@ vid_tilemem tilemem(
 // 10 - inv y
 // 17-11 - palette offset *4
 
-reg [16:0] tilea_x;
-reg [16:0] tilea_y;
+reg [16:0] tilea_xb;
+reg [16:0] tilea_yb;
+wire [16:0] tilea_x;
+wire [16:0] tilea_y;
+assign tilea_x = tilea_xb + tilea_xoff;
+assign tilea_y = tilea_yb + tilea_yoff;
 wire [17:0] tilea_data;
 wire [11:0] tilemapa_addr;
 assign tilemapa_addr = {tilea_y[15:10], tilea_x[15:10]};
@@ -406,8 +410,12 @@ vid_tilemapmem tilemapa (
 	.QB(tilea_data)
 );
 
-reg [16:0] tileb_x;
-reg [16:0] tileb_y;
+reg [16:0] tileb_xb;
+reg [16:0] tileb_yb;
+wire [16:0] tileb_x;
+wire [16:0] tileb_y;
+assign tileb_x = tileb_xb + tileb_xoff;
+assign tileb_y = tileb_yb + tileb_yoff;
 wire [17:0] tileb_data;
 wire [11:0] tilemapb_addr;
 assign tilemapb_addr = {tileb_y[15:10], tileb_x[15:10]};
@@ -694,14 +702,14 @@ always @(posedge clk) begin
 			end
 			in_render_vbl <= 1;
 			dma_run <= 0;
-			tilea_linestart_x <= tilea_xoff + tilea_rowinc_x;
-			tilea_linestart_y <= tilea_yoff + tilea_rowinc_y;
-			tilea_x <= tilea_xoff;
-			tilea_y <= tilea_yoff;
-			tileb_linestart_x <= tileb_xoff + tileb_rowinc_x;
-			tileb_linestart_y <= tileb_yoff + tileb_rowinc_y;
-			tileb_x <= tileb_xoff;
-			tileb_y <= tileb_yoff;
+			tilea_linestart_x <= tilea_rowinc_x;
+			tilea_linestart_y <= tilea_rowinc_y;
+			tilea_xb <= 0;
+			tilea_yb <= 0;
+			tileb_linestart_x <= tileb_rowinc_x;
+			tileb_linestart_y <= tileb_rowinc_y;
+			tileb_xb <= 0;
+			tileb_yb <= 0;
 			if (next_field) begin
 				write_vid_addr_next <= 0;
 				dma_start_addr <= fb_addr;
@@ -729,8 +737,8 @@ always @(posedge clk) begin
 						fb_pixel <= {4'h0, dma_data[vid_xpos[3:0]*4+:4]};
 					end
 				end else if (cycle==1) begin
-					tileb_x <= tileb_x + tileb_colinc_x;
-					tileb_y <= tileb_y + tileb_colinc_y;
+					tileb_xb <= tileb_xb + tileb_colinc_x;
+					tileb_yb <= tileb_yb + tileb_colinc_y;
 				end else if (cycle==3) begin
 					//Move to the next pixel
 					vid_wen <= 1;
@@ -740,18 +748,18 @@ always @(posedge clk) begin
 						write_vid_addr_next[8:0] <= 0;
 						dma_start_addr <= dma_start_addr + (fb_is_8bit?pitch:pitch/2);
 						dma_run <= 0;
-						tilea_x <= tilea_linestart_x;
-						tilea_y <= tilea_linestart_y;
+						tilea_xb <= tilea_linestart_x;
+						tilea_yb <= tilea_linestart_y;
 						tilea_linestart_x <= tilea_linestart_x + tilea_rowinc_x;
 						tilea_linestart_y <= tilea_linestart_y + tilea_rowinc_y;
-						tileb_x <= tileb_linestart_x;
-						tileb_y <= tileb_linestart_y;
+						tileb_xb <= tileb_linestart_x;
+						tileb_yb <= tileb_linestart_y;
 						tileb_linestart_x <= tileb_linestart_x + tileb_rowinc_x;
 						tileb_linestart_y <= tileb_linestart_y + tileb_rowinc_y;
 					end else begin
 						write_vid_addr_next <= write_vid_addr_next + 'h1;
-						tilea_x <= tilea_x + tilea_colinc_x;
-						tilea_y <= tilea_y + tilea_colinc_y;
+						tilea_xb <= tilea_xb + tilea_colinc_x ;
+						tilea_yb <= tilea_yb + tilea_colinc_y;
 					end
 				end
 			end else begin
