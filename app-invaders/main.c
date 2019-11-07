@@ -27,16 +27,22 @@ uint8_t* fbmem;
 #define PLAYER_Y 290
 #define PLAYER_INDEX 129
 #define PLAYER_SPRITE_INDEX 0
-#define ALIEN_VELOCITY_X (0.05f)
-#define ALIEN_VELOCITY_Y (10.0f)
+#define ALIEN_VELOCITY_X 1
+#define ALIEN_VELOCITY_Y 10
 
-#define ALIEN_COUNT 24
-#define ALIEN_TOP_INDEX 128
 #define BULLET_SPRITE_INDEX_START 4
 #define BULLET_COUNT 4
 #define BULLET_INDEX 131
 #define BULLET_START_Y (15 * 16)
 #define BULLET_FIRING_PERIOD 10000
+#define EXPLOSION_INDEX 132
+#define EXPLOSION_TIME 12000
+
+#define ALIEN_START_X 1
+#define ALIEN_START_Y 17
+#define ALIEN_COUNT 24
+#define ALIEN_TOP_INDEX 128
+#define ALIEN_SPRITE_INDEX (BULLET_SPRITE_INDEX_START + BULLET_COUNT)
 
 // extern volatile uint32_t MISC[];
 // #define MISC_REG(i) MISC[(i) / 4]
@@ -46,13 +52,15 @@ uint8_t* fbmem;
 typedef enum {
   alien_state_alive,
   alien_state_dead,
-  __alien_state_count
+  alien_state_explode
 } alien_state_t;
 
 typedef struct {
   int x;
   int y;
   alien_state_t state;
+  uint32_t hit_time;  // Used to track when explosion started so we know when to
+                      // clear the graphic
 } alien_t;
 
 typedef struct {
@@ -61,6 +69,8 @@ typedef struct {
 } bullet_t;
 
 uint8_t m_bullet_index = 0;
+uint32_t m_score = 0;
+uint32_t m_counter = 0;
 
 // Manually point to sprites memory location
 uint32_t* GFXSPRITES = (uint32_t*)0x5000C000;
@@ -129,10 +139,55 @@ static inline void __tile_b_translate(int dx, int dy) {
 /**
  * Render a single alien to the tilemap
  */
-static inline void __render_alien(alien_t* p_alien) {
-  __tile_b_set(p_alien->x, p_alien->y, ALIEN_TOP_INDEX);
-  __tile_b_set(p_alien->x, p_alien->y + 1, ALIEN_TOP_INDEX + 16);
-  __tile_b_set(p_alien->x, p_alien->y + 2, ALIEN_TOP_INDEX + 32);
+static inline void __render_alien(alien_t* p_alien, uint8_t alien_index) {
+  switch (p_alien->state) {
+    case alien_state_alive:
+      __sprite_set(ALIEN_SPRITE_INDEX + (alien_index * 3), p_alien->x,
+                   p_alien->y, 16, 16, ALIEN_TOP_INDEX, 0);
+      __sprite_set(ALIEN_SPRITE_INDEX + (alien_index * 3) + 1, p_alien->x,
+                   p_alien->y + 16, 16, 16, ALIEN_TOP_INDEX + 16, 0);
+      __sprite_set(ALIEN_SPRITE_INDEX + (alien_index * 3) + 2, p_alien->x,
+                   p_alien->y + 32, 16, 16, ALIEN_TOP_INDEX + 32, 0);
+      break;
+    case alien_state_explode:
+      __sprite_set(ALIEN_SPRITE_INDEX + (alien_index * 3), p_alien->x,
+                   p_alien->y, 16, 16, 0, 0);
+      __sprite_set(ALIEN_SPRITE_INDEX + (alien_index * 3) + 1, p_alien->x,
+                   p_alien->y + 16, 16, 16, EXPLOSION_INDEX, 0);
+      __sprite_set(ALIEN_SPRITE_INDEX + (alien_index * 3) + 2, p_alien->x,
+                   p_alien->y + 32, 16, 16, 0, 0);
+      break;
+    case alien_state_dead:
+      __sprite_set(ALIEN_SPRITE_INDEX + (alien_index * 3), p_alien->x,
+                   p_alien->y, 16, 16, 0, 0);
+      __sprite_set(ALIEN_SPRITE_INDEX + (alien_index * 3) + 1, p_alien->x,
+                   p_alien->y + 16, 16, 16, 0, 0);
+      __sprite_set(ALIEN_SPRITE_INDEX + (alien_index * 3) + 2, p_alien->x,
+                   p_alien->y + 32, 16, 16, 0, 0);
+      break;
+  }
+}
+
+/**
+ * Detect collision between bullet and the aliens
+ * Returns true if collision handled
+ */
+static int __bullet_collision(bullet_t bullet, alien_t aliens[]) {
+  for (uint8_t i = 0; i < ALIEN_COUNT; i++) {
+    // Only care about active aliens
+    if (aliens[i].state == alien_state_alive) {
+      if (bullet.x > aliens[i].x && bullet.x < aliens[i].x + 16 &&
+          bullet.y < aliens[i].y + 48 && bullet.y > aliens[i].y) {
+        // Collision
+        aliens[i].state = alien_state_explode;
+        aliens[i].hit_time = m_counter;
+        return 1;
+      }
+    }
+  }
+
+  // No collision
+  return 0;
 }
 
 void main(int argc, char** argv) {
@@ -214,21 +269,16 @@ void main(int argc, char** argv) {
 
   // Generate the aliens
   alien_t aliens[ALIEN_COUNT];
-  uint8_t x = 1, y = 1;
+  uint8_t x = ALIEN_START_X, y = ALIEN_START_Y;
   for (uint8_t i = 0; i < ALIEN_COUNT; i++) {
     aliens[i].state = alien_state_alive;
     aliens[i].x = x;
     aliens[i].y = y;
-    x += 2;
-    if (x >= 17) {
-      x = 1;
-      y += 3;
+    x += 20;
+    if ((i % 8) == 7) {
+      x = ALIEN_START_X;
+      y += 50;
     }
-  }
-
-  // Render the aliens onto the tilemap
-  for (uint8_t i = 0; i < ALIEN_COUNT; i++) {
-    __render_alien(&aliens[i]);
   }
 
   // Bullet storage
@@ -243,9 +293,9 @@ void main(int argc, char** argv) {
   int player_x = 0;
   float alien_dx = 0;
   float alien_dy = 0;
+  float alien_velocity = ALIEN_VELOCITY_X;
   uint32_t last_frame;
-  uint32_t counter = 0;
-  uint32_t next_fire = counter + BULLET_FIRING_PERIOD;
+  uint32_t next_fire = m_counter + BULLET_FIRING_PERIOD;
 
   while (!game_over) {
     if (MISC_REG(MISC_BTN_REG) & BUTTON_B) {
@@ -253,14 +303,20 @@ void main(int argc, char** argv) {
     }
 
     // Periodically move and re-draw
-    if ((counter % 300) == 0) {
+    if ((m_counter % 500) == 0) {
       // Player move left
       if (MISC_REG(MISC_BTN_REG) & BUTTON_LEFT) {
         player_x -= PLAYER_VELOCITY;
+        if (player_x < 16) {
+          player_x = 16;
+        }
       }
       // Player move right
       if (MISC_REG(MISC_BTN_REG) & BUTTON_RIGHT) {
         player_x += PLAYER_VELOCITY;
+        if (player_x > (480 - 16)) {
+          player_x = 480 - 16;
+        }
       }
 
       // Player sprites
@@ -284,7 +340,7 @@ void main(int argc, char** argv) {
       }
 
       // Fire a bullet when A pressed
-      if ((MISC_REG(MISC_BTN_REG) & BUTTON_A) && (counter > next_fire)) {
+      if ((MISC_REG(MISC_BTN_REG) & BUTTON_A) && (m_counter > next_fire)) {
         // Only fire if we can re-use an offscreen bullet
         if (bullets[m_bullet_index].y <= -16) {
           bullets[m_bullet_index].x = player_x;
@@ -292,21 +348,55 @@ void main(int argc, char** argv) {
           m_bullet_index = (m_bullet_index + 1) % BULLET_COUNT;
 
           // Limit how often they can shoot
-          next_fire = counter + BULLET_FIRING_PERIOD;
+          next_fire = m_counter + BULLET_FIRING_PERIOD;
         }
       }
     }
 
-    alien_dx -= ALIEN_VELOCITY_X;
-    if (alien_dx < 0 - (1024 * 14)) {
-      alien_dx = 0;
-      alien_dy -= 512;
+    // Move the aliens every so often
+    if (m_counter % 1800 == 0) {
+      for (uint8_t i = 0; i < ALIEN_COUNT; i++) {
+        aliens[i].x += alien_velocity;
+      }
+
+      if (aliens[0].x < 0) {
+        alien_velocity = ALIEN_VELOCITY_X;
+        for (uint8_t i = 0; i < ALIEN_COUNT; i++) {
+          aliens[i].y += ALIEN_VELOCITY_Y;
+        }
+      }
+      if (aliens[7].x > 464) {
+        alien_velocity = (0 - ALIEN_VELOCITY_X);
+        for (uint8_t i = 0; i < ALIEN_COUNT; i++) {
+          aliens[i].y += ALIEN_VELOCITY_Y;
+        }
+      }
+
+      // Bullet collision detection
+      for (uint8_t i = 0; i < BULLET_COUNT; i++) {
+        if (__bullet_collision(bullets[i], aliens)) {
+          bullets[i].y = -16;
+          m_score++;
+        }
+      }
+
+      // Render the aliens
+      for (uint8_t i = 0; i < ALIEN_COUNT; i++) {
+        __render_alien(&aliens[i], i);
+
+        // Clear explosions
+        if (aliens[i].state == alien_state_explode &&
+            m_counter > (aliens[i].hit_time + EXPLOSION_TIME)) {
+          aliens[i].state = alien_state_dead;
+        }
+      }
+
+      // Update Game status
+      fprintf(console, "\0330X\0330YCircuit Invaders\03325X%d", m_score);
     }
 
-    // Move alien tiles
-    __tile_b_translate(alien_dx, alien_dy);
     last_frame = __counter();
-    counter++;
+    m_counter++;
   }
 
   // Print game over
@@ -315,7 +405,7 @@ void main(int argc, char** argv) {
   // Wait for user to release whatever buttons they were pressing and to press a
   // new one
   __button_wait_for_release();
-  __INEFFICIENT_delay(200);
+  __INEFFICIENT_delay(100);
   __button_wait_for_press();
 
   // Clear both tilemaps
