@@ -40,10 +40,12 @@ module fifo_sync_ram #(
 	input  wire [WIDTH-1:0] wr_data,
 	input  wire wr_ena,
 	output wire wr_full,
+	output reg  wr_afull,
 
 	output wire [WIDTH-1:0] rd_data,
 	input  wire rd_ena,
 	output wire rd_empty,
+	output reg  rd_aempty,
 
 	input  wire clk,
 	input  wire rst
@@ -91,6 +93,15 @@ module fifo_sync_ram #(
 	assign lvl_dec = ram_rd_ena & ~ram_wr_ena;
 	assign lvl_mov = ram_rd_ena ^  ram_wr_ena;
 	assign lvl_empty = level[AWIDTH];
+
+	always @(posedge clk or posedge rst)
+		if (rst) begin
+			wr_afull  <= 1'b0;
+			rd_aempty <= 1'b1;
+		end else begin
+			wr_afull  <=  level[AWIDTH:AWIDTH-2] == 3'b011;
+			rd_aempty <= (level[AWIDTH:AWIDTH-2] == 3'b000) | level[AWIDTH];
+		end
 
 
 	// Full flag generation

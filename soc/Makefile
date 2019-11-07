@@ -119,19 +119,19 @@ SRC += $(addprefix pic/, \
 	pic_wrapper.v \
 	risc16f84_clk2x.v \
 )
-	# Synth
-SRC += $(addprefix audio/, \
-	amplifier.v      \
-	ar.v              \
-	dac.v             \
-	envelope.v       \
-	lfsr.v           \
-	mixer4.v \
-	oscillator.v      \
-	synth_interface.v \
-	voice.v           \
-)
 
+	# Audio
+SRC += $(addprefix audio/, \
+	audio_mix.v \
+	audio_wb.v \
+	pdm.v \
+	synth_attack_decay.v \
+	synth_cfg_reg.v \
+	synth_core.v \
+	synth_mix.v \
+	synth_reg.v \
+	synth_rng.v \
+)
 
 	# HDMI
 SRC_SYNTH += $(addprefix hdmi/, \
