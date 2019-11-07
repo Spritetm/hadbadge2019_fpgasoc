@@ -105,6 +105,14 @@ int main(int argc, char **argv) {
 
 		if (ts > 10)
 			tb->rst = 0;
+		
+		tb->uart_rx = rx;
+		tb->irda_rx = tb->irda_tx;
+		tb->flash_sin = ts & 0xf;
+
+		pixel_clk = !pixel_clk;
+		tb->vid_pixelclk=pixel_clk?1:0;
+		tb->adc4=tb->adcrefout?0:1;
 
 		for (int c=0; c<4; c++)
 		{
@@ -124,13 +132,6 @@ int main(int argc, char **argv) {
 
 			uart.eval(tb->clk48m, tb->uart_tx, &rx);
 
-			tb->uart_rx = rx;
-			tb->irda_rx = tb->irda_tx;
-			tb->flash_sin = ts & 0xf;
-
-			pixel_clk = !pixel_clk;
-			tb->vid_pixelclk=pixel_clk?1:0;
-			tb->adc4=tb->adcrefout?0:1;
 			tb->clk48m = (c >> 1) & 1;
 			tb->clk96m = (c     ) & 1;
 			tb->eval();
