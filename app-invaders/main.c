@@ -34,7 +34,7 @@ uint8_t* fbmem;
 #define BULLET_COUNT 4
 #define BULLET_INDEX 131
 #define BULLET_START_Y (15 * 16)
-#define BULLET_FIRING_PERIOD 10000
+#define BULLET_FIRING_PERIOD 16000
 #define EXPLOSION_INDEX 132
 #define EXPLOSION_TIME 12000
 
@@ -194,6 +194,9 @@ void main(int argc, char** argv) {
   // Allocate framebuffer memory
   fbmem = malloc(320 * 512 / 2);
 
+  // Turn off the LEDs
+  MISC_REG(MISC_LED_REG) = 0x0;
+
   // Set up the framebuffer address.
   GFX_REG(GFX_FBADDR_REG) = ((uint32_t)fbmem) & 0xFFFFFF;
   // We're going to use a pitch of 512 pixels, and the fb palette will start at
@@ -331,10 +334,17 @@ void main(int argc, char** argv) {
 
       // Bullets move and draw
       for (uint8_t i = 0; i < BULLET_COUNT; i++) {
-        // Only move if bullets are on screen
-        if (bullets[i].y > -16) {
+        if (y > -16) {
           __sprite_set(BULLET_SPRITE_INDEX_START + i, bullets[i].x,
                        bullets[i].y, 16, 16, BULLET_INDEX, 0);
+        } else {
+          // Blank sprite if off screen, this cleans up some weirdness at the
+          // edge of the screen
+          __sprite_set(BULLET_SPRITE_INDEX_START + i, bullets[i].x,
+                       bullets[i].y, 16, 16, 0, 0);
+        }
+        // Only move if bullets are on screen
+        if (bullets[i].y > -16) {
           bullets[i].y--;
         }
       }
@@ -354,7 +364,7 @@ void main(int argc, char** argv) {
     }
 
     // Move the aliens every so often
-    if (m_counter % 1800 == 0) {
+    if (m_counter % 1500 == 0) {
       for (uint8_t i = 0; i < ALIEN_COUNT; i++) {
         aliens[i].x += alien_velocity;
       }
@@ -389,6 +399,19 @@ void main(int argc, char** argv) {
             m_counter > (aliens[i].hit_time + EXPLOSION_TIME)) {
           aliens[i].state = alien_state_dead;
         }
+      }
+
+      // Set LED state based on explode state of aliens
+      uint8_t explode_count = 0;
+      for (uint8_t i = 0; i < ALIEN_COUNT; i++) {
+        if (aliens[i].state == alien_state_explode) {
+          explode_count++;
+        }
+      }
+      if (explode_count > 0) {
+        MISC_REG(MISC_LED_REG) = 1 << explode_count;
+      } else {
+        MISC_REG(MISC_LED_REG) = 0x0;
       }
 
       // Update Game status
