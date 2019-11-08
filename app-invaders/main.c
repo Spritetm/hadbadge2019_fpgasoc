@@ -318,13 +318,15 @@ void main(int argc, char** argv) {
   uint32_t last_frame;
   uint32_t next_fire = m_counter + BULLET_FIRING_PERIOD;
 
+  // Main game loop
   while (!game_over) {
-    if (MISC_REG(MISC_BTN_REG) & BUTTON_B) {
-      game_over = 1;
-    }
-
     // Periodically move and re-draw
     if ((m_counter % 500) == 0) {
+      // Quit when they press start button (ironic huh?)
+      if (MISC_REG(MISC_BTN_REG) & BUTTON_START) {
+        game_over = 1;
+      }
+
       // Player move left
       if (MISC_REG(MISC_BTN_REG) & BUTTON_LEFT) {
         player_x -= PLAYER_VELOCITY;
@@ -332,6 +334,7 @@ void main(int argc, char** argv) {
           player_x = 16;
         }
       }
+
       // Player move right
       if (MISC_REG(MISC_BTN_REG) & BUTTON_RIGHT) {
         player_x += PLAYER_VELOCITY;
