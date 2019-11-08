@@ -24,7 +24,7 @@ uint8_t* fbmem;
 
 // Horizontal velocity of player per frame
 #define PLAYER_VELOCITY 1
-#define PLAYER_Y 290
+#define PLAYER_Y 288
 #define PLAYER_INDEX 129
 #define PLAYER_SPRITE_INDEX 0
 #define ALIEN_VELOCITY_X 1
@@ -41,8 +41,10 @@ uint8_t* fbmem;
 #define ALIEN_START_X 1
 #define ALIEN_START_Y 17
 #define ALIEN_COUNT 24
-#define ALIEN_TOP_INDEX 128
 #define ALIEN_SPRITE_INDEX (BULLET_SPRITE_INDEX_START + BULLET_COUNT)
+#define RESISTOR_TOP_INDEX 128
+#define CAPACITOR_TOP_INDEX 133
+#define BATTERY_TOP_INDEX 134
 
 // extern volatile uint32_t MISC[];
 // #define MISC_REG(i) MISC[(i) / 4]
@@ -144,13 +146,20 @@ static inline void __tile_b_translate(int dx, int dy) {
  */
 static inline void __render_alien(alien_t* p_alien, uint8_t alien_index) {
   switch (p_alien->state) {
-    case alien_state_alive:
+    case alien_state_alive:;
+      uint8_t sprite_index = RESISTOR_TOP_INDEX;
+      if (alien_index < 8) {
+        sprite_index = BATTERY_TOP_INDEX;
+      } else if (alien_index < 16) {
+        sprite_index = CAPACITOR_TOP_INDEX;
+      }
+
       __sprite_set(ALIEN_SPRITE_INDEX + (alien_index * 3), p_alien->x,
-                   p_alien->y, 16, 16, ALIEN_TOP_INDEX, 0);
+                   p_alien->y, 16, 16, sprite_index, 0);
       __sprite_set(ALIEN_SPRITE_INDEX + (alien_index * 3) + 1, p_alien->x,
-                   p_alien->y + 16, 16, 16, ALIEN_TOP_INDEX + 16, 0);
+                   p_alien->y + 16, 16, 16, sprite_index + 16, 0);
       __sprite_set(ALIEN_SPRITE_INDEX + (alien_index * 3) + 2, p_alien->x,
-                   p_alien->y + 32, 16, 16, ALIEN_TOP_INDEX + 32, 0);
+                   p_alien->y + 32, 16, 16, sprite_index + 32, 0);
       break;
     case alien_state_explode:
       __sprite_set(ALIEN_SPRITE_INDEX + (alien_index * 3), p_alien->x,
@@ -340,10 +349,10 @@ void main(int argc, char** argv) {
                    PLAYER_INDEX + 16, 0);
       __sprite_set(PLAYER_SPRITE_INDEX + 3, player_x, PLAYER_Y, 16, 16,
                    PLAYER_INDEX + 17, 0);
-      __sprite_set(PLAYER_SPRITE_INDEX + 4, player_x - 16, PLAYER_Y+16, 16, 16,
-                   PLAYER_INDEX + 32, 0);
-      __sprite_set(PLAYER_SPRITE_INDEX + 5, player_x, PLAYER_Y+16, 16, 16,
-                   PLAYER_INDEX + 33, 0);                   
+      __sprite_set(PLAYER_SPRITE_INDEX + 4, player_x - 16, PLAYER_Y + 16, 16,
+                   16, PLAYER_INDEX + 32, 0);
+      __sprite_set(PLAYER_SPRITE_INDEX + 5, player_x, PLAYER_Y + 16, 16, 16,
+                   PLAYER_INDEX + 33, 0);
 
       // Bullets move and draw
       for (uint8_t i = 0; i < BULLET_COUNT; i++) {
@@ -428,7 +437,7 @@ void main(int argc, char** argv) {
             }
           }
 
-          //Collision detection with walls
+          // Collision detection with walls
           if (m_aliens[i].x < 0) {
             bounce_left = 1;
           }
