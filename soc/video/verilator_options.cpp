@@ -19,9 +19,10 @@ void CmdLineOptions::dump() {
 
 static void errExit(char *prog_name, const char *msg, char opt) {
     fprintf(stderr, "Option '%c': %s\n"
-	"Usage: %s [-f fields] [-t]\n"
+	"Usage: %s [-f fields] [-t] [-s x]\n"
 	"  -f: number of HDMI fields to run consecutively\n"
 	"  -t: trace execution to a .vcd file\n",
+	"  -s: specify setup\n",
 	   opt, msg, prog_name);
     exit(EXIT_FAILURE);
 }

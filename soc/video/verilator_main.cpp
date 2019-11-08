@@ -8,6 +8,8 @@
 #include <gd.h>
 #include <stdint.h>
 
+#include "../ipl/gloss/mach_defines.h"
+
 
 // Iterate over each 16x16 pixel block of a rectangular PNG file,
 // loading tile memory.
@@ -122,7 +124,6 @@ void setup1() {
 	// Set up sprites: sprite 0 at 5, 5
 	tb_write(REG_OFF+2*4, 0x8); //ena sprites
 	set_sprite(2, 5, 5, 16, 16, 0);
-
 }
 
 // Setup 2: show the loaded background
@@ -179,6 +180,35 @@ void setup5() {
 	tb_write(REG_OFF+2*4, 0x10002); // all tile 0
 }
 
+// Setup 6: Copper test
+void setup6() {
+	// Load a tileset and palette
+	// Just uses tile 0 everywhere
+	load_tilemap("tileset.png");
+	load_default_palette();
+	tb_write(REG_OFF+2*4, 0x10000+2); // tileA
+	int i=0;
+	tb_write(COPPER_OFF+(i++)*4, COPPER_OP_WAIT(5, 5));
+	tb_write(COPPER_OFF+(i++)*4, COPPER_OP_WRITE((REG_OFF+GFX_TILEA_OFF), 1));
+	printf("Op %x\n", COPPER_OP_WRITE((REG_OFF+GFX_TILEA_OFF), 1));
+	tb_write(COPPER_OFF+(i++)*4, 64*4);
+	tb_write(COPPER_OFF+(i++)*4, COPPER_OP_WAIT(5, 6));
+	tb_write(COPPER_OFF+(i++)*4, COPPER_OP_WRITE((REG_OFF+GFX_TILEA_OFF), 1));
+	tb_write(COPPER_OFF+(i++)*4, 64*8);
+	tb_write(COPPER_OFF+(i++)*4, COPPER_OP_WAIT(5, 7));
+	tb_write(COPPER_OFF+(i++)*4, COPPER_OP_WRITE((REG_OFF+GFX_TILEA_OFF), 1));
+	tb_write(COPPER_OFF+(i++)*4, 64*9);
+	tb_write(COPPER_OFF+(i++)*4, COPPER_OP_WAIT(5, 8));
+	tb_write(COPPER_OFF+(i++)*4, COPPER_OP_WRITE((REG_OFF+GFX_TILEA_OFF), 1));
+	tb_write(COPPER_OFF+(i++)*4, 64*10);
+	tb_write(COPPER_OFF+(i++)*4, COPPER_OP_WAIT(0, 0));
+	tb_write(COPPER_OFF+(i++)*4, COPPER_OP_WRITE((REG_OFF+GFX_TILEA_OFF), 1));
+	tb_write(COPPER_OFF+(i++)*4, 0);
+	tb_write(COPPER_OFF+(i++)*4, COPPER_OP_RESET);
+	tb_write(REG_OFF+GFX_COPPER_CTL_REG, (1<<31));
+}
+
+
 // Array of all setups - defined in verilator_options.hpp
 setup_fn setups[] = {
 	setup1,
@@ -186,6 +216,7 @@ setup_fn setups[] = {
 	setup3,
 	setup4,
 	setup5,
+	setup6,
 	NULL
 };
 

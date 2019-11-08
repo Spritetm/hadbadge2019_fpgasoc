@@ -75,11 +75,6 @@
 #define MISC_SOC_VER_VERILATOR (1<<16)
 /** This reads the ID of the current CPU reading this. */
 #define MISC_CPU_NO (3*4)
-/** PSRAM I/O override register for PSRAM A. Used to bitbang the SPI lines to
-    get the PSRAM in the proper QPI mode. (ToDo: document bits)*/
-#define MISC_PSRAMOVRA_REG (4*4)
-/** PSRAM I/O override register for PSRAM B. */
-#define MISC_PSRAMOVRB_REG (5*4)
 /** Reset register for various CPUs in the SoC. (ToDo: document) */
 #define MISC_RESETN_REG (6*4)
 /** Flash control register. Used to read from / write to both the on-board as
@@ -316,13 +311,21 @@ fill the palette memory), the fields are
 #define GFX_BGNDCOL_REG 0x2C
 /** Offset of all the sprites. Defaults to (64, 64) meaning that
     a sprite placed on x=64, y=64 will appear in the top left
-    corner.
+    corner. */
 #define GFX_SPRITE_OFF_REG 0x30
 /** [12:0]: Sprite X position that maps to left of screen */
 #define GFX_SPRITE_OFF_X_OFF 0
 /** [28:16]: Sprite Y position that maps to top of screen */
 #define GFX_SPRITE_Y_OFF 16
-
+/** Copper control register */
+#define GFX_COPPER_CTL_REG 0x34
+/** [31]: Copper enable register. Setting this enables the copper. 
+    Clearing this disables & resets the copper. */
+#define GFX_COPPER_CTL_RUN (1<<31)
+/** [30:0]: Current copper PC. Indicates which word in the copper
+    list (at GFX_OFFSET_COPPERMEM) the copper is currently 
+    processing. Read-only. */
+#define GFX_COPPER_PC_OFF 0
 
 /** Memory address of the palette memory. This is a 512-entry
     memory containing 32-bit RGBA values. */
@@ -394,6 +397,39 @@ pixel (0,1) of a tile is stored in bits [3:0] of word 2
 */
 #define GFX_OFFSET_TILEMEM 0x50010000
 
+/**
+ Offset to copper memory. The copper is a tiny video 'coprocessor'
+ with a very limited set of instructions: the main two are to wait 
+ until the  graphics processor has reached a certain (x/y)-coordinate 
+ and to poke words into the GFX registers. This can be used to e.g
+ change palettes, scaling factors, locations etc at a random point
+ during screen rendering, allowing for some creative effects without
+ having to use the CPU. Note that the coppermem region is 2K-words
+ in size. */
+#define GFX_OFFSET_COPPERMEM 0x50020000
+
+/* This instruction makes the coprocessor wait until the graphics
+ processor has reached a certain (x,y) coordinate. Use coordinates
+ (0,0) to wait for a new screen to be drawn. Note that sprites 
+ graphics are actually calculated one line earlier than they are 
+ drawn. */
+#define COPPER_OP_WAIT(x, y) (0x80000000 | (y<<16) | (x))
+
+/* This instruction resets the copper PC to the start of the copper
+ list, making it start over. */
+#define COPPER_OP_RESET 0x90000000
+
+/* This instruction generates an interrupt. */
+#define COPPER_OP_IRQ 0xA0000000
+
+/* This instruction prepares a write of one to four words to consecutive
+ addresses in the graphics subsystem. addr is the same address as the main
+ RiscV processor would use to write into the register. Ct is the number
+ of words that are written, from 1 to 4. The word data follows this 
+ instruction and is written into consecutive addresses. */
+#define COPPER_OP_WRITE(addr, ct) (((uint32_t)addr & 0xfffffffc)|(ct-1))
+
+
 /* -------------- USB peripheral defines --------------------- */
 
 /** Offset to USB core. Please refer to the USB IP for info on how
@@ -409,3 +445,117 @@ pixel (0,1) of a tile is stored in bits [3:0] of word 2
 #define USB_DATA_BASE_RX (USB_CORE_OFFSET+USB_RXMEM)
 #define USB_DATA_BASE_TX (USB_CORE_OFFSET+USB_TXMEM)
 
+/* -------------------- Audio / Synthesizer defines ------------------- */
+/* 
+The FPGA SoC has a dedicated synthesizer (loosely inspired by the SID) and
+an audio output subsystem.  The board itself has a single logic output pin 
+that passes through a lowpass RC filter into an amplifier.
+
+The rest is done in code.
+
+The synthesizer has eight simultaneous voices, mixed together with fixed 
+volume in two groups.  Each voice has its own attack and release parameters, 
+and can be set to sound for a given duration.  Attack and release are each 
+eight bit values, set in per-voice configuration registers.
+
+Sending a duration and pitch to a voice's "play" register makes it start 
+immediately into its attack phase, play for the duration, and then taper
+slowly off according to the release value. Note that you are responsible
+for timing.  The synth just handles duration.
+
+There is a README in the soc/audio subdirectory if you want to know more,
+but this should get you started.
+
+## Layout:
+
+80000000 Voice 0 : Sawtooth
+80000010 Voice 1 : Sawtooth
+80000020 Voice 2 : Pulse + Sub
+80000030 Voice 3 : Square
+80000040 Voice 4 : Triangle
+80000050 Voice 5 : Triangle
+80000060 Voice 6 : Triangle
+80000070 Voice 7 : Triangle
+
+800000C0 Raw PCM input: 14-bit samples, but hit it with whatever you got 
+         Sample rate is determined by whatever you push in,
+
+800000D0 Drums (Still TBD) Bits: Kick drum, Snare, Hat/Cymbal, Cowbell
+
+800000F0 Config register
+
+## Voice Registers: for voice and drums X
+
+0x800000X0: PLAY register: 
+	    0xDDDDPPPP Pitch accumulator and duration. 
+0x800000X4: CONFIG register: 
+	    0x0000RRAA Attack and release are both 0-255	    
+0x800000X8: Filter parameters, reserved.
+0x800000XC: Beats me.
+
+## PCM Register: just write raw data in
+
+800000C0:  PCM_PLAY:
+	   0x0000PPPP 16-bit PCM data, mixed with the synth voices 
+           Note: PCM can get loud. Try global volumes around 0x0100.
+
+## Config Register:
+0x800000F0: VOLume
+	    0x0000VVVV Sixteen bit global volume. 
+	    0x200 is nominal for four simultaneous voices
+	    If it's distorting, turn it down.
+
+## Examples:
+   SYNTHREG(AUDIO_CONFIG_VOLUME) = 0x100; 
+   will set master volume a little lower, good for PCM or many voices
+   (see audio.c and audio.h in IPL for tables)
+
+   SYNTHREG(AUDIO_VOICE_SAW1 + AUDIO_CONFIG_REG_OFFSET) = \
+			AUDIO_ATTACK(10) + AUDIO_RELEASE(255);
+   sets the SAW1 voice to a very slow attack and a nearly instant release
+   
+   SYNTHREG(AUDIO_VOICE_SAW1) = AUDIO_PITCH(0x0C00) + AUDIO_DURATION(0x0120);
+   will play the sawtooth voice 1 for around 100 ms at around 137 Hz
+*/
+
+#define AUDIO_CORE_BASE         0x80000000
+#define AUDIO_PLAY_REG_OFFSET   0x0
+#define AUDIO_CONFIG_REG_OFFSET 0x4
+#define AUDIO_FILTER_REG_OFFSET 0x8 // (TBD)
+#define AUDIO_MISC_REG_OFFSET   0xC // (TBD)
+
+#define AUDIO_VOICE_SAW1   0x00
+#define AUDIO_VOICE_SAW2   0x10
+#define AUDIO_VOICE_PULSE  0x20
+#define AUDIO_VOICE_SQUARE 0x30
+#define AUDIO_VOICE_TRI1   0x40
+#define AUDIO_VOICE_TRI2   0x50
+#define AUDIO_VOICE_TRI3   0x60
+#define AUDIO_VOICE_TRI4   0x70
+
+#define AUDIO_PITCH(x)    (x)
+#define AUDIO_DURATION(x) (x << 16)
+
+#define AUDIO_ATTACK(x)   (x)
+#define AUDIO_RELEASE(x)  (x << 8)
+
+#define AUDIO_PCM           0xC0
+#define AUDIO_DRUMS         0xD0
+#define AUDIO_CONFIG_VOLUME 0xF0
+
+/* -------------- PSRAM peripheral defines --------------------- */
+
+/** Offset of the manual control for PSRAM */
+#define PSRAM_CMD_OFFSET 0x90000000
+
+#define PSRAM_CMD_CSR		0x00
+#define PSRAM_CMD_RSP_NOWAIT	0x08
+#define PSRAM_CMD_RSP_BLOCK	0x0C
+#define PSRAM_CMD_SPI_WR_16B	0x20
+#define PSRAM_CMD_SPI_WR_32B	0x24
+#define PSRAM_CMD_SPI_RD_16B	0x28
+#define PSRAM_CMD_SPI_RD_32B	0x2C
+#define PSRAM_CMD_QPI_WR_16B	0x30
+#define PSRAM_CMD_QPI_WR_32B	0x34
+#define PSRAM_CMD_QPI_RD_16B	0x38
+#define PSRAM_CMD_QPI_RD_32B	0x3C

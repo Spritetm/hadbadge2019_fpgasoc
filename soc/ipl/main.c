@@ -51,6 +51,10 @@ extern uint32_t GFXTILES[];
 extern uint32_t GFXTILEMAPA[];
 extern uint32_t GFXTILEMAPB[];
 extern uint32_t GFXSPRITES[];
+extern uint32_t GFXCOPPEROPS[];
+
+extern volatile uint32_t SYNTH[];
+#define SYNTHREG(i) SYNTH[i/4]
 
 uint8_t *lcdfb;
 
@@ -263,6 +267,30 @@ int show_main_menu(char *app_name, int *ret_flags) {
 						"                       ";
 	int scrpos=0;
 
+	//Generate copper list to transform the center of the screen into a barrel-ish
+	//shape for tile layer B.
+	uint32_t *cmem=GFXCOPPEROPS;
+	for (int y=60; y<240; y++) {
+		//X offset follows a circle
+		int xof=sqrt((100*100)-(y-160)*(y-160));
+		//Y offset is fudged because I can't be bothered to do the math
+		int yoff=0;
+		if (y<100) yoff=(y-100)*16;
+		if (y>200) yoff=(y-200)*16;
+		//Have copper wait for the selected Y coordinate.
+		*cmem++=COPPER_OP_WAIT(0, y);
+		//When that is reached, write the desired X and Y offset into the TILEB_OFF register
+		*cmem++=COPPER_OP_WRITE(&GFX_REG(GFX_TILEB_OFF), 1),
+		*cmem++=((((yoff)&0xffff)<<16)+((xof*32)&0xffff));
+	}
+	//Finally, we probably want the screen to start with an offset of 0.
+	*cmem++=COPPER_OP_WAIT(0, 0);
+	*cmem++=COPPER_OP_WRITE(&GFX_REG(GFX_TILEB_OFF), 1),
+	*cmem++=0;
+	//Last instruction: loop back to start
+	*cmem++=COPPER_OP_RESET;
+	//Enable copper so it can... errm... cop.
+	GFX_REG(GFX_COPPER_CTL_REG)=GFX_COPPER_CTL_RUN;
 
 	while(!done) {
 		//Record what frame we are on right now.
@@ -339,7 +367,7 @@ int show_main_menu(char *app_name, int *ret_flags) {
 			fprintf(console, "\033C");
 
 			int start=selected-5;
-			for (int i=0; i<10; i++) {
+			for (int i=0; i<11; i++) {
 				const char *itm;
 				itm="";
 				if (i+start>=0 && i+start<menu.no_items) itm=menu.item[i+start];
@@ -372,7 +400,7 @@ int show_main_menu(char *app_name, int *ret_flags) {
 	GFX_REG(GFX_TILEB_OFF)=(0<<16)+(0&0xffff);
 	GFX_REG(GFX_TILEB_INC_COL)=(0<<16)+(64&0xffff);
 	GFX_REG(GFX_TILEB_INC_ROW)=(64<<16)+(0&0xffff);
-
+	GFX_REG(GFX_COPPER_CTL_REG)=0; //disable copper
 
 	//Clear console
 	fprintf(console, "\0330M\033C\0330A"); //Set map to tilemap A, clear tilemap, set attr to 0
@@ -410,11 +438,14 @@ usb_setup_serial_no(void)
 extern uint32_t *irq_stack_ptr;
 
 #define IRQ_STACK_SIZE (16*1024)
+
 void main() {
 	syscall_reinit();
 	user_memfn_set(malloc, realloc, free);
 	verilator_start_trace();
 	//When testing in Verilator, put code that pokes your hardware here.
+
+	
 
 	//Initialize IRQ stack to be bigger than the bootrom stack
 	uint32_t *int_stack=malloc(IRQ_STACK_SIZE);
@@ -432,24 +463,34 @@ void main() {
 
 	//Initialize the LCD
 	lcd_init(simulated());
-
-	//See if there's an autoexec.elf we can run.
-	const char *autoexec;
-	if (booted_from_cartridge()) {
-		autoexec="cart:autoexec.elf";
-	} else {
-		autoexec="int:autoexec.elf";
-	}
-	FILE *f=fopen(autoexec, "r");
-	if (f!=NULL) {
-		fclose(f);
-		printf("Found %s. Executing\n", autoexec);
-		load_tiles();
-		usb_msc_off();
-		start_app(autoexec);
-		printf("%s done.\n", autoexec);
-	} else {
-		printf("No %s found; not running\n", autoexec);
+	
+    // Basic startup chime.
+	SYNTHREG(0xF0) = 0x00000200;
+	SYNTHREG(0x40) = 0x00151800;	
+	SYNTHREG(0x50) = 0x00251E00;	
+	SYNTHREG(0x60) = 0x00352400;	
+	SYNTHREG(0x70) = 0x00453000;	
+    
+	//Skip autoexec when user is holding down the designated bypass key
+	if(!(MISC_REG(MISC_BTN_REG)&BUTTON_B)) {
+		//See if there's an autoexec.elf we can run.
+		const char *autoexec;
+		if (booted_from_cartridge()) {
+			autoexec="cart:autoexec.elf";
+		} else {
+			autoexec="int:autoexec.elf";
+		}
+		FILE *f=fopen(autoexec, "r");
+		if (f!=NULL) {
+			fclose(f);
+			printf("Found %s. Executing\n", autoexec);
+			load_tiles();
+			usb_msc_off();
+			start_app(autoexec);
+			printf("%s done.\n", autoexec);
+		} else {
+			printf("No %s found; not running\n", autoexec);
+		}
 	}
 
 	while(1) {

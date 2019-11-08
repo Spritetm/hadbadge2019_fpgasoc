@@ -1,7 +1,7 @@
 #Include local settings for entire project, if they exist
 -include ../local-settings.mk
 
-include ../toolchain-settings.mk
+include $(APPSSDK_DIR)/../toolchain-settings.mk
 
 #Name of what we're trying to build.
 TARGET_ELF := $(APPNAME).elf
