@@ -16,11 +16,6 @@ CROSS := riscv64-unknown-elf-
 endif
 endif
 
-	# WSL still needs .exe suffix
-ifneq ("$(WSL_DISTRO_NAME)", "")
-EXE := .exe
-endif
-
 # Find a toolchain
 POSSIBLE_CROSS := riscv-none-embed- riscv32-unknown-elf- riscv64-unknown-elf-
 
@@ -28,8 +23,18 @@ ifneq ("$(RISCV_TOOLCHAIN_PATH)", "")
 POSSIBLE_CROSS := $(addprefix $(RISCV_TOOLCHAIN_PATH)/, $(POSSIBLE_CROSS))
 endif
 
+# Search for toolchain with each of the possible names
 ifeq ("$(CROSS)", "")
 CROSS := $(shell for c in $(POSSIBLE_CROSS); do which $${c}gcc$(EXE) >/dev/null 2>&1 && echo $${c} && break; done)
+endif
+
+# If still not found toolchain, and on WSL, look for native windows toolchain
+ifeq ("$(CROSS)", "")
+	ifneq ("$(WSL_DISTRO_NAME)", "")
+		EXE := .exe
+		# Search again
+		CROSS := $(shell for c in $(POSSIBLE_CROSS); do which $${c}gcc$(EXE) >/dev/null 2>&1 && echo $${c} && break; done)
+	endif
 endif
 
 ifeq ("$(CROSS)", "")
