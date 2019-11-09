@@ -152,7 +152,10 @@ ifeq ($(OS),Windows_NT)
 EXE:=.exe
 endif
 ifneq ("$(WSL_DISTRO_NAME)","")
-EXE:=.exe
+	# if using Windows Subsystem for Linux, and yosys not found, try adding .exe
+	ifeq (, $(shell which yosys))
+		EXE:=.exe
+ 	endif
 endif
 
 #Image read mode: qspi, dual-spi, fast-read
