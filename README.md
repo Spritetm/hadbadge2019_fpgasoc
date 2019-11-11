@@ -22,9 +22,9 @@ How to use
 In order to use this repository, aside from the badge itself, you'll need a toolchain
 compiled for your OS:
 
-- [Linux](doc/toolchain_lin.md)
-- [MacOSX](doc/toolchain_mac.md)
-- [Windows](doc/toolchain_win.md)
+- [Linux](./doc/toolchain-lin.md)
+- [MacOSX](./doc/toolchain-mac.md)
+- [Windows](./doc/toolchain-win.md)
 
 You will also need a Micro-USB cable to connect to the badge, as well as 2 AA's (or another
 way to supply it with power, e.g. using the JTAG connector) to power it. Note that while
