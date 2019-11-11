@@ -45,9 +45,10 @@ module synth_core #(
 	// Output
 	output wire [15:0] audio_out_l,
 	output wire [15:0] audio_out_r,
+	output wire [11:0] audio_out_dc,
 
 	// WaveTable lookup
-	output reg  [11:0] wt_addr,
+	output wire [11:0] wt_addr,
 	input  wire [ 7:0] wt_data,
 
 	// Config bus for voice settings
@@ -86,8 +87,8 @@ module synth_core #(
 	reg [15:0] cfg_voice_start;
 
 	// Voice config registers
-	wire [ 7:0] cr_ctrl_1;
-	reg  [ 7:0] cr_ctrl_2;
+	wire [ 8:0] cr_ctrl_1;
+	reg  [ 8:0] cr_ctrl_2;
 	wire [PHASE_INC-1:0] cr_phase_inc_1;
 	wire [PHASE_INT-1:0] cr_phase_cmp_1;
 	wire [ 7:0] cr_volume_l_2;
@@ -147,6 +148,12 @@ module synth_core #(
 	wire env_tick_rst_1;
 	reg  env_tick_now_2;
 
+	// Wave table address gen
+	wire [11:0] wt_addr_base;
+	wire [11:0] wt_addr_offset;
+	wire [11:0] wt_addr_os1;
+	wire [11:0] wt_addr_os2;
+
 	// Oscillator output function
 	wire [PHASE_INT:0] oo_cmp_diff;
 	wire oo_cmp;
@@ -201,7 +208,7 @@ module synth_core #(
 	// Per-voice
 	synth_cfg_reg #(
 		.ADDR(0),
-		.WIDTH(8)
+		.WIDTH(9)
 	) cr_ctrl_I (
 		.ctx_0(ctx_0),
 		.out_1(cr_ctrl_1),
@@ -569,21 +576,17 @@ module synth_core #(
 	end
 
 	// Execute Wavetable lookup
-	always @(*)
-	begin
-		case (cr_ctrl_1[3:2])
-			2'b00: wt_addr = phase_acc_1[PHASE_WIDTH-1:PHASE_WIDTH-12];
-			2'b01: wt_addr = phase_acc_1[PHASE_WIDTH-2:PHASE_WIDTH-13] ^ {12{phase_acc_1[PHASE_WIDTH-1]}};
-			2'b10: wt_addr = {ctx_1[0], phase_acc_1[PHASE_WIDTH-1:PHASE_WIDTH-11]};
-			2'b11: wt_addr = {ctx_1[0], phase_acc_1[PHASE_WIDTH-2:PHASE_WIDTH-12] ^ {11{phase_acc_1[PHASE_WIDTH-1]}}};
-		endcase
-	end
+	assign wt_addr_base   = { cr_ctrl_1[6:4], 9'h000 };
+	assign wt_addr_offset = phase_acc_1[PHASE_WIDTH-1:PHASE_WIDTH-12] ^ ((cr_ctrl_1[8] & phase_acc_1[PHASE_WIDTH]) ? 12'hfff : 12'h000);
+	assign wt_addr_os1    = cr_ctrl_1[3] ? { 2'b00, wt_addr_offset[11:2] } : wt_addr_offset;
+	assign wt_addr_os2    = cr_ctrl_1[2] ? {  1'b0, wt_addr_os1[11:1]    } : wt_addr_os1;
+	assign wt_addr        = wt_addr_base + wt_addr_os2;
 
 	assign oo_out_wt_2 = { wt_data, 1'b1, {(PHASE_INT-9){1'b0}} };
 
 	// Final selection (and convert to signed)
 	always @(posedge clk)
-		oo_out_3 <= (cr_ctrl_2[4] ? oo_out_wt_2 : oo_out_direct_2) ^ {1'b1, {(PHASE_INT-1){1'b0}}};
+		oo_out_3 <= (cr_ctrl_2[7] ? oo_out_wt_2 : oo_out_direct_2) ^ {1'b1, {(PHASE_INT-1){1'b0}}};
 
 
 	// Amplifier and mixer
@@ -601,6 +604,7 @@ module synth_core #(
 		.in_data_3(oo_out_3),
 		.out_l(audio_out_l),
 		.out_r(audio_out_r),
+		.out_dc(audio_out_dc),
 		.clk(clk),
 		.rst(rst)
 	);

@@ -61,6 +61,7 @@ module audio_wb (
 	// Audio
 	wire [15:0] audio_synth_l;
 	wire [15:0] audio_synth_r;
+	wire [11:0] audio_synth_dc;
 
 	// Strobes
 	wire stb_pcm;
@@ -197,6 +198,7 @@ module audio_wb (
 	synth_core core_I (
 		.audio_out_l(audio_synth_l),
 		.audio_out_r(audio_synth_r),
+		.audio_out_dc(audio_synth_dc),
 		.wt_addr(wtr_addr_0),
 		.wt_data(wtr_data8_1),
 		.cb_data(cb_data),
@@ -392,6 +394,7 @@ module audio_wb (
 	audio_mix mix_I (
 		.synth_l(audio_synth_l),
 		.synth_r(audio_synth_r),
+		.synth_dc(audio_synth_dc),
 		.synth_voices(active_voices),
 		.pcm(sf_rdata),
 		.pcm_vol_l(cfg_pcm_volume_l),
