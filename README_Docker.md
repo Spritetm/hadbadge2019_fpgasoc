@@ -2,7 +2,7 @@
 
 ### Why?
 Installing these tools in a Docker image means you don't have to install them on your local machine, which is probably weird because of all the other toolchains you've indiscriminately installed before. Stop the madness and keep things organized into useful containers. And compared to a virtual machine, you can edit your source files and do version control on your local machine, no need to worry about transferring files to a VM or sharing folders.
-- Pros: Likely to work on any computer that runs Docker, no conflicts with existing setup
+- Pros: Likely to work on any computer that runs Docker, no conflicts with existing setup. On macOS Catalina, this removes a major source of pain approving all the toolchain binaries before running.
 - Cons: Not as easy to reach in and tweak the toolchain itself; if you need to do that, consider moving up to a full virtual machine.
 
 ### Building the image
