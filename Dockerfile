@@ -1,6 +1,6 @@
 # Dockerfile
 # Fetches ECP5 toolchain and sets up working container
-# Extra tools for Hackaday Supercon 2017 badge
+# Extra tools for Hackaday Supercon 2019 badge
 
 # Bare bones Debian image
 FROM bitnami/minideb:latest
