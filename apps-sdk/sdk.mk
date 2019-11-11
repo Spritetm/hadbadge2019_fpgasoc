@@ -129,7 +129,7 @@ $(TARGET_ELF): $(LIBS) $(OBJS_BUILDDIR) $(LDSCRIPT)
 .PHONY: clean
 clean:
 	$(vecho) CLEAN
-	$(Q)rm -f $(TARGET_ELF)
+	$(Q)rm -f $(TARGET_ELF) $(TARGET_SYM)
 	$(Q)rm -rf $(addprefix $(BUILD_DIR)/,$(OBJS)) $(addprefix $(BUILD_DIR)/,$(OBJS:%.o=%.d)) 
 	$(Q)rm -rf $(addprefix $(BUILD_DIR_SDK)/,$(SDK_OBJS)) $(addprefix $(BUILD_DIR_SDK)/,$(SDK_OBJS:%.o=%.d))
 	$(Q)rm -rf $(addprefix $(BUILD_DIR_SDK),/$(SDK_LIBS)) $(TARGET_MAP)
