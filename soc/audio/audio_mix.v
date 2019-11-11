@@ -40,7 +40,7 @@ module audio_mix (
 	// Synth input
 	input  wire [15:0] synth_l,
 	input  wire [15:0] synth_r,
-
+	input  wire [11:0] synth_dc,
 	input  wire [ 4:0] synth_voices,
 
 	// PCM input
@@ -97,10 +97,10 @@ module audio_mix (
 	always @(*)
 		if (pcm_ena | force_pdm_offset)
 			pdm_offset = 16'h8000;
-		else if (synth_voices[4:2] != 3'b000)
+		else if (synth_dc[11:10] != 2'b00)
 			pdm_offset = 16'h8000;
 		else
-			pdm_offset = { 1'b0, synth_voices[1:0], 13'b0 };
+			pdm_offset = { 1'b0, synth_dc[9:0], 5'b0 };
 
 	always @(posedge clk)
 		out_pdm <= out_l + pdm_offset;

@@ -45,6 +45,7 @@ module synth_core #(
 	// Output
 	output wire [15:0] audio_out_l,
 	output wire [15:0] audio_out_r,
+	output wire [11:0] audio_out_dc,
 
 	// WaveTable lookup
 	output reg  [11:0] wt_addr,
@@ -601,6 +602,7 @@ module synth_core #(
 		.in_data_3(oo_out_3),
 		.out_l(audio_out_l),
 		.out_r(audio_out_r),
+		.out_dc(audio_out_dc),
 		.clk(clk),
 		.rst(rst)
 	);

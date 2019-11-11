@@ -56,6 +56,8 @@ module synth_mix #(
 	output reg [15:0] out_l,
 	output reg [15:0] out_r,
 
+	output reg [11:0] out_dc,
+
 	// Clock / Reset
 	input  wire clk,
 	input  wire rst
@@ -66,12 +68,16 @@ module synth_mix #(
 	reg  [35:0] data_l_4,   data_r_4;
 	wire [15:0] sum_in_l_4, sum_in_r_4;
 	reg  [15:0] sum_l_5,    sum_r_5;
-	wire first_4;
-	wire last_5;
+	wire first_2, first_4;
+	wire last_3, last_5;
+
+	reg  [11:0] dc_sum_3;
 
 	// Control delay
-	delay_bit #(4) dly_first ( first_0, first_4, clk );
-	delay_bit #(5) dly_last  ( last_0,  last_5,  clk );
+	delay_bit #(2) dly_first02 ( first_0, first_2, clk );
+	delay_bit #(2) dly_first24 ( first_2, first_4, clk );
+	delay_bit #(3) dly_last03  ( last_0,  last_3,  clk );
+	delay_bit #(2) dly_last35  ( last_3,  last_5,  clk );
 
 	// Combine envelope volume with global one
 	always @(posedge clk)
@@ -104,8 +110,16 @@ module synth_mix #(
 	// Final capture
 	always @(posedge clk)
 		if (last_5) begin
-			out_l <= sum_l_5;
-			out_r <= sum_l_5;
+			out_l  <= sum_l_5;
+			out_r  <= sum_l_5;
 		end
+
+	// DC level
+	always @(posedge clk)
+		dc_sum_3 <= (first_2 ? 12'h000 : dc_sum_3) + vol_ge_2[15:8] + 1;
+
+	always @(posedge clk)
+		if (last_3)
+			out_dc <= dc_sum_3;
 
 endmodule // synth_mix
