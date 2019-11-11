@@ -36,9 +36,8 @@ to use e.g. gdb in case of a crash.
 After you have a toolchain, you'll need to set up this SDK. Clone this repository and grab 
 the submodules, if you haven't already:
 ```
-git clone https://github.com/Spritetm/hadbadge2019_fpgasoc
+git clone --recursive https://github.com/Spritetm/hadbadge2019_fpgasoc
 cd hadbadge2019_fpgasoc
-git submodule update --init --recursive
 ```
 
 From here, you can start hacking:
