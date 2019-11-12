@@ -19,6 +19,11 @@
 #include "gfx_load.h"
 #include "cache.h"
 
+#include "libsynth.h"
+#include "synth_utils.h"
+#include "midi_note_increments.h"
+#include "splash_sounds.h"
+
 //The background image got linked into the binary of this app, and these two chars are the first
 //and one past the last byte of it.
 extern char _binary_gameboybackground_png_start;
@@ -1059,23 +1064,30 @@ void main(int argc, char **argv) {
 		random = MISC_REG(MISC_RNG_REG) & bitmask;
 	}
 
+	random = 0;
 	switch(random) {
 		case 0:
+			synth_play_gameboy_monochrome();
 			gameboy_monochrome_splash();
 			break;
 		case 1:
+			synth_play_gameboy_color();
 			gameboy_color_splash();
 			break;
 		case 2:
+			synth_play_switch();
 			switch_splash();
 			break;
 		case 3:
+			synth_play_sega();
 			sega_splash();
 			break;
 		case 4:
+			synth_play_playstation();
 			playstation_splash();
 			break;
 		case 5:
+			synth_play_xbox();
 			xbox_splash();
 			break;
 	}
