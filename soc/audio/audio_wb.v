@@ -337,7 +337,7 @@ module audio_wb (
 
 	// Delay counter
 	always @(posedge clk)
-		delay_ld <= cf_ren;
+		delay_ld <= cf_ren | cf_empty;
 
 	always @(posedge clk)
 		delay_cnt <= delay_ld ? { 1'b0, cf_rdata[15:0] } : (delay_cnt - (stb_synth ? 1 : 0));
