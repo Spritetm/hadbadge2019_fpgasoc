@@ -69,12 +69,12 @@ endif
 define build_template
 $(1)/%.o: $(2)/%.c $(1)/%.d
 	$$(vecho) CC $$(notdir $$<)
-	$$(Q)mkdir -p $(1)
+	$$(Q)mkdir -p $$(dir $$@)
 	$$(Q)$$(CC) $$(CFLAGS) $$(DEPFLAGS) -c -o $$@ $$<
 
 $(1)/%.o: $(2)/%.S $(1)/%.d
 	$$(vecho) CC $$(notdir $$<)
-	$$(Q)mkdir -p $(1)
+	$$(Q)mkdir -p $$(dir $$@)
 	$$(Q)$$(CC) $$(CFLAGS) $$(DEPFLAGS) -c -o $$@ $$<
 endef
 
