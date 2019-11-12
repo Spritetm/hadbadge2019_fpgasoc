@@ -46,11 +46,11 @@ void synth_play(uint8_t voice, uint8_t note, uint16_t duration){
 	// plays as soon as it gets the start
 }
 
-void synth_set_dynamics(uint8_t voice, uint8_t attack_rate, uint8_t release_rate){
+void synth_set_dynamics(uint8_t voice, uint8_t attack_rate, uint8_t decay_rate){
 	// sorry about the confusion between release and decay.
 	// It's really release, but it got called "decay" early on in development.
 	synth_now->voice[voice].attack = attack_rate;
-	synth_now->voice[voice].decay = attack_rate;
+	synth_now->voice[voice].decay = decay_rate;
 }
 
 void synth_play_queued(uint8_t voice, uint8_t note, uint16_t duration, uint32_t wait_until){
