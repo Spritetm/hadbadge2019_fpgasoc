@@ -770,6 +770,7 @@ void sega_splash() {
 	// Wait to start fading in blue
 	__INEFFICIENT_delay(100);
 
+	synth_play_sega();
 	// Move in the solid cyan (now palette changed to white) horizontal bar for palette animation
 	__tile_a_translate(x_translate,y_translate+64*16*4);
 
@@ -909,6 +910,8 @@ void switch_splash() {
 		__tile_b_translate(0,y_translate);
 		__INEFFICIENT_delay(1);
 	}
+    // Make the snapping noise
+			synth_play_switch();
 
 	// Place "Supercon" on layer B
 	for (uint8_t x = 0; x < 12; x++) {
@@ -1064,7 +1067,7 @@ void main(int argc, char **argv) {
 		random = MISC_REG(MISC_RNG_REG) & bitmask;
 	}
 
-	random = 0;
+	random = 4;
 	switch(random) {
 		case 0:
 			synth_play_gameboy_monochrome();
@@ -1075,11 +1078,13 @@ void main(int argc, char **argv) {
 			gameboy_color_splash();
 			break;
 		case 2:
-			synth_play_switch();
+			// This one has to lock in with the switch to make sense
+			// synth_play_switch();
 			switch_splash();
 			break;
 		case 3:
-			synth_play_sega();
+			// This one is also synced
+			// synth_play_sega();
 			sega_splash();
 			break;
 		case 4:
