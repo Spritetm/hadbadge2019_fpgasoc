@@ -23,7 +23,7 @@
 #include "NeverGonnaGiveYouUpDbmajor.h"
 
 // the name of the data from the include file
-#define SONGDATA   mario
+#define SONGDATA   castlevania
 #define SONGLENGTH sizeof(SONGDATA)/sizeof(uint16_t)/3
 
 void main(int argc, char **argv)
@@ -37,11 +37,11 @@ void main(int argc, char **argv)
 	uint32_t timebase;
 	timebase = time();
 	uint8_t button = 0;
-
-	while (1){
+	uint32_t steps = 0 ;
+	while (steps < SONGLENGTH-1){
 		// Ideally you would put this somewhere in your code where it can be polled periodically
 		// At least as often as the shortest note.
-		midi_play_song( SONGDATA, SONGLENGTH, BPM(420) );
+		steps = midi_play_song( SONGDATA, SONGLENGTH, BPM(120) );
 
 		// Here, we're just looping until you hit the button.
 		// Needs debouncing.  Argh.

@@ -13,7 +13,7 @@
 //   and lots of examples
 
 // 48000000 clock speed / 120 BPM / 480 clocks per quarter note
-#define BPM(x)    (48000000 / (x / 60) / 480)
+#define BPM(x)    (48000000 / x * 60 / 480)
 
 // Takes song data, plays it.  
 // This needs to be polled at least as often 
@@ -23,7 +23,9 @@
 // For most music, this is OK.  But only you know for sure.
 // Given an array with the music for Tetris in it:
 // midi_play_song(tetris, SONGLENGTH(tetris), BPM(120)); 
-void midi_play_song(uint16_t songArray[][3], uint16_t length, uint32_t clocksPerClick);
+//
+// Returns which step in the song just played
+uint16_t midi_play_song(uint16_t songArray[][3], uint16_t length, uint32_t clocksPerClick);
 
 
 
