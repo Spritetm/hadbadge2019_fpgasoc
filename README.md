@@ -47,7 +47,7 @@ From here, you can start hacking:
 - You can [modify the existing SoC](doc/soc_dev.md) to incorporate your own peripherals.
 - [Modifying the IPL](doc/ipl_dev.md) is useful if you want to change the look of the menu
   or add extra features there.
-- Finally, if you are happy with the existing hardware, you can [write an app](doc/app_dev)
+- Finally, if you are happy with the existing hardware, you can [write an app](doc/app_dev.md)
   to make use of it.
 
 
@@ -57,30 +57,38 @@ Repo directory structure
 - blink contains a trivial blinker project, useful to make sure your setup 
 works. 
 
-- apps-sdk contains the SDK you can use to build apps that can be loaded by the IPL.
+- [apps-sdk](./apps-sdk/) contains the SDK you can use to build apps that can be loaded by the IPL.
 
-- app-hello contains a bare-bones test application that the IPL is able to load and execute. 
+- [app-helloworld](./app-helloworld/) contains a bare-bones test application that the IPL is able to load and execute. 
 
-- app-basic contains a Basic interpreter that can be used to run .bas files.
+- [app-basic](./app-basic/) contains a Basic interpreter that can be used to run .bas files.
+
+- [app-audiodemo](./app-audiodemo/)
+
+- [app-invaders](./app-invaders/)
+
+- [app-flappy](./app-flappy/)
+
+- [app-midi](./app-midi/)
 
 - Other app-* directories contain example projects.
 
-- soc contains the actual SoC that is the main FPGA load.
+- [soc](./soc/) contains the actual SoC that is the main FPGA load.
 
-The soc folder at this point is a bit of a mess: it contains most of the 'base' Verilog code,
+The [soc](./soc/) folder at this point is a bit of a mess: it contains most of the 'base' Verilog code,
 as well as code for simulation of parts using Icarus, or the entirety using Verilator. Apart
 from this, the contents of the directories are:
 
-- jtagload is a nearly-trivial program to convert a binary executable file into a svf file 
+- [jtagload](./soc/jtagload/) is a nearly-trivial program to convert a binary executable file into a svf file 
 that can then be sent to the FPGA using OpenOCD. At the moment, the boot ROM only invokes a
 mode compatible with this when it doesn't find a proper IPL in flash.
 
-- boot contains the bootloader, to be embedded in bram in the FPGA image. At the moment,
+- [boot](./soc/boot/) contains the bootloader, to be embedded in bram in the FPGA image. At the moment,
 it tests the SPI memory (takes a few seconds), then initializes the flash and loads the
 IPL from there. If it doesn't see a valid IPL, it waits for an app to be uploaded over
 JTAG.
 
-- ipl contains the Initial Program Loader, aka IPL. The IPL mostly contains driver code,
+- [ipl](./soc/ipl/) contains the Initial Program Loader, aka IPL. The IPL mostly contains driver code,
 to be called through a syscall jump table at the beginning of the binary. It also has logic
 to load an initial program, and to use USB to set up the internal flash as a mass storage device
 so an attached PC can access it directly. It also contains a flash translation layer as well
@@ -88,17 +96,17 @@ as a fatfs driver, so you can also access the files dropped by the PC programmat
 Finally, it contains the menu you see when the badge starts up, that allows you to select an app
 to run.
 
-- hdmi contains all Verilog for the hdmi output.
+- [hdmi](./soc/hdmi/) contains all Verilog for the hdmi output.
 
-- picorv32 is a submodule containing the PicoRV32 RiscV core.
+- [picorv32](https://github.com/cliffordwolf/picorv32/tree/e0baf2e0bd49fdddef2e3440c1f6364478655154) is a submodule containing the PicoRV32 RiscV core.
 
-- qpi_cache is the cache for and interface to the external SPI PSRAM.
+- [qpi_cache](./soc/qpi_cache/) is the cache for and interface to the external SPI PSRAM.
 
-- video contains the renderer and sequencing logic for the framebuffer.
+- [video](./soc/video/) contains the renderer and sequencing logic for the framebuffer.
 
-- pic contains a PIC16F84 core which is intended to drive the attached LEDs.
+- [pic](./soc/pic/) contains a PIC16F84 core which is intended to drive the attached LEDs.
 
-- usb contains an USB device core.
+- [usb](./soc/usb/) contains an USB device core.
 
-- audio contains the audio subsystem.
+- [audio](./soc/audio/) contains the audio subsystem.
 
