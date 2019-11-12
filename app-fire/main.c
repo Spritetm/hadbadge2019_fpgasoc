@@ -132,7 +132,7 @@ void main(int argc, char **argv) {
 	// We're running in app context. We have full control over the badge and
 	// can do with the hardware what we want. As soon as main() returns,
 	// however, we will go back to the IPL.
-	printf("Hello World app: main running\n");
+	printf("fire app: main running\n");
 
 	// Blank out fb while we're loading stuff by disabling all layers. This
 	// just shows the background color.
@@ -143,7 +143,7 @@ void main(int argc, char **argv) {
 	// We will be using a custom 256 entry color palette, so we allocate 1 byte
 	// per pixel.
 	fbmem=calloc(FB_WIDTH,FB_HEIGHT);
-	printf("Hello World: framebuffer at %p\n", fbmem);
+	printf("fire app: framebuffer at %p\n", fbmem);
 
 	// Telling the GFX hardware what our framebuffer width is, and that it will
 	// use palette entries starting from 17. The tiles left by the IPL will use
@@ -174,7 +174,7 @@ void main(int argc, char **argv) {
 	fprintf(f, "hold start to exit");
 	fprintf(f, "\0337X"); //set Xpos to 5
 	fprintf(f, "\0338Y"); //set Ypos to 8
-	fprintf(f, "Welcome the fire!"); // Print a nice greeting.
+	fprintf(f, "Welcome the fire!"); // Print a message
 
 	// The user can still see nothing of this graphics goodness, so let's
 	// re-enable the framebuffer and tile layer A (the default layer for the
@@ -192,5 +192,5 @@ void main(int argc, char **argv) {
     	}
 	}
 
-	printf("Hello World done. Bye!\n");
+	printf("fire app done. Bye!\n");
 }
