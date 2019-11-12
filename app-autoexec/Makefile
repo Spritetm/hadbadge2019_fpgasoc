@@ -1,4 +1,6 @@
 #This is an example Makefile to build the 'Hello world' example.
+all: autoexec.elf
+	./flash
 
 #The name of the app. The resulting file will be called APPNAME.elf.
 APPNAME = autoexec
