@@ -25,6 +25,7 @@ compiled for your OS:
 - [Linux](./doc/toolchain-lin.md)
 - [MacOSX](./doc/toolchain-mac.md)
 - [Windows](./doc/toolchain-win.md)
+- [Docker image](./doc/toolchain-docker.md)
 
 You will also need a Micro-USB cable to connect to the badge, as well as 2 AA's (or another
 way to supply it with power, e.g. using the JTAG connector) to power it. Note that while
@@ -36,9 +37,8 @@ to use e.g. gdb in case of a crash.
 After you have a toolchain, you'll need to set up this SDK. Clone this repository and grab 
 the submodules, if you haven't already:
 ```
-git clone https://github.com/Spritetm/hadbadge2019_fpgasoc
+git clone --recursive https://github.com/Spritetm/hadbadge2019_fpgasoc
 cd hadbadge2019_fpgasoc
-git submodule update --init --recursive
 ```
 
 From here, you can start hacking:
@@ -53,9 +53,6 @@ From here, you can start hacking:
 
 Repo directory structure
 ========================
-
-- TinyFPGA-Bootloader contains the boot loader that can be used to re-write 
-the flash of the badge over USB. (Used to upload new config without JTAG.) 
 
 - blink contains a trivial blinker project, useful to make sure your setup 
 works. 

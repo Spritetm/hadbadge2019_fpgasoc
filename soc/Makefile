@@ -5,7 +5,7 @@ BADGE_VER ?= 2
 PROJ=soc
 #Seed for nextpnr. Change this to another random value if you happen to run 
 #into a situation that mis-synths or takes extremely long to synth the SoC.
-SEED = 10
+SEED = 37
 
 # Sources
 	# Base
@@ -119,19 +119,19 @@ SRC += $(addprefix pic/, \
 	pic_wrapper.v \
 	risc16f84_clk2x.v \
 )
-	# Synth
-SRC += $(addprefix audio/, \
-	amplifier.v      \
-	ar.v              \
-	dac.v             \
-	envelope.v       \
-	lfsr.v           \
-	mixer4.v \
-	oscillator.v      \
-	synth_interface.v \
-	voice.v           \
-)
 
+	# Audio
+SRC += $(addprefix audio/, \
+	audio_mix.v \
+	audio_wb.v \
+	pdm.v \
+	synth_attack_decay.v \
+	synth_cfg_reg.v \
+	synth_core.v \
+	synth_mix.v \
+	synth_reg.v \
+	synth_rng.v \
+)
 
 	# HDMI
 SRC_SYNTH += $(addprefix hdmi/, \
@@ -189,9 +189,6 @@ $(PROJ).json $(PROJ).blif: $(SRC) $(SRC_SYNTH) $(EXTRA_DEPEND)
 
 prog: $(PROJ).svf
 	openocd -f ../openocd.cfg -c "init; svf  $<; exit"
-
-flash: $(PROJ).bit
-	tinyprog -p $(PROJ).bit -a 0x180000
 
 dfu_flash: $(PROJ).bit
 	dfu-util$(EXE) -d 1d50:614a,1d50:614b -a 0 -R -D $<

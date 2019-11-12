@@ -8,6 +8,10 @@
 #include "gfx_load.h"
 #include "cache.h"
 
+#include "libsynth.h"
+#include "synth_utils.h"
+#include "midi_note_increments.h"
+
 //The bgnd.png image got linked into the binary of this app, and these two chars are the first
 //and one past the last byte of it.
 extern char _binary_bgnd_png_start;
@@ -173,6 +177,28 @@ static int __collision_test(int x, int h) {
 	return 0;
 }
 
+// Sound FX
+void synth_play_game_over(void){
+	synth_queue->voice_force = (1 << 2); 
+	for (uint32_t pitch = midi_table[64] ; pitch > midi_table[64-36] ; pitch=(pitch*15/16)){
+		synth_queue->voice[2].phase_inc = pitch; 
+		synth_queue->cmd_wait = 1250; 
+	}
+	synth_queue->voice_force = 0; 
+
+}
+void synth_play_flap(void){
+	synth_queue->voice_force = 3; 
+	synth_queue->voice[0].phase_inc = midi_table[80]; 
+	synth_queue->voice[1].phase_inc = midi_table[80]; 
+	for (uint16_t i=0; i<100; i=i+1){
+		synth_queue->cmd_wait = 50; 
+		synth_queue->voice[0].phase_inc = midi_table[85]+i*16; 
+		synth_queue->voice[1].phase_inc = midi_table[85]+i*16; 
+	}
+	synth_queue->voice_force = 0; 
+}
+
 void main(int argc, char **argv) {
 	//Allocate framebuffer memory
 	fbmem=malloc(320*512/2);
@@ -199,7 +225,6 @@ void main(int argc, char **argv) {
 		(&_binary_flappy_tileset_png_end - &_binary_flappy_tileset_png_start));
 	printf("Tiles initialized err=%d\n", gfx_tiles_err);
 
-	
 	//The IPL leaves us with a tileset that has tile 0 to 127 map to ASCII characters, so we do not need to
 	//load anything specific for this. In order to get some text out, we can use the /dev/console device
 	//that will use these tiles to put text in a tilemap. It uses escape codes to do so, see 
@@ -285,6 +310,7 @@ void main(int argc, char **argv) {
 				m_player_velocity = 0;
 				m_player_y += FLAPPY_JUMP;
 				__sprite_set(0, FLAPPY_PLAYER_X*16, m_player_y, 32, 32, FLAPPY_PLAYER_JUMP_INDEX, 0);	
+				synth_play_flap();
 			} else {
 				m_player_velocity += FLAPPY_GRAVITY;
 				__sprite_set(0, FLAPPY_PLAYER_X*16, m_player_y, 32, 32, FLAPPY_PLAYER_INDEX, 0);	
@@ -347,6 +373,7 @@ void main(int argc, char **argv) {
 		m_score++;
 	 }
 
+	 synth_play_game_over();
 	 //Print game over
 	 fprintf(console, "\03310X\03310YGAME OVER!\nScore: %dm", (m_score/1000));
 

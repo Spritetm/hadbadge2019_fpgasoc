@@ -186,7 +186,7 @@ module soc(
 			.ENABLE_TRACE(0),
 			.REGS_INIT_ZERO(0),
 			.MASKED_IRQ(0),
-			.LATCHED_IRQ('b11111111111111111111111111101111) //0 for level sensitive, 1 for latched
+			.LATCHED_IRQ('b11111111111111111111111110101111) //0 for level sensitive, 1 for latched
 		) cpu (
 			.clk         (clk48m     ),
 			.resetn      (cpu_resetn_gated[i] ),
@@ -358,9 +358,9 @@ module soc(
 	wire [31:0] psram_rdata;
 	wire psram_ready;
 	reg psram_select;
-
-	reg synth_select;
-	wire synth_ready;
+	wire [31:0] audio_rdata;
+	reg audio_select;
+	wire audio_ready;
 
 	wire [31:0] soc_version;
 `ifdef verilator
@@ -418,7 +418,7 @@ module soc(
 		lcd_select = 0;
 		usb_select = 0;
 		pic_select = 0;
-		synth_select = 0;
+		audio_select = 0;
 		psram_select = 0;
 		linerenderer_select=0;
 		bus_error = 0;
@@ -491,8 +491,8 @@ module soc(
 			pic_select = mem_valid;
 			mem_rdata = pic_rdata;
 		end else if (mem_addr[31:28]=='h8) begin
-			synth_select = mem_valid;
-			mem_rdata = 0;
+			audio_select = mem_valid;
+			mem_rdata = audio_rdata;
 		end else if (mem_addr[31:28]=='h9) begin
 			psram_select = mem_valid;
 			mem_rdata = psram_rdata;
@@ -512,7 +512,7 @@ module soc(
 `endif
 
 	assign mem_ready = ram_ready || uart_ready || irda_ready || misc_select ||
-			lcd_ready || linerenderer_ready || usb_ready || pic_ready || synth_ready || psram_ready ||| bus_error;
+			lcd_ready || linerenderer_ready || usb_ready || pic_ready || audio_ready || psram_ready ||| bus_error;
 
 	dsadc dsadc (
 		.clk(clk48m),
@@ -670,16 +670,39 @@ module soc(
 		.ren(pic_select && mem_wstrb==4'b0000),
 		.ready(pic_ready)
 	);
-	synth_interface synth (
+
+
+	wire [15:0] audio_l;
+	wire [15:0] audio_r;
+	wire [15:0] audio_pdm;
+	wire irq_audio;
+
+	audio_wb audio_I (
+		.audio_out_l(audio_l),
+		.audio_out_r(audio_r),
+		.audio_out_pdm(audio_pdm),
+		.bus_addr(mem_addr[17:2]),
+		.bus_wdata(mem_wdata),
+		.bus_rdata(audio_rdata),
+		.bus_cyc(audio_select),
+		.bus_ack(audio_ready),
+		.bus_we(mem_wstrb != 0),
+		.irq(irq_audio),
 		.clk(clk48m),
-		.rst(rst),
-		.addr(mem_addr),
-		.data_in(mem_wdata),
-		.wen(synth_select && mem_wstrb==4'b1111),
-		.ren(synth_select && mem_wstrb==4'b0000),
-		.ready(synth_ready),
-		.pwmout(pwmout)
+		.rst(rst)
 	);
+
+	pdm #(
+		.WIDTH(16),
+		.DITHER("YES")
+	) audio_pdm_I (
+		.in(audio_pdm),
+		.pdm(pwmout),
+		.oe(1'b1),
+		.clk(clk48m),
+		.rst(rst)
+	);
+
 
 	wire qpi_do_read;
 	wire qpi_do_write;
@@ -1018,6 +1041,7 @@ IRQs used:
 3 - Bus error - not decoded (e.g. dereferenced NULL)
 4 - USB irq
 5 - GFX copper irq
+6 - Audio irq
 */
 
 	//Interrupt logic
@@ -1031,6 +1055,9 @@ IRQs used:
 		end
 		if (irq_copper) begin
 			irq[5] = 1;
+		end
+		if (irq_audio) begin
+			irq[6] = 1;
 		end
 	end
 

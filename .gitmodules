@@ -1,9 +1,6 @@
 [submodule "soc/picorv32"]
 	path = soc/picorv32
 	url = https://github.com/cliffordwolf/picorv32.git
-[submodule "TinyFPGA-Bootloader"]
-	path = TinyFPGA-Bootloader
-	url = https://github.com/Spritetm/hadbadge2019_tinyfpgabootloader.git
 [submodule "soc/app/tinyusb"]
 	path = soc/ipl/tinyusb
 	url = https://github.com/hathach/tinyusb.git

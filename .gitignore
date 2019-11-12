@@ -3,6 +3,9 @@ pll
 *.gtkw
 local-settings.mk
 *.elf
+*.sym
 *.map
 *.o
 *.a
+*.log
+*/build
