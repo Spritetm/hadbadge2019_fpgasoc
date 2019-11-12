@@ -6,6 +6,7 @@
 #include "synth_utils.h"
 #include "midi_note_increments.h"
 #include "mach_defines.h"
+#include "cache.h"
 #include "sdk.h"
 
 // A quick note on timing.  Everything here is in duration counts.

@@ -7,7 +7,6 @@
 
 #include "mach_defines.h"
 #include "mach_interrupt.h"
-#include "cache.h"
 
 /* Register definitions */
 #define SYNTH_VOICE_CTRL_ENABLE		(1 << 0)
