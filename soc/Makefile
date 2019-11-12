@@ -190,9 +190,6 @@ $(PROJ).json $(PROJ).blif: $(SRC) $(SRC_SYNTH) $(EXTRA_DEPEND)
 prog: $(PROJ).svf
 	openocd -f ../openocd.cfg -c "init; svf  $<; exit"
 
-flash: $(PROJ).bit
-	tinyprog -p $(PROJ).bit -a 0x180000
-
 dfu_flash: $(PROJ).bit
 	dfu-util$(EXE) -d 1d50:614a,1d50:614b -a 0 -R -D $<
 

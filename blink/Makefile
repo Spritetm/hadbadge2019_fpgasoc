@@ -7,7 +7,7 @@ FLASH_MODE=qspi
 FLASH_FREQ=38.8 #MHz
 
 
-all: $(PROJ).svf flash
+all: $(PROJ).svf dfu_flash
 
 %.json: %.v
 	yosys -p "synth_ecp5 -json $@" $<
@@ -26,9 +26,6 @@ prog: $(PROJ).svf
 
 clean:
 	rm -f $(PROJ).json $(PROJ).svf $(PROJ).bit $(PROJ)_out.config
-
-flash: $(PROJ).bit
-	tinyprog -p $(PROJ).bit -a 0x180000
 
 dfu_flash: $(PROJ).bit
 	dfu-util$(EXE) -d 1d50:614a,1d50:614b -a 2 -R -D $(PROJ).bit
