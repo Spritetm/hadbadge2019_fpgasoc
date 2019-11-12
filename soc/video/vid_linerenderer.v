@@ -694,6 +694,9 @@ always @(posedge clk) begin
 		dma_do_read <= 0;
 		vid_wen <= 0;
 
+		//Latch current alphamixer output.
+		alphamixer_out <= alphamixer_out_cur;
+
 		//Line renderer proper statemachine.
 		if (write_vid_addr[19:9]>=320) begin
 			//We're finished with this frame. Wait until the video generator starts drawing the next frame.
@@ -728,7 +731,6 @@ always @(posedge clk) begin
 					dma_do_read <= 1;
 				end
 
-				alphamixer_out <= alphamixer_out_cur;
 				cycle <= cycle + 1;
 				if (cycle==0) begin
 					if (fb_is_8bit) begin
