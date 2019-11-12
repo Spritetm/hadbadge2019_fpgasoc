@@ -198,7 +198,7 @@ module synth_core #(
 
 	always @(*)
 		case (crb_reg)
-			3'h0:    crb_data = { (32-DIV_WIDTH)'d0, cfg_div };
+			3'h0:    crb_data = { {(32-DIV_WIDTH){1'b0}}, cfg_div };
 			3'h1:    crb_data = { 24'h000000, cfg_vol };
 			3'h2:    crb_data = { 16'h0000, cfg_voice_force };
 			3'h3:    crb_data = { 16'h0000, cfg_voice_start };

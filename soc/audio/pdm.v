@@ -95,8 +95,14 @@ module pdm #(
 	generate
 		if (PHY == "GENERIC") begin
 			reg pdm_r;
+`ifdef verilator
+		// Workaround: Verilator doesn't like tristate.
+			always @(posedge clk)
+				pdm_r <= oe ? pdm_i : 1'b0;
+`else
 			always @(posedge clk)
 				pdm_r <= oe ? pdm_i : 1'bz;
+`endif
 			assign pdm = pdm_r;
 		end else if (PHY == "ICE40") begin
 			SB_IO #(
