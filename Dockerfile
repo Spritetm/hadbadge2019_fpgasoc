@@ -11,10 +11,6 @@ ARG toolchain='https://github.com/xobs/ecp5-toolchain/releases/download/v1.6.2/e
 # Add packages needed to run the toolchain and badge utilities
 RUN install_packages wget ca-certificates build-essential bsdmainutils python3 python3-pip
 
-# Install Python setuptools and wheel, needed for tinyprog
-RUN pip3 install setuptools wheel
-RUN pip3 install tinyprog
-
 # Fetch, rename, and extract toolchain package
 WORKDIR /
 RUN wget $toolchain -O toolchain.tar.gz

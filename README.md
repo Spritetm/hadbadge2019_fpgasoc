@@ -54,9 +54,6 @@ From here, you can start hacking:
 Repo directory structure
 ========================
 
-- TinyFPGA-Bootloader contains the boot loader that can be used to re-write 
-the flash of the badge over USB. (Used to upload new config without JTAG.) 
-
 - blink contains a trivial blinker project, useful to make sure your setup 
 works. 
 
