@@ -245,6 +245,10 @@ int show_main_menu(char *app_name, int *ret_flags) {
 		printf("Error opening console!\n");
 	}
 
+	//Erase tilemaps
+	for (int x=0; x<64*64; x++) GFXTILEMAPA[x]=0x20;
+	for (int x=0; x<64*64; x++) GFXTILEMAPB[x]=0x20;
+
 	printf("GFX inited. Yay!!\n");
 
 	printf("Loading bgnd...\n");
@@ -433,6 +437,8 @@ void start_app(const char *app) {
 	maincall(0, NULL);
 	user_memfn_set(malloc, realloc, free);
 	syscall_reinit();
+	//Disable all but USB interrupt
+	mach_int_dis(~(1<<INT_NO_USB));
 }
 
 static void
