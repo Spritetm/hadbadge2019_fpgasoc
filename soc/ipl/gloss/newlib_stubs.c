@@ -175,7 +175,7 @@ off_t _lseek(int file, off_t ptr, int dir) {
 		FSIZE_t endpos=f_size(fd_entry[file].fatfcb);
 		r=f_lseek(fd_entry[file].fatfcb, endpos+ptr);
 	}
-	return remap_fatfs_errors(r);
+	return f_tell(fd_entry[file].fatfcb);
 }
 
 
