@@ -9,7 +9,7 @@ FROM bitnami/minideb:latest
 ARG toolchain='https://github.com/xobs/ecp5-toolchain/releases/download/v1.6.2/ecp5-toolchain-linux_x86_64-v1.6.2.tar.gz'
 
 # Add packages needed to run the toolchain and badge utilities
-RUN install_packages wget ca-certificates build-essential bsdmainutils python3 python3-pip
+RUN install_packages wget ca-certificates build-essential bsdmainutils libusb-1.0-0
 
 # Fetch, rename, and extract toolchain package
 WORKDIR /
