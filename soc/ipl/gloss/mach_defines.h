@@ -232,10 +232,10 @@ fill the palette memory), the fields are
     Note the pitch is in pixels. Must be a multiple of 4 for 8-bit pixels or 8 for
     4-bit pixels, or else display artifacts will be evident. */
 #define GFX_FBPITCH_PITCH_OFF 0
-/** Bits [24:15]: Palette offset. This is added to the nibbles or bytes retrieved 
+/** Bits [24:16]: Palette offset. This is added to the nibbles or bytes retrieved 
     from framebuffer, and the result is used as an address into the palette memory
     to read the actual color. */
-#define GFX_FBPITCH_PAL_OFF 16
+#define GF_FBPITCH_PAL_OFF 16
 /** Layer enable / misc register */
 #define GFX_LAYEREN_REG 0x08
 /** Framebuffer layer enable. If 1, the framebuffer is displayed.  Note
@@ -369,11 +369,11 @@ fill the palette memory), the fields are
 #define GFX_SPRITE_ENT_XCHAIN (1<<14)
 /** Word 0, bit [15]: X flip of tile. */
 #define GFX_SPRITE_ENT_XFLIP (1<<15)
-/** Word 0, bits [29:16]: X position of top left corner of sprite */
+/** Word 0, bits [29:16]: Y position of top left corner of sprite */
 #define GFX_SPRITE_ENT_YPOS_OFF 16
-/** Word 0, bit [30]: X chain. Unused for now. */
+/** Word 0, bit [30]: Y chain. Unused for now. */
 #define GFX_SPRITE_ENT_YCHAIN (1<<30)
-/** Word 0, bit [31]: X flip of tile. */
+/** Word 0, bit [31]: Y flip of tile. */
 #define GFX_SPRITE_ENT_YFLIP (1<<31)
 /** Word 1, bit [7:0]: X size. The tile for this sprite will be scaled horizontally
     to this size, in pixels. 16 for no scale.*/
