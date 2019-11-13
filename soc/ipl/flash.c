@@ -161,7 +161,7 @@ bool flash_wake(int flash_sel) {
 
 
 bool flash_wait_idle(int flash_sel) {
-	int to=0x10000;
+	int to=0x1000000;
 	uint8_t p;
 	while (flash_read_status(flash_sel, 1) & 0x01) {
 		to--;

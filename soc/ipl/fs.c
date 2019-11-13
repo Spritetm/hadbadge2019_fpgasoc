@@ -164,37 +164,40 @@ static bool msc_enabled=false;
 void usb_msc_on() {
 	if (msc_enabled) return;
 	//umount
-	f_mount(NULL, "int:", 0);
-	if (ftl[1]) f_mount(NULL, "cart:", 0);
+	f_mount(NULL, "/int", 0);
+	if (ftl[1]) f_mount(NULL, "/cart", 0);
 	msc_enabled=true;
 }
 
 void usb_msc_off() {
 	if (!msc_enabled) return;
-	int res=f_mount(&fs[0], "int:", 1); //force mount
+	MKFS_PARM mkfsopt={
+		.fmt=FM_FAT
+	};
+	int res=f_mount(&fs[0], "/int", 1); //force mount
 	if (res!=FR_OK) {
 		printf("Mounting fs failed; trying mkfs\n");
 		uint8_t mkfs_buf[512];
-		res=f_mkfs("int:", FM_FAT, 0, mkfs_buf, 512);
+		res=f_mkfs("/int", &mkfsopt, mkfs_buf, 512);
 		if (res!=FR_OK) {
 			printf("Aiee! Couldn't mount or create internal fat fs! (%d)\n", res);
 		}
-		res=f_mount(&fs[0], "int:", 1);
+		res=f_mount(&fs[0], "/int", 1);
 		if (res!=FR_OK) {
 			printf("Aiee! Couldn't mount fs after creating!\n");
 		}
 	}
 	if (ftl[1]) {
 		//We have a flash translation layer active for cart flash; we can mount the fat there.
-		int res=f_mount(&fs[1], "cart:", 1); //force mount
+		int res=f_mount(&fs[1], "/cart", 1); //force mount
 		if (res!=FR_OK) {
 			printf("Mounting cart fs failed; trying mkfs\n");
 			uint8_t mkfs_buf[512];
-			res=f_mkfs("cart:", FM_FAT, 0, mkfs_buf, 512);
+			res=f_mkfs("/cart", &mkfsopt, mkfs_buf, 512);
 			if (res!=FR_OK) {
 				printf("Aiee! Couldn't mount or create cart fat fs! (%d)\n", res);
 			}
-			res=f_mount(&fs[0], "cart:", 1);
+			res=f_mount(&fs[0], "/cart", 1);
 			if (res!=FR_OK) {
 				printf("Aiee! Couldn't mount cart fs after creating!\n");
 			}

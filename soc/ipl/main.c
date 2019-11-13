@@ -82,11 +82,13 @@ int booted_from_cartridge() {
 void cdc_task();
 
 
-void boot_cart_fpga_bitstream() {
-	MISC_REG(MISC_FLASH_SEL_REG)=MISC_FLASH_SEL_CARTFLASH;
+void boot_fpga_bitstream(int from_cart) {
+	int src=0;
+	if (from_cart) src=MISC_FLASH_SEL_CARTFLASH;
+	MISC_REG(MISC_FLASH_SEL_REG)=src;
 	volatile int w;
 	for (w=0; w<16; w++) ;
-	MISC_REG(MISC_FLASH_SEL_REG)=MISC_FLASH_SEL_CARTFLASH|MISC_FLASH_SEL_FPGARELOAD_MAGIC;
+	MISC_REG(MISC_FLASH_SEL_REG)=src|MISC_FLASH_SEL_FPGARELOAD_MAGIC;
 }
 
 extern char _binary_bgnd_tga_start;
@@ -175,6 +177,8 @@ int cart_tjftl_creatable() {
 	return 1;
 }
 
+extern uint32_t rom_cart_boot_flag;
+
 void read_menu_items(menu_data_t *s) {
 	//First, clean struct
 	for (int i=0; i<s->no_items; i++) free(s->item[i]);
@@ -184,21 +188,25 @@ void read_menu_items(menu_data_t *s) {
 	if (has_cart) {
 		s->flag[s->no_items]=0;
 		s->item[s->no_items++]=strdup("- CARTRIDGE -");
-		if (cart_has_fpga_image()) {
+		if (!booted_from_cartridge() &&  cart_has_fpga_image()) {
 			s->flag[s->no_items]=ITEM_FLAG_SELECTABLE|ITEM_FLAG_ON_CART|ITEM_FLAG_BITSTREAM;
 			s->item[s->no_items++]=strdup("Boot FPGA bitstream");
 		}
 		if (fs_cart_ftl_active()) {
 			//Add cart items
-			menu_add_apps(s, "cart:", ITEM_FLAG_SELECTABLE|ITEM_FLAG_ON_CART);
+			menu_add_apps(s, "/cart/", ITEM_FLAG_SELECTABLE|ITEM_FLAG_ON_CART);
 		} else if (cart_tjftl_creatable()) {
 			s->flag[s->no_items]=ITEM_FLAG_SELECTABLE|ITEM_FLAG_ON_CART|ITEM_FLAG_FORMAT;
 			s->item[s->no_items++]=strdup("Format filesystem");
 		}
 		s->flag[s->no_items]=0;
 		s->item[s->no_items++]=strdup("- INTERNAL -");
+		if (booted_from_cartridge()) {
+			s->flag[s->no_items]=ITEM_FLAG_SELECTABLE|ITEM_FLAG_BITSTREAM;
+			s->item[s->no_items++]=strdup("Boot FPGA bitstream");
+		}
 	}
-	menu_add_apps(s, "int:", ITEM_FLAG_SELECTABLE);
+	menu_add_apps(s, "/int/", ITEM_FLAG_SELECTABLE);
 }
 
 void load_tiles() {
@@ -385,9 +393,9 @@ int show_main_menu(char *app_name, int *ret_flags) {
 	
 	if (selected>=0) {
 		if (menu.flag[selected]&ITEM_FLAG_ON_CART) {
-			sprintf(app_name, "cart:%s", menu.item[selected]);
+			sprintf(app_name, "/cart/%s", menu.item[selected]);
 		} else {
-			sprintf(app_name, "int:%s", menu.item[selected]);
+			sprintf(app_name, "/int/%s", menu.item[selected]);
 		}
 		*ret_flags=menu.flag[selected];
 	}
@@ -476,9 +484,9 @@ void main() {
 		//See if there's an autoexec.elf we can run.
 		const char *autoexec;
 		if (booted_from_cartridge()) {
-			autoexec="cart:autoexec.elf";
+			autoexec="/cart/autoexec.elf";
 		} else {
-			autoexec="int:autoexec.elf";
+			autoexec="/int/autoexec.elf";
 		}
 		FILE *f=fopen(autoexec, "r");
 		if (f!=NULL) {
@@ -501,7 +509,7 @@ void main() {
 		show_main_menu(app_name, &flags);
 		if (flags&ITEM_FLAG_BITSTREAM) {
 			printf("Booting cart bitstream...\n");
-			boot_cart_fpga_bitstream();
+			boot_fpga_bitstream(flags&ITEM_FLAG_ON_CART);
 		} else if (flags&ITEM_FLAG_FORMAT) {
 			printf("Formatting cart...\n");
 			fs_cart_initialize_fat();

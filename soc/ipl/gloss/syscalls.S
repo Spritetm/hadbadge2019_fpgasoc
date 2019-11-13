@@ -103,5 +103,7 @@ _start:
 	j usb_msc_on
 .global usb_msc_off
 	j usb_msc_off
+.global fs_cart_initialize_fat
+	j fs_cart_initialize_fat
 
 
