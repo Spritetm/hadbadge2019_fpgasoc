@@ -235,7 +235,7 @@ fill the palette memory), the fields are
 /** Bits [24:16]: Palette offset. This is added to the nibbles or bytes retrieved 
     from framebuffer, and the result is used as an address into the palette memory
     to read the actual color. */
-#define GF_FBPITCH_PAL_OFF 16
+#define GFX_FBPITCH_PAL_OFF 16
 /** Layer enable / misc register */
 #define GFX_LAYEREN_REG 0x08
 /** Framebuffer layer enable. If 1, the framebuffer is displayed.  Note
