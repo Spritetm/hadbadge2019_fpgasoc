@@ -106,6 +106,8 @@ PROVIDE ( gfx_load_fb_tga = 0x400020A4 );
 PROVIDE ( gfx_load_fb_tga_mem = 0x400020A8 );
 PROVIDE ( gfx_load_tiles_tga = 0x400020AC );
 PROVIDE ( gfx_load_tiles_tga_mem = 0x400020B0 );
+PROVIDE ( usb_msc_on = 0x400020B4 );
+PROVIDE ( usb_msc_off = 0x400020B8 );
 
 PROVIDE ( interrupt_vector_table = 0x40000020 );
 PROVIDE ( irq_stack_ptr = 0x400000a0 );
