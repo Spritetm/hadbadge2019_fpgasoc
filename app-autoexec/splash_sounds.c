@@ -91,7 +91,8 @@ void synth_play_playstation(void){
 	mach_set_int_handler(INT_NO_AUDIO, audio_interrupt_handler_playstation);
 	mach_int_ena(1 << INT_NO_AUDIO);
 	/* configure and enable pcm */
-	audio_regs->pcm_cfg = PCM_CFG_ENABLE | PCM_CFG_DIV(2175-2) | PCM_CFG_VOLUME(128, 128);
+	// running bit fast to better sync with graphics
+	audio_regs->pcm_cfg = PCM_CFG_ENABLE | PCM_CFG_DIV(2400-2) | PCM_CFG_VOLUME(128, 128);
 }
 void synth_play_xbox(void){
 	pcm_fill_xbox();

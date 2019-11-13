@@ -218,8 +218,8 @@ void gfx_set_xlate_val(int layer, int xcenter, int ycenter, float scale, float r
 //
 //	Art by Emily Velasco (Twitter @MLE_Online)
 //	Code by Roger Cheng (Twitter @Regorlas)
-//	Sound by (TBD)
-
+//	Sound (both notes!) Elliot Williams @ Hackaday.com
+//
 void gameboy_monochrome_splash() {
 	/////////////////////////////////////////////////////////////////////////
 	//	Generic badge app boilerplate
@@ -334,7 +334,7 @@ void gameboy_monochrome_splash() {
 //	function is fully self-contained and can be main() for a standaline app.
 //
 //	Art and Code by Mike Szczys (Twitter @szczys)
-//	Sound by (TBD)
+//	Sound also by Elliot Williams @ Hackaday.com
 
 void gameboy_color_splash() {
 	/////////////////////////////////////////////////////////////////////////
@@ -500,8 +500,8 @@ void gameboy_color_splash() {
 //	available from: https://www.dafont.com/phatboy-slim.font
 //
 //	Art and Code by Roger Cheng (Twitter @Regorlas)
-//	Sound by (TBD)
-
+//	Sound by Richard Hogben 
+//
 void playstation_splash() {
 	/////////////////////////////////////////////////////////////////////////
 	//	Generic badge app boilerplate
@@ -601,7 +601,8 @@ void playstation_splash() {
 			GFXPAL[3] = color & (color_mask | (0xFF-(steps-dx))<<24);
 		}
 		__tile_a_translate(dx,0);
-		__INEFFICIENT_delay(1);
+		// more delay for audio: this was 1 (per cycle)
+		__INEFFICIENT_delay(2);
 	}
 }
 
@@ -614,8 +615,8 @@ void playstation_splash() {
 //	Recreation of distinct SEGA font via https://fontmeme.com/sega-font/
 //
 //	Art and Code by Roger Cheng (Twitter @Regorlas)
-//	Sound by (TBD)
-
+//	Sound by Richard Hogben
+//	
 void sega_splash() {
 	/////////////////////////////////////////////////////////////////////////
 	//	Generic badge app boilerplate
@@ -786,6 +787,8 @@ void sega_splash() {
 
 	// Logo complete, allow admiration for a short time before exiting.
 	__INEFFICIENT_delay(750);
+	// Extra delay b/c sound is long
+	__INEFFICIENT_delay(750); 
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -795,8 +798,8 @@ void sega_splash() {
 //	Be sure to copy the relevant constant #define above if doing so.
 //
 //	Art and Code by Roger Cheng (Twitter @Regorlas)
-//	Sound by (TBD)
-
+//	Sound: 418226_lynx-5969_finger-snap-echo.wav from freesound.org
+//	
 void switch_splash() {	
 	/////////////////////////////////////////////////////////////////////////
 	//	Generic badge app boilerplate
