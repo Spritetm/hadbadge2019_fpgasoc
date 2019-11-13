@@ -82,6 +82,7 @@ reg [4:0] out_ctl;
 reg [17:0] lcd_readbuf;
 reg lcd_rw_done;
 reg [17:0] startcmd;
+reg [15:0] lcd_bl_level;
 wire lcd_vm_ena;
 wire lcd_vm_start;
 
@@ -89,7 +90,6 @@ assign lcd_vm_ena = out_ctl[4] || (out_ctl[3] && lcdvm_newfield);
 assign lcd_vm_start = out_ctl[3];
 assign lcd_cs = out_ctl[2];
 assign lcd_rst = ~out_ctl[1]; //note: inverted inverted
-assign lcd_blen = out_ctl[0];
 
 reg [31:0] rdata_c;
 reg ready_c;
@@ -103,6 +103,9 @@ always @(*) begin
 		ready_c = wen || ren;
 	end else if (addr=='h4) begin //xx10
 		rdata_c = startcmd;
+		ready_c = wen || ren;
+	end else if (addr=='h5) begin //xx11
+		rdata_c = {16'b0, lcd_bl_level};
 		ready_c = wen || ren;
 	end else begin
 		rdata_c = lcd_readbuf;
@@ -132,6 +135,7 @@ always @(posedge clk) begin
 		lcd_rw_done <= 0;
 		out_ctl <= 'h6;
 		startcmd <= 'h2c;
+		lcd_bl_level <= 16'hffff; // init with backlight full on
 		state <= 0;
 		lcd_readbuf <= 0;
 		lcd_rs <= 0;
@@ -151,6 +155,8 @@ always @(posedge clk) begin
 				out_ctl <= wdata;
 			end else if (wen && addr == 'h4) begin //xx10
 				startcmd <= wdata;
+			end else if (wen && addr=='h5) begin //xx14
+				lcd_bl_level <= wdata[15:0];
 			end else if (lcd_vm_ena) begin
 				if (lcdvm_newfield && !sent_newfield) begin
 					lcd_rs <= 0; //command
@@ -192,5 +198,17 @@ always @(posedge clk) begin
 		end
 	end
 end
+
+// Backlight PWM ~200Hz
+reg [17:0] bl_pwm;
+always @(posedge clk) begin
+	if (!nrst) begin
+		bl_pwm <= 0;
+	end else begin
+		bl_pwm <= bl_pwm + 1;
+	end
+end
+assign lcd_blen = out_ctl[0] && (bl_pwm[17:2] <= lcd_bl_level);
+
 
 endmodule
