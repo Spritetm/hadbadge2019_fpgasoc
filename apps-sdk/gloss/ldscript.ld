@@ -29,7 +29,7 @@ SECTIONS {
 		*(.text);
 		*(.text.*);
 	} > ram
-	.data : {
+	.data : SUBALIGN(4) {
 		. = ALIGN(4);
 		*(.rodata);
 		*(.rodata.*);
