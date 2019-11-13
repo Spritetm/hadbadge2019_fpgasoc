@@ -37,10 +37,10 @@ enter.)
 
 ## C. Install the RiscV toolchain.
 
-1. Download the precompiled toolchain from [xobs/ecp5-toolchain](https://github.com/xobs/ecp5-toolchain/releases/tag/v1.6.1). You want the file named something like `ecp5-toolchain-windows-v1.6.1.zip`.
+1. Download the precompiled toolchain from [xobs/ecp5-toolchain](https://github.com/xobs/ecp5-toolchain/releases/). You want the file named something like `ecp5-toolchain-windows-v1.6.2.zip`.
 
 2. Unzip the toolchain to `C:\Users\Yourname\hadbadge`. You should now have
-a directory named `C:\Users\Yourname\hadbadge\ecp5-toolchain-windows-v1.6.1`.
+a directory named `C:\Users\Yourname\hadbadge\ecp5-toolchain-windows-v1.6.2`.
 
 ## D. Clone and initialise the Git repo
 
@@ -55,21 +55,33 @@ a directory named `C:\Users\Yourname\hadbadge\ecp5-toolchain-windows-v1.6.1`.
 get the submodules:
 ```
     $ cd hadbadge2019_fpgasoc
-    $ git submodule --init --recursive
+    $ git submodule update --init --recursive
 ```
 
 ## E. Set up environment
 
-Make a `.bashrc` file that sets these environment variables and your path. If
-the file already exists, just add this to the end.
+Make a `.bashrc` file in your home directory (i.e. `~/.bashrc`). The file will
+set these environment variables and your path. If the .bashrc file already
+exists, just add this to the end.
+
+(If the toolchain version changes, don't forget to update the version number in
+the path here too!)
 
 ```
 export APPSSDK_DIR=~/hadbadge/hadbadge2019_fpgasoc/apps-sdk
-export RISCV_TOOLCHAIN_PATH=~/hadbadge/ecp5-toolchain-windows-v1.6.1/bin
+export RISCV_TOOLCHAIN_PATH=~/hadbadge/ecp5-toolchain-windows-v1.6.2/bin
 export PATH=$RISCV_TOOLCHAIN_PATH:$PATH
 ```
 
-Now restart your Git Bash shell to pick up the changes.
+Now restart your Git Bash shell to pick up the changes. Test that you have the
+paths set correctly by attempting to run nextpnr:
+
+```
+    $ nextpnr-ecp5.exe
+```
+
+This should output a list of command-line options. If it doesn't find the
+nextpnr-ecp5 command, carefully check directory names in the path.
 
 ## F. Make a new C app
 
