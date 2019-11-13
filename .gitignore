@@ -9,3 +9,4 @@ local-settings.mk
 *.a
 *.log
 */build
+*.fst*
