@@ -1067,7 +1067,6 @@ void main(int argc, char **argv) {
 		random = MISC_REG(MISC_RNG_REG) & bitmask;
 	}
 
-	random = 4;
 	switch(random) {
 		case 0:
 			synth_play_gameboy_monochrome();

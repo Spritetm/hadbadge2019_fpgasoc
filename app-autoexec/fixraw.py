@@ -1,7 +1,7 @@
 import sys
 import struct
 
-RAMPLENGTH = 220
+RAMPLENGTH = 1000
 
 samples = []
 with open(sys.argv[1], "rb") as f:
