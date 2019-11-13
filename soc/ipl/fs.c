@@ -31,7 +31,7 @@
 
 //Offset and end of the filesystem partition
 #define FS_INT_PART_START 0x380000
-#define FS_INT_PART_END 0xD00000
+#define FS_INT_PART_END 0x1000000
 #define FS_INT_TFL_SECT ((FS_INT_PART_END-FS_INT_PART_START-32868*10)/512)
 
 #define FS_CART_PART_START 0x200000
