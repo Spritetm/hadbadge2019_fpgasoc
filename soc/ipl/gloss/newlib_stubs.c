@@ -195,7 +195,7 @@ ssize_t _write(int file, const void *ptr, size_t len) {
 		return len;
 	} else if (fd_entry[file].type==FD_TYPE_USBUART) {
 		return tud_cdc_write(ptr, len);
-	} else if (fd_entry[file].type=FD_TYPE_CONSOLE) {
+	} else if (fd_entry[file].type==FD_TYPE_CONSOLE) {
 		return console_write(ptr, len);
 	} else if (fd_entry[file].type==FD_TYPE_FATFS) {
 		UINT rlen;
