@@ -16,6 +16,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include "gloss/mach_defines.h"
+#include "badgetime.h"
 
 extern volatile uint32_t LCD[];
 #define LCD_REG(i) LCD[(i)/4]
@@ -29,17 +30,9 @@ static void WriteData(uint32_t c) {
 	LCD_REG(LCD_DATA_REG)=c;
 }
 
-//todo: calibrate delay, or use a timer like a civilized person.
-static void Delay(int n) {
-//	xprintf("Dly %d\n", n);
-	for (int i=0; i<n; i++) {
-		for (volatile int t=0; t<(1<<11); t++);
-	}
-}
-
 void lcd_init(int nowait) {
 	LCD_REG(LCD_CONTROL_REG)=1; //enable bl, un-reset, enable cs
-	if (!nowait) Delay(10);	
+	if (!nowait) delay(10);
 	WriteComm(0xF0);
 	WriteData(0x5A);
 	WriteData(0x5A);
@@ -169,7 +162,7 @@ void lcd_init(int nowait) {
 	//wired in such a way *this* controller only accepts 16-bit writes.
 	
 	WriteComm(0x11); 
-	if (!nowait) Delay(120);
+	if (!nowait) delay(120);
 	
 	WriteComm(0x29);//Display on
 
