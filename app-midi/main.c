@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stddef.h>
 
 #include "mach_defines.h"
 #include "sdk.h"
@@ -9,8 +10,11 @@
 #include "midi_note_increments.h"
 #include "libmidi.h"
 
+#include "cache.h"
+#include "graphics.h"
 
 /// CHANGEME!!!!!
+// No, really.  If you want to hear other songs, change me.
 #define CASTLEVANIA
 
 #ifdef MARIO
@@ -52,6 +56,8 @@
 
 void main(int argc, char **argv)
 {
+
+    do_graphics();
 	synth_init(5);
 
 	// This is where you'd configure the voices to fit your song.
