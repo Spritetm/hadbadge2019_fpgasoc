@@ -262,7 +262,7 @@ always @(*) begin
 		copper_pc_next = 0;
 	end else if (copper_data[31:28]==COPPER_OP_IRQ) begin
 		copper_pc_next = copper_pc + 1;
-		irq_copper <= 1;
+		irq_copper = 1;
 	end else if (copper_data[31]==0) begin //COPPER_OP_WRITE
 		copper_halts_gfx = 1;
 		copper_addr_next = {copper_data[31:2], 2'h0};
