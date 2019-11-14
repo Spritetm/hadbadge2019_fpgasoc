@@ -56,6 +56,14 @@ extern uint32_t GFXCOPPEROPS[];
 extern volatile uint32_t SYNTH[];
 #define SYNTHREG(i) SYNTH[i/4]
 
+// When USE_8_BIT_TRIG is defined, IPL will calculate position of main menu's
+// animated letters using the less accurate but fast 8-bit sin/cos functions
+// copied from the FastLED library: https://github.com/FastLED/FastLED
+// The reduced accuracy is not critical for animation purposes but the speed
+// increase allows us to spend more time on USB tasks. This allows the USB mass
+// storage device to mount faster, copy ELF faster, etc.
+#define USE_8_BIT_TRIG
+
 uint8_t *lcdfb;
 
 
@@ -118,6 +126,44 @@ void gfx_set_xlate_val(int layer, int xcenter, int ycenter, float scale, float r
 	GFX_REG(GFX_TILEA_INC_COL)=(i_dx_y<<16)+(i_dx_x&0xffff);
 	GFX_REG(GFX_TILEA_INC_ROW)=(i_dy_y<<16)+(i_dy_x&0xffff);
 }
+
+#ifdef USE_8_BIT_TRIG
+// sin8_c and cos8_C are 8-bit low-precision approximation of trig functions
+// from the FastLED library: https://github.com/FastLED/FastLED
+const uint8_t b_m16_interleave[] = { 0, 49, 49, 41, 90, 27, 117, 10 };
+uint8_t sin8_C( uint8_t theta)
+{
+    uint8_t offset = theta;
+    if( theta & 0x40 ) {
+        offset = (uint8_t)255 - offset;
+    }
+    offset &= 0x3F; // 0..63
+
+    uint8_t secoffset  = offset & 0x0F; // 0..15
+    if( theta & 0x40) secoffset++;
+
+    uint8_t section = offset >> 4; // 0..3
+    uint8_t s2 = section * 2;
+    const uint8_t* p = b_m16_interleave;
+    p += s2;
+    uint8_t b   =  *p;
+    p++;
+    uint8_t m16 =  *p;
+
+    uint8_t mx = (m16 * secoffset) >> 4;
+
+    int8_t y = mx + b;
+    if( theta & 0x80 ) y = -y;
+
+    y += 128;
+
+    return y;
+}
+uint8_t cos8_C( uint8_t theta)
+{
+    return sin8_C( theta + 64);
+}
+#endif // USE_8_BIT_TRIG
 
 void set_sprite(int no, int x, int y, int sx, int sy, int tileno, int palstart) {
 	x+=64;
@@ -278,6 +324,8 @@ int show_main_menu(char *app_name, int *ret_flags) {
 						"or insert an USB cable to modify the files on the flash. Have fun!"
 						"                       ";
 	int scrpos=0;
+	int usb_tasks_count=0; // Count how much time per menu frame is available for USB tasks
+	int usb_tasks_output_frames=0;
 
 	//Generate copper list to transform the center of the screen into a barrel-ish
 	//shape for tile layer B.
@@ -320,13 +368,33 @@ int show_main_menu(char *app_name, int *ret_flags) {
 
 		//The menu header is printed to tilemap A. We jiggle it around by moving the entirety of tilemap A around.
 		p++;
+		#ifdef USE_8_BIT_TRIG
+		float angle_scale = p*0.2;
+		float angle_rotate = p*0.11;
+		uint8_t angle8_scale = angle_scale*40;
+		uint8_t angle8_rotate = angle_rotate*40;
+		float sin8_scale = (sin8_C(angle8_scale)-0x7F)/128.0;
+		float sin8_rotate = (sin8_C(angle8_rotate)-0x7F)/128.0;
+		gfx_set_xlate_val(0, 240,24, 1+sin8_scale*0.1, sin8_rotate*0.1);
+		#else
 		gfx_set_xlate_val(0, 240,24, 1+sin(p*0.2)*0.1, sin(p*0.11)*0.1);
+		#endif
 
 		//This sets up all the sprites for the sinusodial scroller at the bottom.
 		int sprno=0;
 		for (int x=-(scrpos%SCR_PITCH); x<480; x+=SCR_PITCH) {
 			float a=x*0.02+scrpos*0.1;
+			#ifdef USE_8_BIT_TRIG
+			// Convert the angle input from floating point [-PI, PI] to [0,255]
+			// 127 / 3.14 = 40.44, rounding down to 40 as our multiplier.
+			uint8_t angle8 = a*40+0x7F;
+			// Convert sin/cosine output from [0,255] to [-1.0, 1,0]
+			float sin8 = (sin8_C(angle8)-0x7F)/128.0;
+			float cos8 = (cos8_C(angle8)-0x7F)/128.0;
+			set_sprite(sprno++, x, 280+sin8*20, 16+cos8*8, 16+cos8*8, scrtxt[scrpos/SCR_PITCH+sprno], 0);
+			#else
 			set_sprite(sprno++, x, 280+sin(a)*20, 16+cos(a)*8, 16+cos(a)*8, scrtxt[scrpos/SCR_PITCH+sprno], 0);
+			#endif
 		}
 		if (scrtxt[scrpos/SCR_PITCH+sprno]==0) scrpos=0;
 		scrpos+=2;
@@ -391,7 +459,15 @@ int show_main_menu(char *app_name, int *ret_flags) {
 		do {
 			cdc_task();
 			tud_task();
+			usb_tasks_count++;
 		} while (GFX_REG(GFX_VBLCTR_REG) <= cur_vbl_ctr+1); //we run at 30fps
+		if (usb_tasks_output_frames >= 100) {
+			printf("%d USB tasks over %d frames\n", usb_tasks_count,usb_tasks_output_frames);
+			usb_tasks_count = 0;
+			usb_tasks_output_frames = 0;
+		} else {
+			usb_tasks_output_frames++;
+		}
 		old_btn=btn;
 	}
 	
