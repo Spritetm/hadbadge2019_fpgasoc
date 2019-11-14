@@ -274,6 +274,7 @@ int show_main_menu(char *app_name, int *ret_flags) {
 	//Allocate fb memory
 	lcdfb=malloc(320*512/2);
 
+
 	//Set up the framebuffer address.
 	GFX_REG(GFX_FBADDR_REG)=((uint32_t)lcdfb)&0xFFFFFF;
 	//We're going to use a pitch of 512 pixels, and the fb palette will start at 256.
@@ -523,8 +524,7 @@ void main() {
 	user_memfn_set(malloc, realloc, free);
 	verilator_start_trace();
 	//When testing in Verilator, put code that pokes your hardware here.
-
-	
+	LCD_REG(LCD_BL_LEVEL_REG)=0x5000; //save some power by lowering the backlight
 
 	//Initialize IRQ stack to be bigger than the bootrom stack
 	uint32_t *int_stack=malloc(IRQ_STACK_SIZE);

@@ -104,7 +104,7 @@ always @(*) begin
 	end else if (addr=='h4) begin //xx10
 		rdata_c = startcmd;
 		ready_c = wen || ren;
-	end else if (addr=='h5) begin //xx11
+	end else if (addr=='h5) begin //xx14
 		rdata_c = {16'b0, lcd_bl_level};
 		ready_c = wen || ren;
 	end else begin
@@ -155,7 +155,7 @@ always @(posedge clk) begin
 				out_ctl <= wdata;
 			end else if (wen && addr == 'h4) begin //xx10
 				startcmd <= wdata;
-			end else if (wen && addr=='h5) begin //xx14
+			end else if (wen && addr == 'h5) begin //xx14
 				lcd_bl_level <= wdata[15:0];
 			end else if (lcd_vm_ena) begin
 				if (lcdvm_newfield && !sent_newfield) begin
