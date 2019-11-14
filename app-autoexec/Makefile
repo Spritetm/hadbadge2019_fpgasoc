@@ -1,6 +1,5 @@
 #This is an example Makefile to build the 'Hello world' example.
 all: autoexec.elf
-	./flash
 
 #The name of the app. The resulting file will be called APPNAME.elf.
 APPNAME = autoexec
@@ -22,7 +21,8 @@ INCLUDEDIRS = synth
 #to reference to its data.
 BINFILES = gameboybackground.png gameboytiles.png gbc-tileset.png ps_bg.png ps_tiles.png \
 	sega-tileset.png switch_bg.png switch_tileset.png xbox_bg.png xbox_tiles.png \
-	switch.raw sega.raw playstation.raw xbox.raw
+	switch.raw sega.raw playstation.raw 
+	# switch.raw sega.raw playstation.raw xbox.raw
 
 #Normally, you'd put the APSSDK_DIR in your environment. Here, we know where it is, so
 #if people have not got it set, we assume the default relative directory to it.

@@ -13,8 +13,8 @@ extern char _binary_sega_raw_start;
 extern char _binary_sega_raw_end;
 extern char _binary_playstation_raw_start;
 extern char _binary_playstation_raw_end;
-extern char _binary_xbox_raw_start;
-extern char _binary_xbox_raw_end;
+/* extern char _binary_xbox_raw_start; */
+/* extern char _binary_xbox_raw_end; */
 
 
 void synth_play_gameboy_monochrome(void){
@@ -249,43 +249,43 @@ audio_interrupt_handler_playstation(mach_int_frame_t *frame, int int_no)
 }
 
 
-// xbox functions
+/* // xbox functions */
 
-static  uint16_t *p_xbox = (void*)&_binary_xbox_raw_start;
-void pcm_fill_xbox(void)
-{
-	uint16_t *e = (void*)&_binary_xbox_raw_end;
+/* static  uint16_t *p_xbox = (void*)&_binary_xbox_raw_start; */
+/* void pcm_fill_xbox(void) */
+/* { */
+/* 	uint16_t *e = (void*)&_binary_xbox_raw_end; */
 
-	int n = e - p_xbox;
-	while (n) {
-		/* Check for AFULL */
-		if (audio_regs->csr & AUDIO_CSR_PCM_AFULL)
-			break;
-		/* Fill up to 32 samples */
-		for (int i=0; i<32 && n; i++,n--)
-			audio_regs->pcm_data = *p_xbox++;
-	}
-	if (n == 0){
-		audio_regs->csr &= ~(PCM_CFG_ENABLE);
-		mach_int_dis(1 << INT_NO_AUDIO);
-	}
-}
+/* 	int n = e - p_xbox; */
+/* 	while (n) { */
+/* 		/1* Check for AFULL *1/ */
+/* 		if (audio_regs->csr & AUDIO_CSR_PCM_AFULL) */
+/* 			break; */
+/* 		/1* Fill up to 32 samples *1/ */
+/* 		for (int i=0; i<32 && n; i++,n--) */
+/* 			audio_regs->pcm_data = *p_xbox++; */
+/* 	} */
+/* 	if (n == 0){ */
+/* 		audio_regs->csr &= ~(PCM_CFG_ENABLE); */
+/* 		mach_int_dis(1 << INT_NO_AUDIO); */
+/* 	} */
+/* } */
 
 
-	static mach_int_frame_t *
-audio_interrupt_handler_xbox(mach_int_frame_t *frame, int int_no)
-{
-	uint32_t csr;
-	csr = audio_regs->csr;
-	if (csr & AUDIO_CSR_PCM_UNDERFLOW) {
-		audio_regs->csr = AUDIO_CSR_PCM_UNDERFLOW;
-		printf("Underflow\n");
-	}
-	if (csr & AUDIO_CSR_PCM_EMPTY)
-		printf("Empty\n");
-	if (csr & AUDIO_CSR_PCM_AEMPTY)
-		pcm_fill_xbox();
-	return frame;
-}
+/* 	static mach_int_frame_t * */
+/* audio_interrupt_handler_xbox(mach_int_frame_t *frame, int int_no) */
+/* { */
+/* 	uint32_t csr; */
+/* 	csr = audio_regs->csr; */
+/* 	if (csr & AUDIO_CSR_PCM_UNDERFLOW) { */
+/* 		audio_regs->csr = AUDIO_CSR_PCM_UNDERFLOW; */
+/* 		printf("Underflow\n"); */
+/* 	} */
+/* 	if (csr & AUDIO_CSR_PCM_EMPTY) */
+/* 		printf("Empty\n"); */
+/* 	if (csr & AUDIO_CSR_PCM_AEMPTY) */
+/* 		pcm_fill_xbox(); */
+/* 	return frame; */
+/* } */
 
 
