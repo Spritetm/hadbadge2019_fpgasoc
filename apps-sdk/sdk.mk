@@ -37,7 +37,7 @@ endif
 
 #Define objects used for the SDK itself here and the libs they're supposed to make.
 #Note that all objects in a subdir are packed in the lib name in the same subdir.
-SDK_OBJS := gloss/crt0.o gloss/app_start.o
+SDK_OBJS := gloss/crt0.o gloss/app_start.o gloss/mach_interrupt_asm.o
 SDK_LIBS := gloss/libgloss.a
 
 LIBS += $(addprefix $(BUILD_DIR_SDK)/,$(SDK_LIBS))
