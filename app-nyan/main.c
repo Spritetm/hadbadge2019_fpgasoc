@@ -6,6 +6,10 @@
 #include "sdk.h"
 #include "gfx_load.h"
 #include "cache.h"
+#include "libsynth.h"
+#include "synth_utils.h"
+#include "libmidi.h"
+#include "ID-Nyan_Cat.h"
 
 //The bgnd.png image got linked into the binary of this app, and these two chars are the first
 //and one past the last byte of it.
@@ -59,6 +63,7 @@ void main(int argc, char **argv) {
 	GFX_REG(GFX_TILEB_INC_COL)=(0<<16)+((64/2)&0xffff);
 	GFX_REG(GFX_TILEB_INC_ROW)=((64/2)<<16)+(0&0xffff);
 
+	synth_init(4);
 
 	//Loop until button A is pressed
 	while ((MISC_REG(MISC_BTN_REG) & BUTTON_A)==0) {
@@ -91,6 +96,9 @@ void main(int argc, char **argv) {
 		}
 
 
+		// Add in music:
+
+        midi_play_song(nyan, sizeof(nyan)/sizeof(uint16_t)/3 , BPM(120));
 
 
 		while (GFX_REG(GFX_VBLCTR_REG) <= cur_vbl_ctr);
