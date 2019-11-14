@@ -652,8 +652,9 @@ module soc(
 
 	reg [15:0] pic_led;
 	wire [15:0] pic_led_out;
-//	assign led = {pic_led_out[10:8], pic_led_out[5:0]};
-	assign led = pic_led;
+	assign led = {pic_led_out[10:8], pic_led_out[5:0]};
+
+//	assign led = {1'b0, pic_led[7:0]}; //Wondering why that LED doesn't work?
 
 	pic_wrapper #(
 		.ROM_HEX("pic/rom_initial.hex")

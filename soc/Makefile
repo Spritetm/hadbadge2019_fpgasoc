@@ -1,6 +1,6 @@
 -include ../local-settings.mk
 #Badge version. Green (unused) is 1, red is 2, blue is 3, prod (black) is 4
-BADGE_VER ?= 2
+BADGE_VER ?= 4
 #Project name
 PROJ=soc
 #Seed for nextpnr. Change this to another random value if you happen to run 
@@ -146,6 +146,7 @@ SRC_SYNTH += $(addprefix hdmi/, \
 EXTRA_DEPEND=rom_random_seeds0x123456.hex pic/rom_initial.hex
 BRAMFILE=rom.hex
 CONSTR=$(word $(BADGE_VER), had19_proto1.lpf had19_proto2.lpf had19_proto3.lpf had19_prod.lpf)
+HWDEF=$(word $(BADGE_VER), BADGE_V1 BADGE_V2 BADGE_V3 BADGE_PROD)
 TRELLIS=/usr/share/trellis
 
 ifeq ($(OS),Windows_NT)
@@ -168,7 +169,7 @@ all: $(PROJ).svf
 
 $(PROJ).json $(PROJ).blif: $(SRC) $(SRC_SYNTH) $(EXTRA_DEPEND)
 	yosys$(EXE) -e ".*(assigned|implicitly).*" -l yosys.log \
-		-p "read -sv -DBADGE_VER=$(BADGE_VER) -DBADGE_V$(BADGE_VER)=1 $(SRC) $(SRC_SYNTH); \
+		-p "read -sv -DBADGE_VER=$(BADGE_VER) -D$(HWDEF)=1 $(SRC) $(SRC_SYNTH); \
 			  synth_ecp5 -abc9 -top top_fpga -json $(PROJ).json -blif $(PROJ).blif"
 
 %_out_synth.config: %.json clock-constrainsts.py

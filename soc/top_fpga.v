@@ -39,6 +39,10 @@ module top_fpga(
 		output [10:0] ledc,
 		output [2:0] leda,
 		inout [29:0] genio,
+`elsif BADGE_PROD
+		output [9:0] ledc,
+		output [2:0] leda,
+		inout [29:0] genio,
 `else
 		output [8:0] led,
 		inout [27:0] genio,
@@ -46,6 +50,10 @@ module top_fpga(
 		output uart_tx,
 		input uart_rx,
 `ifdef BADGE_V3
+		output irda_tx,
+		input irda_rx,
+		output irda_sd,
+`elsif BADGE_PROD
 		output irda_tx,
 		input irda_rx,
 		output irda_sd,
@@ -150,6 +158,10 @@ module top_fpga(
 		.leda(leda),
 		.led(led)
 	);
+`elsif BADGE_PROD
+	wire [8:0] led;
+	assign ledc = led;
+	assign leda = 3'b1;
 `endif
 
 	soc soc (
@@ -164,6 +176,10 @@ module top_fpga(
 		.uart_rx(uart_rx),
 
 `ifdef BADGE_V3
+		.irda_tx(irda_tx),
+		.irda_rx(irda_rx),
+		.irda_sd(irda_sd),
+`elsif BADGE_PROD
 		.irda_tx(irda_tx),
 		.irda_rx(irda_rx),
 		.irda_sd(irda_sd),
@@ -262,6 +278,8 @@ module top_fpga(
 	TRELLIS_IO #(.DIR("BIDIR")) flash_tristate_hold (.I(flash_sout[3]),.T(flash_bus_qpi && !flash_oe),.B(flash_hold),.O(flash_sin[3]));
 
 `ifdef BADGE_V3
+	for (i=0; i<30; i++) begin
+`elsif BADGE_PROD
 	for (i=0; i<30; i++) begin
 `else
 	assign genio_in[29] = 0;
