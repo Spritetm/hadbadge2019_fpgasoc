@@ -171,6 +171,10 @@ psram_init:
 	li a2, MACH_RAM_SIZE
 	sw a2, 0(a1)
 
+//Prod version: skip memtest. Hope there aren't badges with memory issues.
+	j memtestok
+
+
 //Memtest
 memtest_start:
 	li a2, MISC_OFFSET
