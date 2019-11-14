@@ -109,6 +109,7 @@ PROVIDE ( gfx_load_tiles_tga_mem = 0x400020B0 );
 PROVIDE ( usb_msc_on = 0x400020B4 );
 PROVIDE ( usb_msc_off = 0x400020B8 );
 PROVIDE ( fs_cart_initialize_fat = 0x400020BC );
+PROVIDE ( millis = 0x400020C0 );
 
 PROVIDE ( interrupt_vector_table = 0x40000020 );
 PROVIDE ( irq_stack_ptr = 0x400000a0 );

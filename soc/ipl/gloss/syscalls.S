@@ -105,5 +105,7 @@ _start:
 	j usb_msc_off
 .global fs_cart_initialize_fat
 	j fs_cart_initialize_fat
+.global millis
+	j millis
 
 
