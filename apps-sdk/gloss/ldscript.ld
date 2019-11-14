@@ -110,6 +110,10 @@ PROVIDE ( usb_msc_on = 0x400020B4 );
 PROVIDE ( usb_msc_off = 0x400020B8 );
 PROVIDE ( fs_cart_initialize_fat = 0x400020BC );
 PROVIDE ( millis = 0x400020C0 );
+PROVIDE ( delay = 0x400020C4 );
+PROVIDE ( wait_for_button_press = 0x400020C8 );
+PROVIDE ( wait_for_button_release = 0x400020CC );
+PROVIDE ( wait_for_next_frame = 0x400020D0 );
 
 PROVIDE ( interrupt_vector_table = 0x40000020 );
 PROVIDE ( irq_stack_ptr = 0x400000a0 );

@@ -107,5 +107,13 @@ _start:
 	j fs_cart_initialize_fat
 .global millis
 	j millis
+.global delay
+	j delay
+.global wait_for_button_press
+	j wait_for_button_press
+.global wait_for_button_release
+	j wait_for_button_release
+.global wait_for_next_frame
+	j wait_for_next_frame
 
 

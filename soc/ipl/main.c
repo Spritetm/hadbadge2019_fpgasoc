@@ -37,6 +37,7 @@
 #include "gfx_load.h"
 #include "cache.h"
 #include "user_memfn.h"
+#include "badgetime.h"
 
 extern volatile uint32_t UART[];
 #define UART_REG(i) UART[(i)/4]
@@ -86,9 +87,6 @@ extern uint32_t rom_cart_boot_flag;
 int booted_from_cartridge() {
 	return rom_cart_boot_flag;
 }
-
-void cdc_task();
-
 
 void boot_fpga_bitstream(int from_cart) {
 	int src=0;
@@ -454,10 +452,7 @@ int show_main_menu(char *app_name, int *ret_flags) {
 		}
 
 		//Idle doing USB stuff while the current frame is still active.
-		do {
-			cdc_task();
-			tud_task();
-		} while (GFX_REG(GFX_VBLCTR_REG) <= cur_vbl_ctr+1); //we run at 30fps
+		wait_for_next_frame(cur_vbl_ctr+1); //we run at 30fps
 		old_btn=btn;
 	}
 	
@@ -590,13 +585,6 @@ void main() {
 			start_app(app_name);
 			printf("IPL: App %s returned.\n", app_name);
 		}
-	}
-}
-
-
-void cdc_task(void) {
-	if (tud_cdc_connected()) {
-		tud_cdc_write_flush();
 	}
 }
 

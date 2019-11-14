@@ -6,6 +6,7 @@
 #include "sdk.h"
 #include "gfx_load.h"
 #include "cache.h"
+#include "badgetime.h"
 
 //The bgnd.png image got linked into the binary of this app, and these two chars are the first
 //and one past the last byte of it.
@@ -25,7 +26,7 @@ void main(int argc, char **argv) {
 	//We're running in app context. We have full control over the badge and can do with the hardware what we want. As
 	//soon as main() returns, however, we will go back to the IPL.
 	printf("Hello World app: main running\n");
-	
+
 	//Blank out fb while we're loading stuff by disabling all layers. This just shows the background color.
 	GFX_REG(GFX_BGNDCOL_REG)=0x202020; //a soft gray
 	GFX_REG(GFX_LAYEREN_REG)=0; //disable all gfx layers
@@ -73,9 +74,9 @@ void main(int argc, char **argv) {
 	
 	printf("Hello World ready. Press a button to exit.\n");
 	//Wait until all buttons are released
-	while (MISC_REG(MISC_BTN_REG)) ;
+	wait_for_button_release();
 
 	//Wait until button A is pressed
-	while ((MISC_REG(MISC_BTN_REG) & BUTTON_A)==0) ;
+	wait_for_button_press(BUTTON_A);
 	printf("Hello World done. Bye!\n");
 }
