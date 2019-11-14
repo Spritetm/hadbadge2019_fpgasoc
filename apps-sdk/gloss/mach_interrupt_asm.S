@@ -1,5 +1,4 @@
 //Note: This is both in the SDK as well as the IPL.
-
 /*
  * Copyright 2019 Jeroen Domburg <jeroen@spritesmods.com>
  * This is free software: you can redistribute it and/or modify

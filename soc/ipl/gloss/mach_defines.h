@@ -171,7 +171,6 @@
 #define LCD_STATUS_ID (1<<1)
 /** Command that is sent before a new frame is transmitted. */
 #define LCD_FB_STARTCMD 0x10
-
 /** Backlight PWM width control. Lower 16 bits control how much backlight to give, 
     if LCD_CONTROL_BLEN set in LCD_CONTROL_REG. */
 #define LCD_BL_LEVEL_REG 0x14
