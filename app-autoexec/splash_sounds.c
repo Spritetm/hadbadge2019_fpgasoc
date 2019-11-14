@@ -83,7 +83,7 @@ void synth_play_sega(void){
 	mach_int_ena(1 << INT_NO_AUDIO);
 	/* configure and enable pcm */
 	audio_regs->pcm_cfg = PCM_CFG_ENABLE | PCM_CFG_DIV(2175-2) | PCM_CFG_VOLUME(128, 128);
-	
+
 }
 void synth_play_playstation(void){
 	pcm_fill_playstation();
@@ -95,12 +95,36 @@ void synth_play_playstation(void){
 	audio_regs->pcm_cfg = PCM_CFG_ENABLE | PCM_CFG_DIV(2400-2) | PCM_CFG_VOLUME(128, 128);
 }
 void synth_play_xbox(void){
-	pcm_fill_xbox();
-	audio_regs->csr = (audio_regs->csr & 0xffff0000) | AUDIO_CSR_IRQ_PCM_AEMPTY;	/* clear all conditions and enable interrupt */
-	mach_set_int_handler(INT_NO_AUDIO, audio_interrupt_handler_xbox);
-	mach_int_ena(1 << INT_NO_AUDIO);
-	/* configure and enable pcm */
-	audio_regs->pcm_cfg = PCM_CFG_ENABLE | PCM_CFG_DIV(2175-2) | PCM_CFG_VOLUME(128, 128);
+	/* pcm_fill_xbox(); */
+	/* audio_regs->csr = (audio_regs->csr & 0xffff0000) | AUDIO_CSR_IRQ_PCM_AEMPTY;	/1* clear all conditions and enable interrupt *1/ */
+	/* mach_set_int_handler(INT_NO_AUDIO, audio_interrupt_handler_xbox); */
+	/* mach_int_ena(1 << INT_NO_AUDIO); */
+	/* /1* configure and enable pcm *1/ */
+	/* audio_regs->pcm_cfg = PCM_CFG_ENABLE | PCM_CFG_DIV(2175-2) | PCM_CFG_VOLUME(128, 128); */
+
+	synth_now->samplerate_div = (1000 - 2);	/* 48M / 1000 = 48 kHz */
+	synth_now->volume = 255;			/* Max volume */
+	synth_queue->cmd_wait = 500 * 256; // factor to line up sample clocks and duration counts
+	synth_queue->cmd_wait = 450 * 256; // factor to line up sample clocks and duration counts
+
+	for (uint8_t i=0; i<4; i++){
+		synth_queue->voice[i].ctrl     = SYNTH_VOICE_CTRL_ENABLE | SYNTH_VOICE_CTRL_SUBOCTAVE;
+		synth_queue->voice[i].volume   = SYNTH_VOICE_VOLUME(192,192);
+		synth_queue->voice[i].attack   = 0x30; // instant
+		synth_queue->voice[i].attack   = 0x30; // instant
+		synth_queue->voice[i].decay    = 0x20; // slow
+		synth_queue->voice[i].phase_cmp= (1 << 13); 
+		synth_queue->voice[i].duration = 60;   // ~ quarter note at 125 BPM 
+	}
+
+	synth_queue->voice[0].phase_inc = midi_table[60];
+	synth_queue->voice[1].phase_inc = midi_table[72];
+	synth_queue->voice_start = (1 << 0) | (1 << 1);
+	synth_queue->cmd_wait = 45 * 256; // factor to line up sample clocks and duration counts
+	synth_queue->voice[2].phase_inc = midi_table[67];
+	synth_queue->voice[3].phase_inc = midi_table[79];
+	synth_queue->voice_start = (1 << 2) | (1 << 3);
+
 }
 
 // PCM sample-playing apparatus
