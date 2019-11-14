@@ -6,8 +6,8 @@
 #include "synth_utils.h"
 #include "midi_note_increments.h"
 #include "mach_defines.h"
-#include "cache.h"
 #include "sdk.h"
+#include "graphics.h"
 
 // A quick note on timing.  Everything here is in duration counts.
 
@@ -35,12 +35,10 @@ void wait(uint32_t duration_counts){
 // All of the higher-level functions are defined in synth/synth_utils.c
 // And all of the lower-level registers in synth/libsynth.h
 
-
 void main(int argc, char **argv)
 {
+    do_graphics();
 	synth_init(8); // set up 8 voices	
-
-
 
 #if INTRO
 	//  and then the simplest way to play is just notes:
