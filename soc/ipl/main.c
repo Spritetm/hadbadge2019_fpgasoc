@@ -307,10 +307,15 @@ int show_main_menu(char *app_name, int *ret_flags) {
 	cache_flush(lcdfb, lcdfb+320*512/2);
 	printf("bgnd loaded.\n");
 
+	GFX_REG(GFX_TILEB_OFF)=(0<<16)+(0&0xffff);
+	GFX_REG(GFX_TILEB_INC_COL)=(0<<16)+(64&0xffff);
+	GFX_REG(GFX_TILEB_INC_ROW)=(64<<16)+(0&0xffff);
+
+
 	//Enable layers needed
 	GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_LAYEREN_TILEB|GFX_LAYEREN_TILEA|GFX_LAYEREN_SPR;
-	GFXPAL[FB_PAL_OFFSET+0x100]=0x00ff00ff; //Madness - seemingly the tile layers (B at least) seem to use this instead of color 0? ToDo: look wtf is going on here.
-	GFXPAL[FB_PAL_OFFSET+0x1ff]=0x00ff00ff; //Color the sprite layer uses when no sprites are drawn - 100% transparent.
+	GFXPAL[0]=0x00ff00ff; //Transparency layer for tiles - somehow this doesn't get set correctly.
+	GFXPAL[0x1ff]=0x00ff00ff; //Color the sprite layer uses when no sprites are drawn - 100% transparent.
 
 	//loop
 	int p=0;
@@ -474,7 +479,7 @@ int show_main_menu(char *app_name, int *ret_flags) {
 	GFX_REG(GFX_TILEB_INC_COL)=(0<<16)+(64&0xffff);
 	GFX_REG(GFX_TILEB_INC_ROW)=(64<<16)+(0&0xffff);
 	GFX_REG(GFX_COPPER_CTL_REG)=0; //disable copper
-
+	for (int i=0; i<128*2; i++) GFXSPRITES[i]=0; //reset sprites
 	//Clear console
 	fprintf(console, "\0330M\033C\0330A"); //Set map to tilemap A, clear tilemap, set attr to 0
 
@@ -510,6 +515,17 @@ usb_setup_serial_no(void)
 	sprintf((void*)string_desc_arr[3], "%016llx", serial);
 }
 
+int read_leds_on() {
+	FILE *f=NULL;//fopen("ledval.txt", "r");
+	if (!f) {
+		return 0xffff;//(1<<7)|(1<<6); //only light power and 'the other' LED
+	}
+	char buf[10];
+	fgets(buf, 10, f);
+	fclose(f);
+	return atoi(buf);
+}
+
 extern uint32_t *irq_stack_ptr;
 
 #define IRQ_STACK_SIZE (16*1024)
@@ -538,12 +554,15 @@ void main() {
 	//Initialize the LCD
 	lcd_init(simulated());
 	
-    // Basic startup chime.
+	int leds_on=read_leds_on();
+	MISC_REG(MISC_LED_REG) = leds_on;
+
+	// Basic startup chime.
 	SYNTHREG(0xF0) = 0x00000200;
-	SYNTHREG(0x40) = 0x00151800;	
-	SYNTHREG(0x50) = 0x00251E00;	
-	SYNTHREG(0x60) = 0x00352400;	
-	SYNTHREG(0x70) = 0x00453000;	
+	SYNTHREG(0x40) = 0x00151800;
+	SYNTHREG(0x50) = 0x00251E00;
+	SYNTHREG(0x60) = 0x00352400;
+	SYNTHREG(0x70) = 0x00453000;
     
 	//Skip autoexec when user is holding down the designated bypass key
 	if(!(MISC_REG(MISC_BTN_REG)&BUTTON_B)) {
@@ -566,9 +585,10 @@ void main() {
 			printf("No %s found; not running\n", autoexec);
 		}
 	}
+	
 
 	while(1) {
-		MISC_REG(MISC_LED_REG)=0xfffff;
+		MISC_REG(MISC_LED_REG) = leds_on;
 		printf("IPL running.\n");
 		char app_name[256]="*na*";
 		int flags=0;
