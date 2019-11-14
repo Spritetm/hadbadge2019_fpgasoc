@@ -191,11 +191,11 @@ void menu_add_apps(menu_data_t *s, char *path, int flag) {
 	struct dirent *ed;
 	int found=0;
 	while (ed=readdir(d)) {
-//		if (strlen(ed->d_name)>4 && strcasecmp(&ed->d_name[strlen(ed->d_name)-4], ".elf")==0) {
+		if (strcmp(ed->d_name, "autoexec.elf")!=0 && strlen(ed->d_name)>4 && strcasecmp(&ed->d_name[strlen(ed->d_name)-4], ".elf")==0) {
 			s->item[s->no_items]=strdup(ed->d_name);
 			s->flag[s->no_items++]=flag;
 			found=1;
-//		}
+		}
 	}
 	if (!found) {
 		s->item[s->no_items]=strdup("*NO FILES*");
@@ -290,6 +290,7 @@ int show_main_menu(char *app_name, int *ret_flags) {
 	if (console==NULL) {
 		printf("Error opening console!\n");
 	}
+	fprintf(console, "\0331M\033C\0330A"); //Set map to tilemap B, clear tilemap, set attr to 0
 
 	//Erase tilemaps
 	for (int x=0; x<64*64; x++) GFXTILEMAPA[x]=0x20;
@@ -309,8 +310,8 @@ int show_main_menu(char *app_name, int *ret_flags) {
 
 	//Enable layers needed
 	GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_LAYEREN_TILEB|GFX_LAYEREN_TILEA|GFX_LAYEREN_SPR;
-	GFXPAL[FB_PAL_OFFSET+0x100]=0x00ff00ff; //Note: For some reason, the sprites use this as default bgnd. ToDo: fix this...
-	GFXPAL[FB_PAL_OFFSET+0x1ff]=0x40ff00ff; //so it becomes this instead.
+	GFXPAL[FB_PAL_OFFSET+0x100]=0x00ff00ff; //Madness - seemingly the tile layers (B at least) seem to use this instead of color 0? ToDo: look wtf is going on here.
+	GFXPAL[FB_PAL_OFFSET+0x1ff]=0x00ff00ff; //Color the sprite layer uses when no sprites are drawn - 100% transparent.
 
 	//loop
 	int p=0;
@@ -403,14 +404,12 @@ int show_main_menu(char *app_name, int *ret_flags) {
 				usb_msc_on();
 				fprintf(console, "\0330M\033C\0330A"); //Set map to tilemap A, clear tilemap, set attr to 0
 				fprintf(console, "\0338;1PUSB CONNECTED"); //Menu header.
-				fprintf(console, "\0331M\033C\n"); //clear menu
 				selected=-1;
 			} else {
 				usb_msc_off();
 				read_menu_items(&menu);
 				fprintf(console, "\0330M\033C\0330A"); //Set map to tilemap A, clear tilemap, set attr to 0
 				fprintf(console, "\0338;1PSELECT AN APP\n\n"); //Menu header.
-				fprintf(console, "\0331M\033C\n"); //clear menu
 				selected=-1;
 			}
 		}
@@ -442,7 +441,7 @@ int show_main_menu(char *app_name, int *ret_flags) {
 		} while((menu.flag[selected] & ITEM_FLAG_SELECTABLE)==0);
 
 		if (need_redraw) {
-			fprintf(console, "\033C");
+			fprintf(console, "\0331M\033C\n"); //select tilemap B, clear menu
 
 			int start=selected-5;
 			for (int i=0; i<11; i++) {
