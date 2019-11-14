@@ -19,6 +19,11 @@
 #include "gfx_load.h"
 #include "cache.h"
 
+#include "libsynth.h"
+#include "synth_utils.h"
+#include "midi_note_increments.h"
+#include "splash_sounds.h"
+
 //The background image got linked into the binary of this app, and these two chars are the first
 //and one past the last byte of it.
 extern char _binary_gameboybackground_png_start;
@@ -213,8 +218,8 @@ void gfx_set_xlate_val(int layer, int xcenter, int ycenter, float scale, float r
 //
 //	Art by Emily Velasco (Twitter @MLE_Online)
 //	Code by Roger Cheng (Twitter @Regorlas)
-//	Sound by (TBD)
-
+//	Sound (both notes!) Elliot Williams @ Hackaday.com
+//
 void gameboy_monochrome_splash() {
 	/////////////////////////////////////////////////////////////////////////
 	//	Generic badge app boilerplate
@@ -329,7 +334,7 @@ void gameboy_monochrome_splash() {
 //	function is fully self-contained and can be main() for a standaline app.
 //
 //	Art and Code by Mike Szczys (Twitter @szczys)
-//	Sound by (TBD)
+//	Sound also by Elliot Williams @ Hackaday.com
 
 void gameboy_color_splash() {
 	/////////////////////////////////////////////////////////////////////////
@@ -495,8 +500,8 @@ void gameboy_color_splash() {
 //	available from: https://www.dafont.com/phatboy-slim.font
 //
 //	Art and Code by Roger Cheng (Twitter @Regorlas)
-//	Sound by (TBD)
-
+//	Sound by Richard Hogben 
+//
 void playstation_splash() {
 	/////////////////////////////////////////////////////////////////////////
 	//	Generic badge app boilerplate
@@ -596,7 +601,8 @@ void playstation_splash() {
 			GFXPAL[3] = color & (color_mask | (0xFF-(steps-dx))<<24);
 		}
 		__tile_a_translate(dx,0);
-		__INEFFICIENT_delay(1);
+		// more delay for audio: this was 1 (per cycle)
+		__INEFFICIENT_delay(2);
 	}
 }
 
@@ -609,8 +615,8 @@ void playstation_splash() {
 //	Recreation of distinct SEGA font via https://fontmeme.com/sega-font/
 //
 //	Art and Code by Roger Cheng (Twitter @Regorlas)
-//	Sound by (TBD)
-
+//	Sound by Richard Hogben
+//	
 void sega_splash() {
 	/////////////////////////////////////////////////////////////////////////
 	//	Generic badge app boilerplate
@@ -765,6 +771,7 @@ void sega_splash() {
 	// Wait to start fading in blue
 	__INEFFICIENT_delay(100);
 
+	synth_play_sega();
 	// Move in the solid cyan (now palette changed to white) horizontal bar for palette animation
 	__tile_a_translate(x_translate,y_translate+64*16*4);
 
@@ -780,6 +787,8 @@ void sega_splash() {
 
 	// Logo complete, allow admiration for a short time before exiting.
 	__INEFFICIENT_delay(750);
+	// Extra delay b/c sound is long
+	__INEFFICIENT_delay(750); 
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -789,8 +798,8 @@ void sega_splash() {
 //	Be sure to copy the relevant constant #define above if doing so.
 //
 //	Art and Code by Roger Cheng (Twitter @Regorlas)
-//	Sound by (TBD)
-
+//	Sound: 418226_lynx-5969_finger-snap-echo.wav from freesound.org
+//	
 void switch_splash() {	
 	/////////////////////////////////////////////////////////////////////////
 	//	Generic badge app boilerplate
@@ -904,6 +913,8 @@ void switch_splash() {
 		__tile_b_translate(0,y_translate);
 		__INEFFICIENT_delay(1);
 	}
+    // Make the snapping noise
+			synth_play_switch();
 
 	// Place "Supercon" on layer B
 	for (uint8_t x = 0; x < 12; x++) {
@@ -1061,21 +1072,29 @@ void main(int argc, char **argv) {
 
 	switch(random) {
 		case 0:
+			synth_play_gameboy_monochrome();
 			gameboy_monochrome_splash();
 			break;
 		case 1:
+			synth_play_gameboy_color();
 			gameboy_color_splash();
 			break;
 		case 2:
+			// This one has to lock in with the switch to make sense
+			// synth_play_switch();
 			switch_splash();
 			break;
 		case 3:
+			// This one is also synced
+			// synth_play_sega();
 			sega_splash();
 			break;
 		case 4:
+			synth_play_playstation();
 			playstation_splash();
 			break;
 		case 5:
+			synth_play_xbox();
 			xbox_splash();
 			break;
 	}

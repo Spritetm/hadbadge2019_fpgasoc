@@ -1,0 +1,8 @@
+sox assets/$1 -r 22050 -L -c 1 -b 16 -e signed $2.raw
+python3 fixraw.py $2.raw
+mv test.raw $2.raw
+
+# encode_raw_files 418226_lynx-5969_finger-snap-echo.wav switch
+# encode_raw_files 135566__robinhood76__03240-special-whoosh.wav xbox
+# encode_raw_files tune.aif playstation
+# encode_raw_files supercon.aif sega
