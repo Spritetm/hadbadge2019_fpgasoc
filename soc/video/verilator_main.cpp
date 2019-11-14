@@ -117,13 +117,25 @@ unsigned load_png_to_qpi(const char *file, size_t addr) {
 // Setup classic: the orignal-ish setup
 void setup1() {
 	// Load a tileset and palette for use by sprites
-	load_tilemap("tileset.png");
+	load_tilemap("tileset-default.png");
 	load_default_palette();
 	printf("Buffers inited.\n");
 
 	// Set up sprites: sprite 0 at 5, 5
 	tb_write(REG_OFF+2*4, 0x8); //ena sprites
-	set_sprite(2, 5, 5, 16, 16, 0);
+//	set_sprite(2, 5, 5, 16, 16, 0);
+
+	int xp=0;
+	int yp=100;
+	for (int i=1; i<50; i++) {
+		set_sprite(3+i, xp, yp-i, i, i, 65);
+		xp+=i+1;
+		yp-=2;
+		if (xp>480) {
+			xp=0;
+			yp+=i+4+60;
+		}
+	}
 }
 
 // Setup 2: show the loaded background

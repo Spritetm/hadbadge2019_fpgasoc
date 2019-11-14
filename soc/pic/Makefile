@@ -12,7 +12,8 @@ LEDctrl.o: LEDctrl.asm macros.inc
 verilator: verilator-build/Vpic_wrapper
 	./verilator-build/Vpic_wrapper
 
-verilator-build/Vpic_wrapper: pic_wrapper.v risc16f84_clk2x.v verilator_main.cpp rom_initial.hex
+verilator-build/Vpic_wrapper: pic_wrapper.v risc16f84_clk2x.v pic_progmem_sim.v pic_datamem_sim.v \
+			verilator_main.cpp rom_initial.hex
 	verilator -CFLAGS "-ggdb" --assert --trace --Mdir verilator-build -Wno-style -Wno-fatal -cc --top-module pic_wrapper --exe pic_wrapper.v risc16f84_clk2x.v verilator_main.cpp
 	make OPT_FAST="-O2 -fno-stack-protector" -C verilator-build -f Vpic_wrapper.mk
 

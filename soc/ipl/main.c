@@ -516,9 +516,9 @@ usb_setup_serial_no(void)
 }
 
 int read_leds_on() {
-	FILE *f=NULL;//fopen("ledval.txt", "r");
+	FILE *f=fopen("ledval.txt", "r");
 	if (!f) {
-		return 0xffff;//(1<<7)|(1<<6); //only light power and 'the other' LED
+		return 0xAA|(1<<8)|(1<<9); //only light blue, power and 'the other' LED
 	}
 	char buf[10];
 	fgets(buf, 10, f);
@@ -535,6 +535,13 @@ void main() {
 	user_memfn_set(malloc, realloc, free);
 	verilator_start_trace();
 	//When testing in Verilator, put code that pokes your hardware here.
+
+	if (pic_load_run_file("/cart/pic_firmware.bin")) {
+		printf("Found and loaded PIC payload from cart.\n");
+	} else if (pic_load_run_file("/int/pic_firmware.bin")) {
+		printf("Found and loaded PIC payload from internal flash.\n");
+	}
+
 	LCD_REG(LCD_BL_LEVEL_REG)=0x5000; //save some power by lowering the backlight
 
 	//Initialize IRQ stack to be bigger than the bootrom stack
@@ -550,6 +557,13 @@ void main() {
 	//Initialize filesystem (fatfs, flash translation layer)
 	fs_init();
 	printf("Filesystem inited.\n");
+
+	if (pic_load_run_file("/cart/pic_firmware.bin")) {
+		printf("Found and loaded PIC payload from cart.\n");
+	} else if (pic_load_run_file("/int/pic_firmware.bin")) {
+		printf("Found and loaded PIC payload from internal flash.\n");
+	}
+
 
 	//Initialize the LCD
 	lcd_init(simulated());

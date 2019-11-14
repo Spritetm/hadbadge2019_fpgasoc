@@ -432,6 +432,16 @@ pixel (0,1) of a tile is stored in bits [3:0] of word 2
  instruction and is written into consecutive addresses. */
 #define COPPER_OP_WRITE(addr, ct) (((uint32_t)addr & 0xfffffffc)|(ct-1))
 
+/* -------------- PIC peripheral defines --------------------- */
+
+#define PIC_OFFSET_REGS 0x70000000
+
+#define PIC_CTL_REG 0x0
+#define PIC_CTL_RESET (1<<0)
+#define PIC_CTL_INT0 (1<<1)
+#define PIC_CTL_PASSTHRU (1<<2)
+#define PIC_OFFSET_DATAMEM 0x70004000
+#define PIC_OFFSET_PROGMEM 0x70008000
 
 /* -------------- USB peripheral defines --------------------- */
 
