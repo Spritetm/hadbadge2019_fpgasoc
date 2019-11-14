@@ -324,8 +324,6 @@ int show_main_menu(char *app_name, int *ret_flags) {
 						"or insert an USB cable to modify the files on the flash. Have fun!"
 						"                       ";
 	int scrpos=0;
-	int usb_tasks_count=0; // Count how much time per menu frame is available for USB tasks
-	int usb_tasks_output_frames=0;
 
 	//Generate copper list to transform the center of the screen into a barrel-ish
 	//shape for tile layer B.
@@ -459,15 +457,7 @@ int show_main_menu(char *app_name, int *ret_flags) {
 		do {
 			cdc_task();
 			tud_task();
-			usb_tasks_count++;
 		} while (GFX_REG(GFX_VBLCTR_REG) <= cur_vbl_ctr+1); //we run at 30fps
-		if (usb_tasks_output_frames >= 100) {
-			printf("%d USB tasks over %d frames\n", usb_tasks_count,usb_tasks_output_frames);
-			usb_tasks_count = 0;
-			usb_tasks_output_frames = 0;
-		} else {
-			usb_tasks_output_frames++;
-		}
 		old_btn=btn;
 	}
 	
