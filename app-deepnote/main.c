@@ -85,6 +85,12 @@ uint32_t *GFXSPRITES = (uint32_t *)0x5000C000;
 #define SOUND_SYSTEM_LEFT HAD_LEFT
 #define SOUND_SYSTEM_WIDTH HAD_WIDTH
 
+#define FADE_DELAY_BORDER 10		// * 256 ~= 2.5 seconds
+#define FADE_DELAY_AUDIENCE 6		// * 256 ~= 1.5 seconds
+#define FADE_DELAY_SUPERCON 12		// * 256 ~= 3 seconds
+#define FADE_DELAY_SOUND_SYSTEM 10  // * 256 ~= 2.5 seconds
+#define FADE_DELAY_FINAL 4			// * 256 ~= 1 second
+
 //	End constants
 //
 /////////////////////////////////////////////////////////////////////////////
@@ -173,73 +179,134 @@ void main() {
 	/////////////////////////////////////////////////////////////////////////
 	//	Code specific to Deep Note app
 
+	// Change PINK, RED, and GREEN all to black for fading effect.
+	// Comment these lines out to see behind-the-scenes on how fading effect works.
+	GFXPAL[PALETTE_INDEX_PINK]  = 0XFF000000;
+	GFXPAL[PALETTE_INDEX_RED]   = 0XFF000000;
+	GFXPAL[PALETTE_INDEX_GREEN] = 0XFF000000;
+
 	// Cover border with PINK for fade in/out effect
 	for (uint8_t x = BORDER_LEFT; x <= BORDER_RIGHT; x++) {
 		// Cover top and bottom bars of border
-		__tile_a_set(x, BORDER_TOP, COVER_TILE_PINK);
-		__tile_a_set(x, BORDER_BOTTOM, COVER_TILE_PINK);
+		__tile_b_set(x, BORDER_TOP, COVER_TILE_PINK);
+		__tile_b_set(x, BORDER_BOTTOM, COVER_TILE_PINK);
 	}
 	for (uint8_t y = BORDER_TOP+1; y < BORDER_BOTTOM; y++) {
 		// Cover left and right bars of border
-		__tile_a_set(BORDER_LEFT, y, COVER_TILE_PINK);
-		__tile_a_set(BORDER_RIGHT, y, COVER_TILE_PINK);
+		__tile_b_set(BORDER_LEFT, y, COVER_TILE_PINK);
+		__tile_b_set(BORDER_RIGHT, y, COVER_TILE_PINK);
 	}
 
-	// Cover RED over sections that are only used by "Sound System" part of background
+	// Cover RED over sections that are only used by background
 	for (uint8_t x = SOUND_SYSTEM_LEFT; x<SOUND_SYSTEM_LEFT+SOUND_SYSTEM_WIDTH; x++) {
 		for (uint8_t y = HAD_TOP; y < AUDIENCE_TOP; y++) {
-			__tile_a_set(x,y,COVER_TILE_RED);
+			__tile_b_set(x,y,COVER_TILE_RED);
 		}
 	}
 
 	// Place tiles for "The Audience is Hacking"
 	for (uint8_t y = 0; y < AUDIENCE_HEIGHT; y++) {
 		for (uint8_t x = 0; x < AUDIENCE_TILE_ROW1_WIDTH; x++) {
-			__tile_b_set(AUDIENCE_LEFT+x, AUDIENCE_TOP+y, AUDIENCE_TILE_ROW1+x+(y*0x10));
+			__tile_a_set(AUDIENCE_LEFT+x, AUDIENCE_TOP+y, AUDIENCE_TILE_ROW1+x+(y*0x10));
 		}
 		for (uint8_t x = 0; x < AUDIENCE_TILE_ROW2_WIDTH; x++) {
-			__tile_b_set(AUDIENCE_LEFT+AUDIENCE_TILE_ROW1_WIDTH+x, AUDIENCE_TOP+y, AUDIENCE_TILE_ROW2+x+(y*0x10));
-		}
-	}
-/*
-	uint8_t tile_index = 0;
-
-	// Place tiles for waves
-	for (uint8_t x = 0; x < 0x10; x++) {
-		for (uint8_t y = 0; y < 3; y++) {
-			__tile_a_set(x,      PS_WAVE_Y + y, TILE_PS_WAVE1 + x + 0x10*y);
-			__tile_a_set(x+0x10, PS_WAVE_Y + y, TILE_PS_WAVE2 + x + 0x10*y);
+			__tile_a_set(AUDIENCE_LEFT+AUDIENCE_TILE_ROW1_WIDTH+x, AUDIENCE_TOP+y, AUDIENCE_TILE_ROW2+x+(y*0x10));
 		}
 	}
 
-	// Place tiles that block the logo for fading effect
-	for (uint8_t x = 0; x < 18; x++) {
-		__tile_a_set(x+14, PS_TEXT_Y  , TILE_PS_WAVE1+1);
-		__tile_a_set(x+14, PS_TEXT_Y+1, TILE_PS_WAVE1+1);
-	}
-
-	// Tiles are set up, we can now enable layers
-	GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_LAYEREN_TILEA;
-
-	uint32_t color = GFXPAL[3];
-	uint32_t color_mask = 0x00FFFFFF;
-	uint16_t steps = 64*16*2;
-
-	for (int16_t dx = 0; dx < steps; dx++) {
-		if (dx < 0xFF) {
-			// Text fade-in accomplished by fading out the tiles blocking it.
-			GFXPAL[3] = color & (color_mask | (0xFF-dx)<<24);
-		} else if (steps-dx < 0xFF) {
-			// Text fade-out accomplished by fading in the tiles blocking it.
-			GFXPAL[3] = color & (color_mask | (0xFF-(steps-dx))<<24);
+	// Place GREEN tiles to cover "The Audience is Hacking" for fade
+	for (uint8_t y = 0; y < AUDIENCE_HEIGHT; y++) {
+		for (uint8_t x = 0; x < AUDIENCE_TILE_ROW1_WIDTH; x++) {
+			__tile_b_set(AUDIENCE_LEFT+x, AUDIENCE_TOP+y, COVER_TILE_GREEN);
 		}
-		__tile_a_translate(dx,0);
-		// more delay for audio: this was 1 (per cycle)
-		__INEFFICIENT_delay(2);
+		for (uint8_t x = 0; x < AUDIENCE_TILE_ROW2_WIDTH; x++) {
+			__tile_b_set(AUDIENCE_LEFT+AUDIENCE_TILE_ROW1_WIDTH+x, AUDIENCE_TOP+y, COVER_TILE_GREEN);
+		}
 	}
-	*/
+
 	// Tiles are set up, we can now enable layers
 	GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_LAYEREN_TILEB|GFX_LAYEREN_TILEA;
 
-	wait_for_button_press(BUTTON_A);	
+	// Fade in border by fading out "PINK" tiles
+	uint32_t fadecolor = 0;
+	for (uint8_t fade = 0xFF; fade > 0; fade--) {
+		fadecolor = fade << 24;
+		GFXPAL[PALETTE_INDEX_PINK] = fadecolor;
+		delay(FADE_DELAY_BORDER);
+	}
+
+	// Wait one second...
+	delay(1000);
+
+	// Fade in "The Audience is Hacking" by fading out "GREEN" tiles
+	for (uint8_t fade = 0xFF; fade > 0; fade--) {
+		fadecolor = fade << 24;
+		GFXPAL[PALETTE_INDEX_GREEN] = fadecolor;
+		delay(FADE_DELAY_AUDIENCE);
+	}
+
+	// Hold "The Audience is Hacking"
+	delay(3000);
+
+	// Fade out "The Audience is Hacking" by fading in "GREEN" tiles
+	for (uint8_t fade = 0; fade < 0xFF; fade++) {
+		fadecolor = fade << 24;
+		GFXPAL[PALETTE_INDEX_GREEN] = fadecolor;
+		delay(FADE_DELAY_AUDIENCE);
+	}
+
+	// Disable tile layer A where "The Audience is Hacking" lives
+	GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_LAYEREN_TILEB;
+
+	// Switch around the masks so we could fade in final screen
+
+	// GREEN now covers the top and bottom bars
+	for (uint x = HAD_LEFT; x < HAD_LEFT+HAD_WIDTH; x++ ) {
+		__tile_b_set(x,HAD_TOP, COVER_TILE_GREEN);
+	}
+	for (uint8_t x = SOUND_SYSTEM_LEFT; x < SOUND_SYSTEM_LEFT+SOUND_SYSTEM_WIDTH; x++ ) {
+		__tile_b_set(x,SOUND_SYSTEM_TOP, COVER_TILE_GREEN);
+	}
+
+	// And RED covers SUPERCON
+	for (uint x = SUPERCON_LEFT; x < SUPERCON_LEFT+SUPERCON_WIDTH; x++ ) {
+		for (uint y = SUPERCON_TOP; y < SUPERCON_TOP+SUPERCON_HEIGHT; y++ ) {
+			__tile_b_set(x,y,COVER_TILE_RED);
+		}
+	}
+
+	// Hold black for 4 seconds
+	delay(4000);
+
+	// Fade in "SUPERCON" by fading out "RED" tiles
+	for (uint8_t fade = 0xFF; fade > 0; fade--) {
+		fadecolor = fade << 24;
+		GFXPAL[PALETTE_INDEX_RED] = fadecolor;
+		delay(FADE_DELAY_SUPERCON);
+	}
+
+	// Hold SUPERCON and border for 4 seconds
+	delay(4000);
+
+	// Fade out blue border simultaneously with fading in "2019 Hackaday"/"Badge Sound System"
+	for (uint8_t fade = 0xFF; fade > 0; fade--) {
+		fadecolor = fade << 24;
+		GFXPAL[PALETTE_INDEX_GREEN] = fadecolor;
+		fadecolor = (0xFF-fade) << 24;
+		GFXPAL[PALETTE_INDEX_PINK] = fadecolor;
+		delay(FADE_DELAY_SOUND_SYSTEM);
+	}
+
+	// TODO: shiny  effect
+
+	// Hold until button press
+	wait_for_button_press(BUTTON_A);
+
+	// Fade to black. Enjoyr your feature presentation
+	for (uint8_t fade = 0; fade < 0xFF; fade++) {
+		fadecolor = fade << 24;
+		GFXPAL[PALETTE_INDEX_GREEN] = fadecolor;
+		GFXPAL[PALETTE_INDEX_RED] = fadecolor;
+		delay(FADE_DELAY_FINAL);
+	}	
 }
