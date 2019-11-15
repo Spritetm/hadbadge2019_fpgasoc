@@ -208,7 +208,7 @@ always @(posedge pixel_clk) begin
 				video_addr[8:0] <= 0;
 			end else begin
 				skip_lines <= skip_lines + 1;
-				if (skip_lines == 42-4) begin
+				if (skip_lines == 42-6) begin
 					preload <= 1;
 				end
 			end

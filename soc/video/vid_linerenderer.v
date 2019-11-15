@@ -120,7 +120,7 @@ qpimem_dma_rdr dma_rdr(
 	.clk(clk),
 	.rst(reset),
 	.addr_start(dma_start_addr),
-	.addr_end(dma_start_addr+(fb_is_8bit?480:(480/2))),
+	.addr_end(dma_start_addr+(fb_is_8bit?480:(480/2))), //always only read a line
 	.run(dma_run),
 	.do_read(dma_do_read),
 	.ready(dma_ready),
@@ -700,8 +700,8 @@ always @(posedge clk) begin
 			if (in_render_vbl == 0) begin
 				vblctr <= vblctr + 1;
 			end
-			in_render_vbl <= 1;
 			dma_run <= 0;
+			in_render_vbl <= 1;
 			tilea_linestart_x <= tilea_rowinc_x;
 			tilea_linestart_y <= tilea_rowinc_y;
 			tilea_xb <= 0;
@@ -742,12 +742,16 @@ always @(posedge clk) begin
 				end else if (cycle==3) begin
 					//Move to the next pixel
 					vid_wen <= 1;
+					if (write_vid_addr[8:0]==479) begin
+						dma_run <= 0;
+					end
 					if (write_vid_addr[8:0]>479) begin
 						//next line
 						write_vid_addr_next[19:9] <= write_vid_addr_next[19:9] + 'h1;
 						write_vid_addr_next[8:0] <= 0;
+						//prepare dma for next address
 						dma_start_addr <= dma_start_addr + (fb_is_8bit?pitch:pitch/2);
-						dma_run <= 0;
+						dma_run <= 1;
 						tilea_xb <= tilea_linestart_x;
 						tilea_yb <= tilea_linestart_y;
 						tilea_linestart_x <= tilea_linestart_x + tilea_rowinc_x;
