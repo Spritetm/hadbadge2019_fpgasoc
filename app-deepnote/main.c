@@ -47,7 +47,43 @@ uint32_t *GFXSPRITES = (uint32_t *)0x5000C000;
 //
 //	Constants for tile positions and offsets
 
+#define BORDER_LEFT 1
+#define BORDER_RIGHT 28
+#define BORDER_TOP 4
+#define BORDER_BOTTOM 15
 
+#define AUDIENCE_TOP 11
+#define AUDIENCE_HEIGHT 2
+#define AUDIENCE_LEFT 6
+#define AUDIENCE_WIDTH 18
+
+#define COVER_TILE_PINK  0x01
+#define PALETTE_INDEX_PINK 6
+
+#define COVER_TILE_RED   0x10
+#define PALETTE_INDEX_RED 4
+
+#define COVER_TILE_GREEN 0x11
+#define PALETTE_INDEX_GREEN 13
+
+#define AUDIENCE_TILE_ROW_HEIGHT 2
+#define AUDIENCE_TILE_ROW1 0x02
+#define AUDIENCE_TILE_ROW1_WIDTH 14
+#define AUDIENCE_TILE_ROW2 0x20
+#define AUDIENCE_TILE_ROW2_WIDTH 4
+
+#define HAD_TOP 7
+#define HAD_LEFT 7
+#define HAD_WIDTH 16
+
+#define SUPERCON_TOP HAD_TOP+1
+#define SUPERCON_HEIGHT 4
+#define SUPERCON_LEFT HAD_LEFT
+#define SUPERCON_WIDTH HAD_WIDTH
+
+#define SOUND_SYSTEM_TOP SUPERCON_TOP+4
+#define SOUND_SYSTEM_LEFT HAD_LEFT
+#define SOUND_SYSTEM_WIDTH HAD_WIDTH
 
 //	End constants
 //
@@ -67,8 +103,8 @@ static inline void __tile_b_set(uint8_t x, uint8_t y, uint32_t index) {
 //
 //	Badge sound showoff app inspired by THX Deep Note
 //
+//	All-important sound by (TBD)
 //	Art and Code by Roger Cheng (Twitter @Regorlas)
-//	Sound by (TBD)
 //
 void main() {
 	/////////////////////////////////////////////////////////////////////////
@@ -137,8 +173,35 @@ void main() {
 	/////////////////////////////////////////////////////////////////////////
 	//	Code specific to Deep Note app
 
-	/*
+	// Cover border with PINK for fade in/out effect
+	for (uint8_t x = BORDER_LEFT; x <= BORDER_RIGHT; x++) {
+		// Cover top and bottom bars of border
+		__tile_a_set(x, BORDER_TOP, COVER_TILE_PINK);
+		__tile_a_set(x, BORDER_BOTTOM, COVER_TILE_PINK);
+	}
+	for (uint8_t y = BORDER_TOP+1; y < BORDER_BOTTOM; y++) {
+		// Cover left and right bars of border
+		__tile_a_set(BORDER_LEFT, y, COVER_TILE_PINK);
+		__tile_a_set(BORDER_RIGHT, y, COVER_TILE_PINK);
+	}
 
+	// Cover RED over sections that are only used by "Sound System" part of background
+	for (uint8_t x = SOUND_SYSTEM_LEFT; x<SOUND_SYSTEM_LEFT+SOUND_SYSTEM_WIDTH; x++) {
+		for (uint8_t y = HAD_TOP; y < AUDIENCE_TOP; y++) {
+			__tile_a_set(x,y,COVER_TILE_RED);
+		}
+	}
+
+	// Place tiles for "The Audience is Hacking"
+	for (uint8_t y = 0; y < AUDIENCE_HEIGHT; y++) {
+		for (uint8_t x = 0; x < AUDIENCE_TILE_ROW1_WIDTH; x++) {
+			__tile_b_set(AUDIENCE_LEFT+x, AUDIENCE_TOP+y, AUDIENCE_TILE_ROW1+x+(y*0x10));
+		}
+		for (uint8_t x = 0; x < AUDIENCE_TILE_ROW2_WIDTH; x++) {
+			__tile_b_set(AUDIENCE_LEFT+AUDIENCE_TILE_ROW1_WIDTH+x, AUDIENCE_TOP+y, AUDIENCE_TILE_ROW2+x+(y*0x10));
+		}
+	}
+/*
 	uint8_t tile_index = 0;
 
 	// Place tiles for waves
@@ -176,7 +239,7 @@ void main() {
 	}
 	*/
 	// Tiles are set up, we can now enable layers
-	GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_LAYEREN_TILEA;
+	GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB|GFX_LAYEREN_TILEB|GFX_LAYEREN_TILEA;
 
 	wait_for_button_press(BUTTON_A);	
 }
