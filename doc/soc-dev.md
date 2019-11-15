@@ -6,5 +6,5 @@ Synthesize and upload the SoC
 
 - Connect the badge over USB, make sure it is powered off.
 
-- Hold START (SW7), turn the badge on, and 2 seconds after, run `make flash` in the fpga/soc directory.
+- Hold START (SW7), turn the badge on, and 2 seconds after, run `make dfu_flash` in the fpga/soc directory.
 
