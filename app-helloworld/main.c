@@ -52,17 +52,27 @@ void main(int argc, char **argv) {
 	cache_flush(fbmem, fbmem+FB_WIDTH*FB_HEIGHT);
 
 	//The IPL leaves us with a tileset that has tile 0 to 127 map to ASCII characters, so we do not need to
-	//load anything specific for this. In order to get some text out, we can use the /dev/console device
+	//load anything specific for this. 
+
+	//We have a tilemap, built with tiled, that can be loaded. This allows you to easily
+	//define graphics layers with tilemaps in a GUI program.
+	gfx_load_tilemap_mem(GFXTILEMAPA, 64, 64, 1, &_binary_tilemap_tmx_start, &_binary_tilemap_tmx_end-&_binary_tilemap_tmx_start, 0);
+
+
+	//In order to get some text out, we can use the /dev/console device
 	//that will use these tiles to put text in a tilemap. It uses escape codes to do so, see 
 	//ipl/gloss/console_out.c for more info.
+	//Note that this overwrites bits of the tilemap, as it's drawn on the same layer.
 	FILE *f;
 	f=fopen("/dev/console", "w");
 	setvbuf(f, NULL, _IONBF, 0); //make console line unbuffered
 	//Note that without the setvbuf command, no characters would be printed until 1024 characters are
 	//buffered. You normally don't want this.
-	fprintf(f, "\033C"); //clear the console. Note '\033' is the escape character.
+	//The next line would clear the console, removing the tilemap we loaded earlier. It's commented
+	//out as we don't want to lose that.
+	//fprintf(f, "\033C"); //clear the console. Note '\033' is the escape character.
 	fprintf(f, "\0335X"); //set Xpos to 5
-	fprintf(f, "\0338Y"); //set Ypos to 8
+	fprintf(f, "\03315Y"); //set Ypos to 15
 	fprintf(f, "Hello World!"); // Print a nice greeting.
 	
 	//The user can still see nothing of this graphics goodness, so let's re-enable the framebuffer and
@@ -70,8 +80,6 @@ void main(int argc, char **argv) {
 	//8-bit.
 	GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_FB_8BIT|GFX_LAYEREN_FB|GFX_LAYEREN_TILEA;
 
-	gfx_load_tilemap_mem(GFXTILEMAPA, 64, 64, 1, &_binary_tilemap_tmx_start, &_binary_tilemap_tmx_end-&_binary_tilemap_tmx_start, 0);
-	
 	printf("Hello World ready. Press a button to exit.\n");
 	//Wait until all buttons are released
 	wait_for_button_release();
