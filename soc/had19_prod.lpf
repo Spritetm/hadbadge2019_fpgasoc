@@ -38,14 +38,14 @@ IOBUF PORT "leda[2]" IO_TYPE=LVCMOS33;
 
 #buttons
 #[7:0] = UDLRBAstartsel
-LOCATE COMP "btn[7]" SITE "E1"; #start
-LOCATE COMP "btn[6]" SITE "D2"; #select
-LOCATE COMP "btn[5]" SITE "D1"; #a
-LOCATE COMP "btn[4]" SITE "E2"; #b
-LOCATE COMP "btn[3]" SITE "F2"; #right
-LOCATE COMP "btn[2]" SITE "G2"; #left
-LOCATE COMP "btn[1]" SITE "C1"; #down
-LOCATE COMP "btn[0]" SITE "F1"; #up
+LOCATE COMP "btn[7]" SITE "E1"; #SW8 (start)
+LOCATE COMP "btn[6]" SITE "D2"; #SW7 (select)
+LOCATE COMP "btn[5]" SITE "E2"; #SW6 (b)
+LOCATE COMP "btn[4]" SITE "D1"; #SW5 (a)
+LOCATE COMP "btn[3]" SITE "F2"; #SW4 (right)
+LOCATE COMP "btn[2]" SITE "G2"; #SW3 (left)
+LOCATE COMP "btn[1]" SITE "C1"; #SW2 (down)
+LOCATE COMP "btn[0]" SITE "F1"; #SW1 (up)
 
 IOBUF PORT "btn[0]" IO_TYPE=LVCMOS33 PULLMODE=UP;
 IOBUF PORT "btn[1]" IO_TYPE=LVCMOS33 PULLMODE=UP;
@@ -265,7 +265,7 @@ LOCATE COMP "adc4" SITE "D17";
 LOCATE COMP "adcrefout" SITE "A19";
 
 #has D17 as complementary input
-IOBUF PORT "adcref4" IO_TYPE=LVDS; 
+IOBUF PORT "adcref4" IO_TYPE=LVDS;
 
 LOCATE COMP "sao1[0]" SITE "A2"; #gpio1
 LOCATE COMP "sao1[1]" SITE "A3"; #gpio2
