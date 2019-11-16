@@ -434,13 +434,30 @@ pixel (0,1) of a tile is stored in bits [3:0] of word 2
 
 /* -------------- PIC peripheral defines --------------------- */
 
+/* There's a PIC16C84 core in the FPGA. It's able to control the LEDs
+instead of the RiscV, so you can offload these nice fading effects you're
+thinking about to it without taking up CPU power on the main processor. */
 #define PIC_OFFSET_REGS 0x70000000
-
+/** Control register for the PIC. It allows you to reset it, send it an 
+    interrupt, and to enable it to control the LEDs. */
 #define PIC_CTL_REG 0x0
+/** Reset bit. Setting this to 1 keeps the PIC in reset, setting it to 0
+    allows it to run. */
 #define PIC_CTL_RESET (1<<0)
+/** This bit is directly connected to the INT0 IRQ line. Use this to 
+    send an interrupt to the PIC */
 #define PIC_CTL_INT0 (1<<1)
+/** LED passthrough. If 1, the RiscV controls the LEDs. If 0, the desired
+    LED state is available to the pic to read, but it can control the
+    outputs to the LED itself. */
 #define PIC_CTL_PASSTHRU (1<<2)
+/** PIC RAM. This is implemented as 256 32-bit words, with the 
+    bottom 8 bits mapped to a byte in the PIC; the upper 24 bit read 0
+    and are ignored when written. */
 #define PIC_OFFSET_DATAMEM 0x70004000
+/** PIC program memory. This is implemented as 1024 32-bit words, with
+    the bottom 14 bits mapped to a word in PIC program memory ('flash').
+    The other bits are 0 when read and ignored when written. */
 #define PIC_OFFSET_PROGMEM 0x70008000
 
 /* -------------- USB peripheral defines --------------------- */

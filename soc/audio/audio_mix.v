@@ -70,6 +70,7 @@ module audio_mix (
 	reg  [35:0] pa_l;
 	reg  [35:0] pa_r;
 
+	reg  pcm_ena_1, pcm_ena_2;
 	reg  [15:0] pdm_offset;
 
 	// PCM volume
@@ -93,9 +94,16 @@ module audio_mix (
 	assign out_l = pa_l[23:8];
 	assign out_r = pa_r[23:8];
 
+	// Align PCM enable
+	always @(posedge clk)
+	begin
+		pcm_ena_1 <= pcm_ena;
+		pcm_ena_2 <= pcm_ena_1;
+	end
+
 	// Apply variable DC offset for PDM output
 	always @(*)
-		if (pcm_ena | force_pdm_offset)
+		if (pcm_ena_2 | force_pdm_offset)
 			pdm_offset = 16'h8000;
 		else if (synth_dc[11:10] != 2'b00)
 			pdm_offset = 16'h8000;

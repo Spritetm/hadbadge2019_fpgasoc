@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
 
 #include "mach_defines.h"
 #include "sdk.h"
@@ -13,14 +14,32 @@
 extern char _binary_bgnd_png_start;
 extern char _binary_bgnd_png_end;
 
-extern char _binary_tilemap_tmx_start;
-extern char _binary_tilemap_tmx_end;
-
 //Pointer to the framebuffer memory.
 uint8_t *fbmem;
 
 #define FB_WIDTH 512
 #define FB_HEIGHT 320
+
+void gfx_set_xlate_val(int layer, int xcenter, int ycenter, float scale, float rot) {
+	float scale_inv=(1.0/scale);
+	float dx_x=cos(rot)*scale_inv;
+	float dx_y=-sin(rot)*scale_inv;
+	float dy_x=sin(rot)*scale_inv;
+	float dy_y=cos(rot)*scale_inv;
+	float start_x=-xcenter;
+	float start_y=-ycenter;
+
+	int i_dx_x=64.0*dx_x;
+	int i_dx_y=64.0*dx_y;
+	int i_dy_x=64.0*dy_x;
+	int i_dy_y=64.0*dy_y;
+	int i_start_x=(-start_x+start_x*dx_x-start_y*dx_y)*64.0;
+	int i_start_y=(-start_y+start_y*dy_y-start_x*dy_x)*64.0;
+
+	GFX_REG(GFX_TILEA_OFF)=(i_start_y<<16)+(i_start_x&0xffff);
+	GFX_REG(GFX_TILEA_INC_COL)=(i_dx_y<<16)+(i_dx_x&0xffff);
+	GFX_REG(GFX_TILEA_INC_ROW)=(i_dy_y<<16)+(i_dy_x&0xffff);
+}
 
 void main(int argc, char **argv) {
 	//We're running in app context. We have full control over the badge and can do with the hardware what we want. As
@@ -52,29 +71,24 @@ void main(int argc, char **argv) {
 	cache_flush(fbmem, fbmem+FB_WIDTH*FB_HEIGHT);
 
 	//The IPL leaves us with a tileset that has tile 0 to 127 map to ASCII characters, so we do not need to
-	//load anything specific for this. 
-
-	//We have a tilemap, built with tiled, that can be loaded. This allows you to easily
-	//define graphics layers with tilemaps in a GUI program.
-	gfx_load_tilemap_mem(GFXTILEMAPA, 64, 64, 1, &_binary_tilemap_tmx_start, &_binary_tilemap_tmx_end-&_binary_tilemap_tmx_start, 0);
-
-
-	//In order to get some text out, we can use the /dev/console device
+	//load anything specific for this. In order to get some text out, we can use the /dev/console device
 	//that will use these tiles to put text in a tilemap. It uses escape codes to do so, see 
 	//ipl/gloss/console_out.c for more info.
-	//Note that this overwrites bits of the tilemap, as it's drawn on the same layer.
 	FILE *f;
 	f=fopen("/dev/console", "w");
 	setvbuf(f, NULL, _IONBF, 0); //make console line unbuffered
 	//Note that without the setvbuf command, no characters would be printed until 1024 characters are
 	//buffered. You normally don't want this.
-	//The next line would clear the console, removing the tilemap we loaded earlier. It's commented
-	//out as we don't want to lose that.
-	//fprintf(f, "\033C"); //clear the console. Note '\033' is the escape character.
-	fprintf(f, "\0335X"); //set Xpos to 5
-	fprintf(f, "\03315Y"); //set Ypos to 15
-	fprintf(f, "Hello World!"); // Print a nice greeting.
+	fprintf(f, "\033C"); //clear the console. Note '\033' is the escape character.
+
+	fprintf(f, "\0338X"); //set Xpos to 5
+	fprintf(f, "\03312Y"); //set Ypos to 8
+	// change the line below for your own name/twitter handle, etc.
+	fprintf(f, "@thomasflummer"); // Print a nice greeting.
 	
+	// maybe change the scaling factor (1.8) below if your name is too long or very short
+	gfx_set_xlate_val(0, 240, 200, 1.8, 0);
+
 	//The user can still see nothing of this graphics goodness, so let's re-enable the framebuffer and
 	//tile layer A (the default layer for the console). Also indicate the framebuffer we have is
 	//8-bit.

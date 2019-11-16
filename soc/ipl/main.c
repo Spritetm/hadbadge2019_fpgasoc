@@ -503,8 +503,8 @@ void start_app(const char *app) {
 	maincall(0, NULL);
 	user_memfn_set(malloc, realloc, free);
 	syscall_reinit();
-	//Disable all but USB interrupt
-	mach_int_dis(~(1<<INT_NO_USB));
+	//Disable all but USB interrupt and error handlers
+	mach_int_dis(~((1<<INT_NO_USB)|(1<<INT_NO_ILLINSTR)|(1<<INT_NO_UNALIG)|(1<<INT_NO_BUSERR)));
 }
 
 static void
@@ -548,12 +548,6 @@ void main() {
 	uint32_t *int_stack=malloc(IRQ_STACK_SIZE);
 	irq_stack_ptr=int_stack+(IRQ_STACK_SIZE/sizeof(uint32_t));
 
-	//Initialize USB subsystem
-	printf("IPL main function. Booted from %s.\n", booted_from_cartridge()?"cartridge":"internal memory");
-	usb_setup_serial_no();
-	tusb_init();
-	printf("USB inited.\n");
-	
 	//Initialize filesystem (fatfs, flash translation layer)
 	fs_init();
 	printf("Filesystem inited.\n");
@@ -599,8 +593,14 @@ void main() {
 			printf("No %s found; not running\n", autoexec);
 		}
 	}
-	
 
+	//Initialize USB subsystem
+	printf("IPL main function. Booted from %s.\n", booted_from_cartridge()?"cartridge":"internal memory");
+	usb_setup_serial_no();
+	tusb_init();
+	printf("USB inited.\n");
+
+	//Main loop
 	while(1) {
 		MISC_REG(MISC_LED_REG) = leds_on;
 		printf("IPL running.\n");
