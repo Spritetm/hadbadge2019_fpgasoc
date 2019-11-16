@@ -503,8 +503,8 @@ void start_app(const char *app) {
 	maincall(0, NULL);
 	user_memfn_set(malloc, realloc, free);
 	syscall_reinit();
-	//Disable all but USB interrupt
-	mach_int_dis(~(1<<INT_NO_USB));
+	//Disable all but USB interrupt and error handlers
+	mach_int_dis(~((1<<INT_NO_USB)|(1<<INT_NO_ILLINSTR)|(1<<INT_NO_UNALIG)|(1<<INT_NO_BUSERR)));
 }
 
 static void
