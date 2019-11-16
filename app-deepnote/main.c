@@ -299,10 +299,10 @@ void main() {
 
 	// TODO: shiny  effect
 
-	// Hold until button press
-	wait_for_button_press(BUTTON_A);
+	// Hold until button press OR delay the correct amount to match end of audio
+	wait_for_button_press(BUTTON_A|BUTTON_B|BUTTON_SELECT|BUTTON_START|BUTTON_UP|BUTTON_DOWN|BUTTON_LEFT|BUTTON_RIGHT);
 
-	// Fade to black. Enjoyr your feature presentation
+	// Fade to black. Enjoy your feature presentation.
 	for (uint8_t fade = 0; fade < 0xFF; fade++) {
 		fadecolor = fade << 24;
 		GFXPAL[PALETTE_INDEX_GREEN] = fadecolor;
