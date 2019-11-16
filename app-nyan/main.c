@@ -95,13 +95,10 @@ void main(int argc, char **argv) {
 			}
 		}
 
-
 		// Add in music:
-
-        midi_play_song(nyan, sizeof(nyan)/sizeof(uint16_t)/3 , BPM(120));
-
+		midi_play_song(nyan, sizeof(nyan)/sizeof(uint16_t)/3 , BPM(120));
 
 		while (GFX_REG(GFX_VBLCTR_REG) <= cur_vbl_ctr);
-
 	}
+	midi_reset();
 }

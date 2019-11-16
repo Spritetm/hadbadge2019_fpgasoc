@@ -27,5 +27,7 @@
 // Returns which step in the song just played
 uint16_t midi_play_song(uint16_t songArray[][3], uint16_t length, uint32_t clocksPerClick);
 
-
+// stops music playback and resets to initial conditions allowing changing
+// to a new song
+void midi_reset(void);
 
