@@ -323,7 +323,7 @@ int show_main_menu(char *app_name, int *ret_flags) {
 	int old_usbstate=-1; //trigger change of usb state whatever state was
 	int bgnd_pal_state=10;
 	int selected=-1;
-	int done=0;
+	int done=0; // 0 - not done, 1 - done and start selection, 2 - done and restart
 	const char scrtxt[]="                       "
 						"Welcome to the Hackaday Supercon 2019 IPL menu thingy! Select an app "
 						"or insert an USB cable to modify the files on the flash. Have fun!"
@@ -429,6 +429,9 @@ int show_main_menu(char *app_name, int *ret_flags) {
 		if (btn&BUTTON_A && !(old_btn&BUTTON_A)) {
 			//start up app
 			done=1;
+		} else if (btn & BUTTON_SELECT && !(old_btn&BUTTON_SELECT)) {
+			// reload menu to refresh flash file system
+			done=2;
 		} else if (btn & BUTTON_UP && !(old_btn&BUTTON_UP)) {
 			movedir=-1;
 			need_redraw=1;
@@ -486,7 +489,7 @@ int show_main_menu(char *app_name, int *ret_flags) {
 	//..and close it.
 	fclose(console);
 	free(lcdfb);
-	return 0;
+	return done;
 }
 
 void start_app(const char *app) {
@@ -606,18 +609,19 @@ void main() {
 		printf("IPL running.\n");
 		char app_name[256]="*na*";
 		int flags=0;
-		show_main_menu(app_name, &flags);
-		if (flags&ITEM_FLAG_BITSTREAM) {
-			printf("Booting cart bitstream...\n");
-			boot_fpga_bitstream(flags&ITEM_FLAG_ON_CART);
-		} else if (flags&ITEM_FLAG_FORMAT) {
-			printf("Formatting cart...\n");
-			fs_cart_initialize_fat();
-		} else {
-			printf("IPL: starting app %s\n", app_name);
-			usb_msc_off();
-			start_app(app_name);
-			printf("IPL: App %s returned.\n", app_name);
+		if (show_main_menu(app_name, &flags) == 1) {
+			if (flags&ITEM_FLAG_BITSTREAM) {
+				printf("Booting cart bitstream...\n");
+				boot_fpga_bitstream(flags&ITEM_FLAG_ON_CART);
+			} else if (flags&ITEM_FLAG_FORMAT) {
+				printf("Formatting cart...\n");
+				fs_cart_initialize_fat();
+			} else {
+				printf("IPL: starting app %s\n", app_name);
+				usb_msc_off();
+				start_app(app_name);
+				printf("IPL: App %s returned.\n", app_name);
+			}
 		}
 	}
 }
