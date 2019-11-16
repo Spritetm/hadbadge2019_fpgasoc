@@ -84,7 +84,7 @@ gdb: $(TARGET_ELF)
 	$(GDB) -b 115200 -ex "target remote /dev/ttyUSB0" $(APPNAME).elf
 
 .PHONY: gloss/libgloss.a
-gloss/libgloss.a: gloss/
+gloss/libgloss.a: gloss
 	$(MAKE) -C gloss
 
 include $(wildcard $(DEPFILES))
