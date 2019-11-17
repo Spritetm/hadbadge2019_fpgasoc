@@ -46,7 +46,7 @@ void __render_fire(void) {
 	/* draw randomized fire seed row */
 	uint32_t rnd;
 	for (int x = 0; x < FB_WIDTH; x++) {
-		if ((x & 32) == 0) {
+		if ((x & 31) == 0) {
 			rnd = MISC_REG(MISC_RNG_REG);
 		}
 		if (rnd & 0x00000001) {
