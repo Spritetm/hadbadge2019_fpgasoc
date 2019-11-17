@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="480mm"
+   height="320mm"
+   viewBox="0 0 480 320"
+   version="1.1"
+   id="svg8"
+   inkscape:version="0.92.4 (unknown)"
+   sodipodi:docname="deepnote_reference.svg"
+   inkscape:export-filename="/home/roger/coding/hadbadge2019_fpgasoc/app-deepnote/assets/audience_hacking.png"
+   inkscape:export-xdpi="25.4"
+   inkscape:export-ydpi="25.4">
+  <defs
+     id="defs2">
+    <inkscape:path-effect
+       effect="bspline"
+       id="path-effect4580"
+       is_visible="true"
+       weight="33.333333"
+       steps="2"
+       helper_size="0"
+       apply_no_weight="true"
+       apply_with_weight="true"
+       only_selected="false" />
+  </defs>
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="0.69783854"
+     inkscape:cx="876.27719"
+     inkscape:cy="604.72441"
+     inkscape:document-units="mm"
+     inkscape:current-layer="layer3"
+     showgrid="true"
+     showguides="true"
+     inkscape:guide-bbox="true"
+     inkscape:window-width="1853"
+     inkscape:window-height="1025"
+     inkscape:window-x="67"
+     inkscape:window-y="27"
+     inkscape:window-maximized="1">
+    <inkscape:grid
+       type="xygrid"
+       id="grid10"
+       spacingx="16"
+       spacingy="16"
+       units="mm" />
+    <sodipodi:guide
+       position="115.82938,211.75355"
+       orientation="1,0"
+       id="guide853"
+       inkscape:locked="false" />
+    <sodipodi:guide
+       position="364.73934,163.03317"
+       orientation="1,0"
+       id="guide855"
+       inkscape:locked="false" />
+    <sodipodi:guide
+       position="24,256"
+       orientation="1,0"
+       id="guide857"
+       inkscape:locked="false"
+       inkscape:label=""
+       inkscape:color="rgb(0,0,255)" />
+    <sodipodi:guide
+       position="455.99999,144"
+       orientation="1,0"
+       id="guide859"
+       inkscape:locked="false"
+       inkscape:label=""
+       inkscape:color="rgb(0,0,255)" />
+    <sodipodi:guide
+       position="224,248"
+       orientation="0,1"
+       id="guide861"
+       inkscape:locked="false"
+       inkscape:label=""
+       inkscape:color="rgb(0,0,255)" />
+    <sodipodi:guide
+       position="224,71.999999"
+       orientation="0,1"
+       id="guide863"
+       inkscape:locked="false"
+       inkscape:label=""
+       inkscape:color="rgb(0,0,255)" />
+  </sodipodi:namedview>
+  <metadata
+     id="metadata5">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:groupmode="layer"
+     id="layer4"
+     inkscape:label="Background">
+    <rect
+       style="opacity:1;fill:#000000;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:3.944;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       id="rect846"
+       width="480"
+       height="320"
+       x="0"
+       y="0" />
+  </g>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(0,23)"
+     style="display:inline">
+    <rect
+       style="opacity:1;fill:none;fill-opacity:1;fill-rule:nonzero;stroke:#0080ff;stroke-width:3.76069903;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       id="rect979"
+       width="432"
+       height="176"
+       x="24"
+       y="48.999996" />
+  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer2"
+     inkscape:label="Audience"
+     style="display:none">
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:25.01460838px;line-height:1.25;font-family:sans-serif;-inkscape-font-specification:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:0.62536526"
+       x="240.52362"
+       y="197.65439"
+       id="text983"><tspan
+         sodipodi:role="line"
+         id="tspan981"
+         x="240.52362"
+         y="197.65439"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Rekha;-inkscape-font-specification:Rekha;fill:#ffffff;fill-opacity:1;stroke-width:0.62536526">The Audience is Hacking</tspan></text>
+  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer3"
+     inkscape:label="Sound system"
+     style="display:inline">
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:46.78734589px;line-height:1.25;font-family:sans-serif;-inkscape-font-specification:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#a0a0a0;fill-opacity:1;stroke:none;stroke-width:3.94400001;stroke-miterlimit:4;stroke-dasharray:none"
+       x="241.11252"
+       y="177.47017"
+       id="text831"><tspan
+         sodipodi:role="line"
+         id="tspan829"
+         x="241.1125"
+         y="177.47017"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:sans-serif;-inkscape-font-specification:sans-serif;fill:#a0a0a0;fill-opacity:1;stroke-width:3.94400001;stroke-miterlimit:4;stroke-dasharray:none">SUPERCON</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10.58333302px;line-height:1.25;font-family:sans-serif;-inkscape-font-specification:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.26458332"
+       x="240"
+       y="112"
+       id="text835"><tspan
+         sodipodi:role="line"
+         id="tspan833"
+         x="240"
+         y="121.36377"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:sans-serif;-inkscape-font-specification:sans-serif;stroke-width:0.26458332" /></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10.58333302px;line-height:1.25;font-family:sans-serif;-inkscape-font-specification:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.26458332"
+       x="240"
+       y="96"
+       id="text839"><tspan
+         sodipodi:role="line"
+         id="tspan837"
+         x="240"
+         y="105.36377"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:sans-serif;-inkscape-font-specification:sans-serif;stroke-width:0.26458332" /></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:15.28415966px;line-height:1.25;font-family:sans-serif;-inkscape-font-specification:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#a0a0a0;fill-opacity:1;stroke:none;stroke-width:3.94400001;stroke-miterlimit:4;stroke-dasharray:none"
+       x="165.8223"
+       y="179.4333"
+       id="text843"
+       transform="scale(1.4441726,0.69243802)"><tspan
+         sodipodi:role="line"
+         id="tspan841"
+         x="167.77928"
+         y="179.4333"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:sans-serif;-inkscape-font-specification:sans-serif;letter-spacing:3.91397595px;fill:#a0a0a0;fill-opacity:1;stroke-width:3.94400001;stroke-miterlimit:4;stroke-dasharray:none">2019 HACKADAY</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:15.03458977px;line-height:1.25;font-family:Rekha;-inkscape-font-specification:Rekha;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#a0a0a0;fill-opacity:1;stroke:none;stroke-width:3.94400001;stroke-miterlimit:4;stroke-dasharray:none"
+       x="169.21062"
+       y="289.12735"
+       id="text847"
+       transform="scale(1.4205914,0.7039322)"><tspan
+         sodipodi:role="line"
+         id="tspan845"
+         x="169.21062"
+         y="289.12735"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:sans-serif;-inkscape-font-specification:sans-serif;fill:#a0a0a0;fill-opacity:1;stroke-width:3.94400001;stroke-miterlimit:4;stroke-dasharray:none">BADGE SOUND SYSTEM</tspan></text>
+    <path
+       style="fill:none;stroke:#a0a0a0;stroke-width:3.94400001;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       d="M 115.82938,136.72038 H 364.73934"
+       id="path849"
+       inkscape:connector-curvature="0" />
+    <path
+       inkscape:connector-curvature="0"
+       id="path851"
+       d="M 115.82938,184.11374 H 364.73934"
+       style="fill:none;stroke:#a0a0a0;stroke-width:3.94400001;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
+  </g>
+</svg>
