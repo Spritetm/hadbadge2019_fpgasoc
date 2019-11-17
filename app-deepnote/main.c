@@ -18,6 +18,10 @@
 #include "cache.h"
 #include "badgetime.h"
 
+#include "libsynth.h"
+#include "synth_utils.h"
+#include "midi_note_increments.h"
+
 //The background image got linked into the binary of this app, and these two chars are the first
 //and one past the last byte of it.
 extern char _binary_deepnote_bg_png_start;
@@ -26,6 +30,12 @@ extern char _binary_deepnote_bg_png_end;
 // Followed by the tileset
 extern char _binary_deepnote_tileset_png_start;
 extern char _binary_deepnote_tileset_png_end;
+
+// Music notes
+uint32_t orig_notes[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+uint32_t note_targets[8] = {1604, 2403, 32008, 4806, 6415, 9612, 12830, 16165};
+uint8_t global_volume;
+
 
 //Pointer to the framebuffer memory.
 uint8_t *fbmem;
@@ -113,6 +123,19 @@ static inline void __tile_b_set(uint8_t x, uint8_t y, uint32_t index) {
 //	Art and Code by Roger Cheng (Twitter @Regorlas)
 //
 void main() {
+
+
+	for (uint8_t j=0; j<8; j++) {
+		synth_now->voice[j].ctrl     = SYNTH_VOICE_CTRL_ENABLE | SYNTH_VOICE_CTRL_TRIANGLE;
+		synth_now->voice[j].volume   = SYNTH_VOICE_VOLUME(128,128);
+		orig_notes[j] = 2000 + ( MISC_REG(MISC_RNG_REG) >> 26); 
+		synth_now->voice[j].phase_inc = orig_notes[j]; // middle C
+	}
+	synth_now->voice_force |= 0xFF; 
+	
+
+
+
 	/////////////////////////////////////////////////////////////////////////
 	//	Generic badge app boilerplate
 
@@ -242,16 +265,22 @@ void main() {
 	for (uint8_t fade = 0xFF; fade > 0; fade--) {
 		fadecolor = fade << 24;
 		GFXPAL[PALETTE_INDEX_GREEN] = fadecolor;
+		for (uint8_t j=0; j<8; j++) {
+			synth_now->voice[j].phase_inc = orig_notes[j] + (note_targets[j]-orig_notes[j])*(255-fade)/512;
+		}
 		delay(FADE_DELAY_AUDIENCE);
 	}
 
 	// Hold "The Audience is Hacking"
-	delay(3000);
+	/* delay(3000); */
 
 	// Fade out "The Audience is Hacking" by fading in "GREEN" tiles
 	for (uint8_t fade = 0; fade < 0xFF; fade++) {
 		fadecolor = fade << 24;
 		GFXPAL[PALETTE_INDEX_GREEN] = fadecolor;
+		for (uint8_t j=0; j<8; j++) {
+			synth_now->voice[j].phase_inc = orig_notes[j] + (note_targets[j]-orig_notes[j])*(256+fade)/512;
+		}
 		delay(FADE_DELAY_AUDIENCE);
 	}
 
@@ -276,7 +305,7 @@ void main() {
 	}
 
 	// Hold black for 4 seconds
-	delay(4000);
+	delay(1000);
 
 	// Fade in "SUPERCON" by fading out "RED" tiles
 	for (uint8_t fade = 0xFF; fade > 0; fade--) {
@@ -286,7 +315,7 @@ void main() {
 	}
 
 	// Hold SUPERCON and border for 4 seconds
-	delay(4000);
+	/* delay(4000); */
 
 	// Fade out blue border simultaneously with fading in "2019 Hackaday"/"Badge Sound System"
 	for (uint8_t fade = 0xFF; fade > 0; fade--) {
@@ -295,6 +324,10 @@ void main() {
 		fadecolor = (0xFF-fade) << 24;
 		GFXPAL[PALETTE_INDEX_PINK] = fadecolor;
 		delay(FADE_DELAY_SOUND_SYSTEM);
+		global_volume = 128 - (128)*(255-fade)/256;
+		for (uint8_t j=0; j<8; j++) {
+			synth_now->voice[j].volume = SYNTH_VOICE_VOLUME(global_volume, global_volume);
+		}
 	}
 
 	// TODO: shiny  effect
@@ -309,4 +342,5 @@ void main() {
 		GFXPAL[PALETTE_INDEX_RED] = fadecolor;
 		delay(FADE_DELAY_FINAL);
 	}	
+	synth_all_off();
 }
