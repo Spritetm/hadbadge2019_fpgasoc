@@ -257,14 +257,14 @@ void main() {
 		fadecolor = fade << 24;
 		GFXPAL[PALETTE_INDEX_PINK] = fadecolor;
 		for (uint8_t j=0; j<16; j++) {
-			orig_notes[j] = orig_notes[j] + ( MISC_REG(MISC_RNG_REG) >> 27 ) - 15;
+			orig_notes[j] = orig_notes[j] + ( MISC_REG(MISC_RNG_REG) >> 26 ) - 31;
 			synth_now->voice[j].phase_inc = orig_notes[j];
 		}
 		delay(FADE_DELAY_BORDER);
 	}
 
 	// Wait one second...
-	delay(1000);
+	delay(3000);
 
 	// Fade in "The Audience is Hacking" by fading out "GREEN" tiles
 	for (uint8_t fade = 0xFF; fade > 0; fade--) {
@@ -337,9 +337,11 @@ void main() {
 
 	// TODO: shiny  effect
 
+	delay(1000);
 	// Hold until button press OR delay the correct amount to match end of audio
-	wait_for_button_press(BUTTON_A|BUTTON_B|BUTTON_SELECT|BUTTON_START|BUTTON_UP|BUTTON_DOWN|BUTTON_LEFT|BUTTON_RIGHT);
+	/* wait_for_button_press(BUTTON_A|BUTTON_B|BUTTON_SELECT|BUTTON_START|BUTTON_UP|BUTTON_DOWN|BUTTON_LEFT|BUTTON_RIGHT); */
 
+	synth_all_off();
 	// Fade to black. Enjoy your feature presentation.
 	for (uint8_t fade = 0; fade < 0xFF; fade++) {
 		fadecolor = fade << 24;
@@ -347,5 +349,4 @@ void main() {
 		GFXPAL[PALETTE_INDEX_RED] = fadecolor;
 		delay(FADE_DELAY_FINAL);
 	}	
-	synth_all_off();
 }
