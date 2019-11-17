@@ -49,7 +49,7 @@ int gfx_load_tilemap_mem(uint32_t *tilemap, int tilemaph, int tilemapw, int laye
  @param pnglen Length of png data
  @returns 0 on success, other on failure (lodepng_decode error)
 */
-int gfx_load_fb_mem(uint8_t *fbmem, uint32_t *palmem, int fbbpp, int pitch, char *pngstart, int pnglen);
+int gfx_load_fb_mem(uint8_t *fbmem, uint32_t *palmem, int fbbpp, int pitch, const char *pngstart, int pnglen);
 
 /**
  Load a png file, already in memory, into a buffer that can either be or be copied to tile memory. 
@@ -61,7 +61,7 @@ int gfx_load_fb_mem(uint8_t *fbmem, uint32_t *palmem, int fbbpp, int pitch, char
  @param pnglen Length of png data
  @returns 0 on success, other on failure (lodepng_decode error)
 */
-int gfx_load_tiles_mem(uint32_t *tilemem, uint32_t *palettemem, char *pngstart, int pnglen);
+int gfx_load_tiles_mem(uint32_t *tilemem, uint32_t *palettemem, const char *pngstart, int pnglen);
 
 /**
  Helper function for grabbing a pixel value from a decoded, indexed png file.

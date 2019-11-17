@@ -112,7 +112,8 @@ int gfx_load_tilemap_mem(uint32_t *tilemap, int tilemaph, int tilemapw, int laye
 	return (r>=0);
 }
 
-int gfx_load_fb_mem(uint8_t *fbmem, uint32_t *palmem, int fbbpp, int pitch, char *pngstart, int pnglen) {
+int gfx_load_fb_mem(uint8_t *fbmem, uint32_t *palmem, int fbbpp, int pitch,
+	const char *pngstart, int pnglen) {
 	unsigned char *decoded=NULL;
 	unsigned int w=0, h=0;
 	if (fbbpp!=8 && fbbpp!=4) return -1;
@@ -155,7 +156,7 @@ int gfx_load_fb_mem(uint8_t *fbmem, uint32_t *palmem, int fbbpp, int pitch, char
 	return 0;
 }
 
-int gfx_load_tiles_mem(uint32_t *tilemem, uint32_t *palettemem, char *pngstart, int pnglen) {
+int gfx_load_tiles_mem(uint32_t *tilemem, uint32_t *palettemem, const char *pngstart, int pnglen) {
 	unsigned char *decoded;
 	unsigned int w, h;
 	LodePNGState st={0};
