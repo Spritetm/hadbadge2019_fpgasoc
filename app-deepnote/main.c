@@ -32,8 +32,8 @@ extern char _binary_deepnote_tileset_png_start;
 extern char _binary_deepnote_tileset_png_end;
 
 // Music notes
-uint32_t orig_notes[8] = {0, 0, 0, 0, 0, 0, 0, 0};
-uint32_t note_targets[8] = {1604, 2403, 32008, 4806, 6415, 9612, 12830, 16165};
+uint32_t orig_notes[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0};
+uint32_t note_targets[16] = {601, 602, 802, 803, 1201, 1202, 1604, 1605, 2403, 2405, 3208, 4806, 6415, 9612, 12830, 16165};
 uint8_t global_volume;
 
 
@@ -96,7 +96,7 @@ uint32_t *GFXSPRITES = (uint32_t *)0x5000C000;
 #define SOUND_SYSTEM_WIDTH HAD_WIDTH
 
 #define FADE_DELAY_BORDER 10		// * 256 ~= 2.5 seconds
-#define FADE_DELAY_AUDIENCE 6		// * 256 ~= 1.5 seconds
+#define FADE_DELAY_AUDIENCE 8		// * 256 ~= 1.5 seconds
 #define FADE_DELAY_SUPERCON 12		// * 256 ~= 3 seconds
 #define FADE_DELAY_SOUND_SYSTEM 10  // * 256 ~= 2.5 seconds
 #define FADE_DELAY_FINAL 4			// * 256 ~= 1 second
@@ -125,13 +125,14 @@ static inline void __tile_b_set(uint8_t x, uint8_t y, uint32_t index) {
 void main() {
 
 
-	for (uint8_t j=0; j<8; j++) {
+	for (uint8_t j=0; j<16; j++) {
 		synth_now->voice[j].ctrl     = SYNTH_VOICE_CTRL_ENABLE | SYNTH_VOICE_CTRL_TRIANGLE;
 		synth_now->voice[j].volume   = SYNTH_VOICE_VOLUME(128,128);
+		synth_now->voice[j].decay    = 0x0010;
 		orig_notes[j] = 2000 + ( MISC_REG(MISC_RNG_REG) >> 26); 
 		synth_now->voice[j].phase_inc = orig_notes[j]; // middle C
 	}
-	synth_now->voice_force |= 0xFF; 
+	synth_now->voice_force |= 0xFFFF; 
 	
 
 
@@ -255,17 +256,21 @@ void main() {
 	for (uint8_t fade = 0xFF; fade > 0; fade--) {
 		fadecolor = fade << 24;
 		GFXPAL[PALETTE_INDEX_PINK] = fadecolor;
+		for (uint8_t j=0; j<16; j++) {
+			orig_notes[j] = orig_notes[j] + ( MISC_REG(MISC_RNG_REG) >> 26 ) - 31;
+			synth_now->voice[j].phase_inc = orig_notes[j];
+		}
 		delay(FADE_DELAY_BORDER);
 	}
 
 	// Wait one second...
-	delay(1000);
+	delay(3000);
 
 	// Fade in "The Audience is Hacking" by fading out "GREEN" tiles
 	for (uint8_t fade = 0xFF; fade > 0; fade--) {
 		fadecolor = fade << 24;
 		GFXPAL[PALETTE_INDEX_GREEN] = fadecolor;
-		for (uint8_t j=0; j<8; j++) {
+		for (uint8_t j=0; j<16; j++) {
 			synth_now->voice[j].phase_inc = orig_notes[j] + (note_targets[j]-orig_notes[j])*(255-fade)/512;
 		}
 		delay(FADE_DELAY_AUDIENCE);
@@ -278,7 +283,7 @@ void main() {
 	for (uint8_t fade = 0; fade < 0xFF; fade++) {
 		fadecolor = fade << 24;
 		GFXPAL[PALETTE_INDEX_GREEN] = fadecolor;
-		for (uint8_t j=0; j<8; j++) {
+		for (uint8_t j=0; j<16; j++) {
 			synth_now->voice[j].phase_inc = orig_notes[j] + (note_targets[j]-orig_notes[j])*(256+fade)/512;
 		}
 		delay(FADE_DELAY_AUDIENCE);
@@ -325,16 +330,18 @@ void main() {
 		GFXPAL[PALETTE_INDEX_PINK] = fadecolor;
 		delay(FADE_DELAY_SOUND_SYSTEM);
 		global_volume = 128 - (128)*(255-fade)/256;
-		for (uint8_t j=0; j<8; j++) {
+		for (uint8_t j=0; j<16; j++) {
 			synth_now->voice[j].volume = SYNTH_VOICE_VOLUME(global_volume, global_volume);
 		}
 	}
 
 	// TODO: shiny  effect
 
+	delay(1000);
 	// Hold until button press OR delay the correct amount to match end of audio
-	wait_for_button_press(BUTTON_A|BUTTON_B|BUTTON_SELECT|BUTTON_START|BUTTON_UP|BUTTON_DOWN|BUTTON_LEFT|BUTTON_RIGHT);
+	/* wait_for_button_press(BUTTON_A|BUTTON_B|BUTTON_SELECT|BUTTON_START|BUTTON_UP|BUTTON_DOWN|BUTTON_LEFT|BUTTON_RIGHT); */
 
+	synth_all_off();
 	// Fade to black. Enjoy your feature presentation.
 	for (uint8_t fade = 0; fade < 0xFF; fade++) {
 		fadecolor = fade << 24;
@@ -342,5 +349,4 @@ void main() {
 		GFXPAL[PALETTE_INDEX_RED] = fadecolor;
 		delay(FADE_DELAY_FINAL);
 	}	
-	synth_all_off();
 }
