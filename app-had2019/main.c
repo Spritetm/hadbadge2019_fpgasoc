@@ -139,14 +139,14 @@ struct sprite_data {
 };
 typedef struct sprite_data sprite_data;
 
-#define NUM_SPRITES 3
+#define NUM_SPRITES 8
 sprite_data sprites[NUM_SPRITES];
 
 bool sprite_done(const sprite_data *spr, int t) {
 	return (t >= spr->t_end);
 }
 
-bool sprite_upd_pos(const sprite_data *spr, int t) {
+void sprite_upd_pos(const sprite_data *spr, int t) {
 	if (t < spr->t_start) return;
 	if (t > spr->t_end) t = spr->t_end;
 	
@@ -156,7 +156,7 @@ bool sprite_upd_pos(const sprite_data *spr, int t) {
 	float mult = (float)off / (float) dur;
 	int y = spr->y_start + mult * (spr->y_end - spr->y_start);
 
-	set_sprite(spr->num, spr->x, y, 16, 16,
+	set_sprite(spr->num, spr->x, y, 32, 32,
 		spr->y_end > spr->y_start ? 1 : 0, TILE_PAL_START);
 }
 
@@ -181,24 +181,29 @@ void init_sprites(uint32_t t) {
 
 	switch (sprite_state) {
 	case 0: // left from top, going down
-		set_sprite_data(0, t, 0,  180, 32, 360, 40);
-		set_sprite_data(1, t, 10, 190, 32, 360, 48);
-		set_sprite_data(2, t, 20, 200, 32, 360, 56);
-		break;
-	case 1: // left from bottom, going down
-		set_sprite_data(0, t, 10,  80, 32, 40, -40);
-		set_sprite_data(1, t, 20,  90, 32, 48, -40);
-		set_sprite_data(2, t, 30, 100, 32, 56, -40);
-		break;
 	case 2: // right from bottom, going up
-		set_sprite_data(0, t, 0,  180, 432, -40, 280);
-		set_sprite_data(1, t, 10, 190, 432, -40, 272);
-		set_sprite_data(2, t, 20, 200, 432, -40, 264);
+		set_sprite_data(0, t, 0,  180, 32, 360, 40);
+		set_sprite_data(1, t, 10, 190, 32, 360, 52);
+		set_sprite_data(2, t, 20, 200, 32, 360, 76);
+		set_sprite_data(3, t, 40, 220, 32, 360, 64);
+
+		set_sprite_data(4, t, 0,  180, 432, -40, 280);
+		set_sprite_data(5, t, 10, 190, 432, -40, 268);
+		set_sprite_data(6, t, 20, 200, 432, -40, 244);
+		set_sprite_data(7, t, 40, 220, 432, -40, 256);
 		break;
+
+	case 1: // left from bottom, going down
 	case 3: // right from top, going up
-		set_sprite_data(0, t, 10,  80, 432, 280, 360);
-		set_sprite_data(1, t, 20,  90, 432, 272, 360);
-		set_sprite_data(2, t, 30, 100, 432, 264, 360);
+		set_sprite_data(0, t, 10,  80, 32, 40, -40);
+		set_sprite_data(1, t, 20,  90, 32, 52, -40);
+		set_sprite_data(2, t, 30, 100, 32, 76, -40);
+		set_sprite_data(3, t, 40, 110, 32, 64, -40);
+
+		set_sprite_data(4, t, 10,  80, 432, 280, 360);
+		set_sprite_data(5, t, 20,  90, 432, 268, 360);
+		set_sprite_data(6, t, 30, 100, 432, 244, 360);
+		set_sprite_data(7, t, 40, 110, 432, 256, 360);
 		break;
 	}
 }
