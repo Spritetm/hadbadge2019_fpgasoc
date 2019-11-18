@@ -1,0 +1,6 @@
+build/
+*.map
+*.elf
+*.sym
+.DS_Store
+
