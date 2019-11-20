@@ -44,7 +44,7 @@ cd hadbadge2019_fpgasoc
 From here, you can start hacking:
 
 - You can just use the hardware and start your new design [from scratch](doc/fpga_dev.md).
-- You can [modify the existing SoC](doc/soc_dev.md) to incorporate your own peripherals.
+- You can [modify the existing SoC](doc/soc-dev.md) to incorporate your own peripherals.
 - [Modifying the IPL](doc/ipl_dev.md) is useful if you want to change the look of the menu
   or add extra features there.
 - Finally, if you are happy with the existing hardware, you can [write an app](doc/app_dev.md)
