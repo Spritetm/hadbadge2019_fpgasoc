@@ -16,6 +16,20 @@ containing the processors and all peripherals. It also contains the software
 responsible for bootup and app selection and loading (boot and IPL) as well
 as the SDK you can use to create new apps.
 
+Community
+---------
+
+If you are hacking on the badge hardware, gateware or software. You can find
+fellow hackers in multiple places. Ask questions and share your projects in
+those channels.
+
+* [Hackaday.io Supercon 2019 Chat](https://hackaday.io/messages/room/280647)
+* [1BitSquared Discord #supercon-fpga-badge channel](https://1bitsquared.com/pages/chat)
+* [Hackaday.io Hackaday Supercon 2019 Badge page](https://hackaday.io/project/167255-2019-hackaday-superconference-badge)
+
+*If you know of any other FPGA badge related communities and resources please
+add them here*
+
 How to use
 ==========
 
