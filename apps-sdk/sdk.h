@@ -42,6 +42,7 @@ extern volatile uint32_t GFXREG[];
 
 extern uint32_t GFXPAL[];
 extern uint32_t GFXTILES[];
+extern uint32_t GFXSPRITES[];
 extern uint32_t GFXTILEMAPA[];
 extern uint32_t GFXTILEMAPB[];
 
