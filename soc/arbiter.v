@@ -1,3 +1,4 @@
+`default_nettype none
 /*
  * Copyright (C) 2019  Jeroen Domburg <jeroen@spritesmods.com>
  * All rights reserved.
@@ -32,7 +33,7 @@
 This is an arbiter that allows multiple masters speaking the de-facto SOC memory protocol to 
 talk to one memory bus. This protocol is like this:
 - Master sets up address and (if needed) wdata, raises either ren or one or more wen lines
-- Slave processes what it needs to process, and raises ready as soon as it is done (can 
+- Slave processes what it needs to process, and raises tready as soon as it is done (can 
   be combinatorial, same cycle)
 - Slave lowers ready combinatorially if it's not selected (wen/ren is all 0) anymore.
 
@@ -53,7 +54,7 @@ n m-sized arrays into one n*m-sized array.
 */
 
 module arbiter #(
-	parameter integer MASTER_IFACE_CNT = 1
+	parameter integer MASTER_IFACE_CNT = 2
 ) (
 	input clk, reset,
 	input [32*MASTER_IFACE_CNT-1:0] addr,
@@ -96,7 +97,7 @@ reg [$clog2(MASTER_IFACE_CNT)-1:0] hold_iface;
 assign currmaster = hold_iface;
 
 always @(*) begin
-	idle=0;
+	idle=1;
 	active_iface=0;
 	for (i=0; i<MASTER_IFACE_CNT; i=i+1) begin : genblk
 		`SLICE_32(rdata, i)=s_rdata; //no need to mux this
@@ -133,4 +134,63 @@ always @(posedge clk) begin
 	end
 end
 
+`ifdef FORMAL
+reg f_past_valid = 0;
+reg [7:0] f_past_counter = 0;
+reg [7:0] f_master_reqs [1:0];
+reg [7:0] f_transitions = 0;
+
+initial begin 
+    assume(valid == 0);
+	for (i=0; i<MASTER_IFACE_CNT; i=i+1) begin
+        f_master_reqs[i] = 0;
+    end
+end
+
+always @(posedge clk) begin
+    f_past_valid <= 1;
+    f_past_counter <= f_past_counter + 1;
+    assume(reset == 0);
+
+    // assume well behaved masters
+	for (i=0; i<MASTER_IFACE_CNT; i=i+1) begin
+        if(f_past_valid)
+            if($past(valid[i]) && $past(~ready[i])) begin
+                assume($stable(`SLICE_32(addr,i))); 
+                assume($stable(`SLICE_32(wdata,i)));
+                assume($stable(`SLICE_4(wen,i)));
+                assume($stable(valid[i]));
+            end
+        if(valid[i] && ready[i])
+            f_master_reqs[i] <= f_master_reqs[i] + 1;
+    end
+    
+    // assert pass through works
+    if(f_past_valid && !reset)
+        if(valid) begin
+            assert(s_addr == `SLICE_32(addr, active_iface));
+            assert(s_wdata == `SLICE_32(wdata, active_iface));
+        end
+    
+    // assert that transition won't happen when one master has control
+	for (i=0; i<MASTER_IFACE_CNT; i=i+1) begin
+        if(f_past_valid && !reset)
+            if( $past(active_iface == i) && $past(valid[i]))
+                assert($stable(active_iface));
+    end
+
+    // cover a transition
+    if(f_past_valid)
+        cover($past(valid[1] == 1) && valid[0] == 1);
+
+    // cover both masters wanting to write
+    cover(valid[0] && valid[1]);
+
+    // cover throughput
+    if(f_past_valid)
+        if(valid && $past(active_iface) != active_iface)
+            f_transitions <= f_transitions + 1;
+    cover(f_transitions == 9);
+end
+`endif
 endmodule

@@ -1,0 +1,14 @@
+[options]
+mode prove 
+append 5
+
+[engines]
+smtbmc
+
+[script]
+read_verilog -formal arbiter.v
+prep -top arbiter
+
+[files]
+arbiter.v
+
