@@ -37,25 +37,25 @@ n m-sized arrays into one n*m-sized array.
 */
 
 module qpimem_arbiter #(
-	parameter integer MASTER_IFACE_CNT = 1
+	parameter integer MASTER_IFACE_CNT = 2
 ) (
 	input clk, reset,
 
-	input [32*MASTER_IFACE_CNT-1:0] addr,
-	input [32*MASTER_IFACE_CNT-1:0] wdata,
-	output reg [32*MASTER_IFACE_CNT-1:0] rdata,
-	input [MASTER_IFACE_CNT-1:0] do_read,
-	input [MASTER_IFACE_CNT-1:0] do_write,
-	output reg [MASTER_IFACE_CNT-1:0] next_word,
-	output reg [MASTER_IFACE_CNT-1:0] is_idle,
+	input [32*MASTER_IFACE_CNT-1:0] addr,           // addr from masters wanting to read/write
+	input [32*MASTER_IFACE_CNT-1:0] wdata,          // data from masters wanting to read/write
+	output reg [32*MASTER_IFACE_CNT-1:0] rdata,     // data to masters 
+	input [MASTER_IFACE_CNT-1:0] do_read,           // master wants to read
+	input [MASTER_IFACE_CNT-1:0] do_write,          // master wants to write
+	output reg [MASTER_IFACE_CNT-1:0] next_word,    // When next_word is high, put next word on wdata or read word from rdata
+	output reg [MASTER_IFACE_CNT-1:0] is_idle,      // masters have to wait for is_idle to go high
 	
-	output reg [31:0] s_addr,
-	output reg [31:0] s_wdata,
-	input [31:0] s_rdata,
-	output reg s_do_write,
-	output reg s_do_read,
-	input s_is_idle,
-	input s_next_word
+	output reg [31:0] s_addr,                       // output addr to qpimem iface
+	output reg [31:0] s_wdata,                      // output data to qpimem
+	input [31:0] s_rdata,                           // incoming data from qpimem
+	output reg s_do_write,                          // write enable to qpimem
+	output reg s_do_read,                           // read enable to qpimem
+	input s_is_idle,                                // qpimem interface ready
+	input s_next_word                               // qpimem ready for next word
 );
 
 /*
@@ -77,7 +77,7 @@ reg hold;		//if 1, hold_iface is permanently routed to slave iface
 reg [$clog2(MASTER_IFACE_CNT)-1:0] hold_iface;
 
 always @(*) begin
-	idle=0;
+	idle=1;
 	active_iface=0;
 	for (i=0; i<MASTER_IFACE_CNT; i=i+1) begin : genblk
 		`SLICE_32(rdata, i)=s_rdata; //no need to mux this
@@ -116,5 +116,82 @@ always @(posedge clk) begin
 		end
 	end
 end
+
+`ifdef FORMAL
+reg f_past_valid = 0;
+reg [7:0] f_past_counter = 0;
+reg [7:0] f_master_reqs [1:0];
+reg [7:0] f_transitions = 0;
+
+initial begin 
+    assume(valid == 0);
+	for (i=0; i<MASTER_IFACE_CNT; i=i+1) begin
+        f_master_reqs[i] = 0;
+    end
+end
+
+always @(posedge clk) begin
+    f_past_valid <= 1;
+    f_past_counter <= f_past_counter + 1;
+    assume(reset == 0);
+
+    // assume well behaved masters
+	for (i=0; i<MASTER_IFACE_CNT; i=i+1) begin
+        if(f_past_valid)
+            if($past(do_read[i] || do_write[i]) && $past(~is_idle[i])) begin
+                assume($stable(`SLICE_32(addr,i))); 
+                assume($stable(`SLICE_32(wdata,i)));
+                assume($stable(do_read[i]));
+                assume($stable(do_write[i]));
+            end
+        if((do_read[i] || do_write[i]) && is_idle[i])
+            f_master_reqs[i] <= f_master_reqs[i] + 1;
+        if(do_read[i])
+            assume(!do_write[i]);
+        if(do_write[i])
+            assume(!do_read[i]);
+    end
+
+    // assume well behaved slave
+    if(f_past_valid)
+        // if slave indicates data ready to read then it shouldn't change the data
+        if($past(s_next_word))
+            assume($stable(s_rdata)); 
+    
+    // assert pass through works
+    if(f_past_valid && !reset)
+        if(do_write || do_read) begin
+            assert(s_addr == `SLICE_32(addr, active_iface));
+            assert(s_rdata == `SLICE_32(rdata, active_iface));
+            assert(s_wdata == `SLICE_32(wdata, active_iface));
+            assert(next_word[active_iface]==s_next_word);
+            assert(is_idle[active_iface]==s_is_idle);
+        end
+    
+    // assert that transition won't happen when one master has control
+	for (i=0; i<MASTER_IFACE_CNT; i=i+1) begin
+        if(f_past_valid && !reset)
+            if($past(active_iface == i) && $past(do_write[i] || do_read[i]) && $past(!is_idle[i]))
+                assert($stable(active_iface));
+    end
+
+    // cover a transition
+    if(f_past_valid)
+        cover($past(do_write[1] == 1) && do_write[0] == 1);
+
+    // cover both masters wanting to write
+    cover(do_read[0] && do_read[1]);
+
+    // cover lower priority master writing and higher priority wanting to write
+    if(f_past_valid)
+        cover($past(do_write[0] && active_iface == 0) && do_write[1] && do_write[0]);
+
+    // cover throughput
+    if(f_past_valid)
+        if(do_write && $past(active_iface) != active_iface)
+            f_transitions <= f_transitions + 1;
+    cover(f_transitions == 9);
+end
+`endif
 
 endmodule
