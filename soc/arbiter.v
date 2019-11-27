@@ -152,24 +152,32 @@ always @(posedge clk) begin
     f_past_counter <= f_past_counter + 1;
     assume(reset == 0);
 
-    // assume well behaved masters
+    // assume well behaved masters: if waiting for a write then don't de-assert valid and don't change addr, data or wen lines
 	for (i=0; i<MASTER_IFACE_CNT; i=i+1) begin
         if(f_past_valid)
             if($past(valid[i]) && $past(~ready[i])) begin
+                assume($stable(valid[i]));
                 assume($stable(`SLICE_32(addr,i))); 
                 assume($stable(`SLICE_32(wdata,i)));
                 assume($stable(`SLICE_4(wen,i)));
-                assume($stable(valid[i]));
             end
         if(valid[i] && ready[i])
             f_master_reqs[i] <= f_master_reqs[i] + 1;
     end
+
+    // assume well behaved slave
+    if(f_past_valid)
+        // if slave indicates data ready to read then it shouldn't change the data
+        if($past(s_ready))
+            assume($stable(s_rdata)); 
     
     // assert pass through works
     if(f_past_valid && !reset)
         if(valid) begin
             assert(s_addr == `SLICE_32(addr, active_iface));
             assert(s_wdata == `SLICE_32(wdata, active_iface));
+            assert(s_valid == valid[active_iface]);
+            assert(s_wen == `SLICE_4(wen, active_iface));
         end
     
     // assert that transition won't happen when one master has control
