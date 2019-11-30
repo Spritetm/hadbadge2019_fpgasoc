@@ -45,6 +45,7 @@ module simple_mem_words #(
 	assign write_data[31:24] = wen[3] ? wdata[31:24] : mem[addr][31:24];
 	
 	integer i;
+`ifndef FORMAL
 	initial begin
 		if (INITIAL_HEX == "") begin
 			for (i=0; i<WORDS; i=i+1) mem[i]='hdeadbeef;
@@ -52,6 +53,7 @@ module simple_mem_words #(
 			$readmemh(INITIAL_HEX, mem);
 		end
 	end
+`endif
 
 	always @(posedge clk) begin
 		rdata <= mem[addr];
@@ -93,6 +95,3 @@ module simple_mem_words #(
 `endif
 
 endmodule
-
-endmodule
-

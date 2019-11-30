@@ -42,7 +42,7 @@ module simple_mem #(
 	reg [WIDTH:0] mem [0:WORDS-1];
 	
 	integer i;
-    /*
+`ifndef FORMAL
 	initial begin
 		if (INIT_FILE == "") begin
 			for (i=0; i<WORDS; i++) mem[i]=INITIAL_FILL;
@@ -50,7 +50,7 @@ module simple_mem #(
 			$readmemh(INIT_FILE, mem);
 		end
 	end
-    */
+`endif
 
 	always @(posedge clk) begin
 		rdata <= mem[addr];

@@ -5,8 +5,8 @@ mode prove
 smtbmc
 
 [script]
-read_verilog -formal simple_mem_words.v
-prep -top simple_mem_words
+read_verilog -formal simple_mem.v
+prep -top simple_mem
 
 [files]
-simple_mem_words.v
+simple_mem.v
