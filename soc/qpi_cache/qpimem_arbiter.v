@@ -1,3 +1,4 @@
+`default_nettype none
 /*
  * This is an arbiter that allows multiple masters speaking the QPI memory interface protocol to 
  * talk to one QPI memory device.

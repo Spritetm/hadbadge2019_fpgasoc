@@ -1,3 +1,4 @@
+`default_nettype none
 /*
  * Copyright (C) 2019  Jeroen Domburg <jeroen@spritesmods.com>
  * All rights reserved.
