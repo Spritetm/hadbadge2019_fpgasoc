@@ -166,7 +166,7 @@ ifneq ("$(WSL_DISTRO_NAME)","")
 	# if using Windows Subsystem for Linux, and yosys not found, try adding .exe
 	ifeq (, $(shell which yosys))
 		EXE:=.exe
- 	endif
+	endif
 endif
 
 #Image read mode: qspi, dual-spi, fast-read
@@ -180,11 +180,11 @@ all: $(PROJ).svf
 $(PROJ).json $(PROJ).blif: $(SRC) $(SRC_SYNTH) $(EXTRA_DEPEND)
 	yosys$(EXE) -e ".*(assigned|implicitly).*" -l yosys.log \
 		-p "read -sv -DBADGE_VER=$(BADGE_VER) -D$(HWDEF)=1 $(SRC) $(SRC_SYNTH); \
-			  synth_ecp5 -abc9 -top top_fpga -json $(PROJ).json -blif $(PROJ).blif"
+			synth_ecp5 -abc9 -top top_fpga -json $(PROJ).json -blif $(PROJ).blif"
 
-%_out_synth.config: %.json clock-constrainsts.py
+%_out_synth.config: %.json clock-constraints.py
 	nextpnr-ecp5$(EXE) --json $< --lpf $(CONSTR) --textcfg $@ --45k --package CABGA381 --speed 8 \
-			--pre-pack clock-constrainsts.py -l nextpnr.log --freq 48 --seed $(SEED)
+			--pre-pack clock-constraints.py -l nextpnr.log --freq 48 --seed $(SEED)
 
 %_out.config: %_out_synth.config rom.hex
 	ecpbram -i $< -o $@ -f rom_random_seeds0x123456.hex -t rom.hex
