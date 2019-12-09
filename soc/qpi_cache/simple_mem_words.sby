@@ -1,0 +1,12 @@
+[options]
+mode prove 
+
+[engines]
+smtbmc
+
+[script]
+read_verilog -formal simple_mem_words.v
+prep -top simple_mem_words
+
+[files]
+simple_mem_words.v

@@ -1,3 +1,4 @@
+`default_nettype none
 /*
  * Copyright (C) 2019  Jeroen Domburg <jeroen@spritesmods.com>
  * All rights reserved.
@@ -42,6 +43,7 @@ module simple_mem #(
 	reg [WIDTH:0] mem [0:WORDS-1];
 	
 	integer i;
+`ifndef FORMAL
 	initial begin
 		if (INIT_FILE == "") begin
 			for (i=0; i<WORDS; i++) mem[i]=INITIAL_FILL;
@@ -49,10 +51,39 @@ module simple_mem #(
 			$readmemh(INIT_FILE, mem);
 		end
 	end
+`endif
 
 	always @(posedge clk) begin
 		rdata <= mem[addr];
 		if (wen) mem[addr] <= wdata;
 	end
+
+`ifdef FORMAL
+    // see https://zipcpu.com/zipcpu/2018/07/13/memories.html for details
+    localparam AW = $clog2(WORDS);
+    (* anyconst *) wire [AW-1:0] f_addr;
+    reg [WIDTH-1:0] f_data;
+    reg f_past_valid = 0;
+
+    // allow solver to choose data and put it at some (constant) address
+    initial assume(mem[f_addr] == f_data);
+
+    always @(posedge clk) begin
+        f_past_valid <= 1;
+        // if a write happens at the address then update the data
+        if(wen && f_addr == addr)
+            f_data <= wdata;
+
+        // assert data coming out is good
+        if(f_past_valid)
+            if(f_addr == $past(addr))
+                assert(rdata == $past(f_data));
+    end
+
+    // memory at the address can't change
+    always @(*)
+        assert(mem[f_addr] == f_data);
+`endif
+
 endmodule
 

@@ -1,3 +1,4 @@
+`default_nettype none
 /*
  * Copyright (C) 2019  Jeroen Domburg <jeroen@spritesmods.com>
  * All rights reserved.
@@ -45,6 +46,7 @@ module simple_mem_words #(
 	assign write_data[31:24] = wen[3] ? wdata[31:24] : mem[addr][31:24];
 	
 	integer i;
+`ifndef FORMAL
 	initial begin
 		if (INITIAL_HEX == "") begin
 			for (i=0; i<WORDS; i=i+1) mem[i]='hdeadbeef;
@@ -52,6 +54,7 @@ module simple_mem_words #(
 			$readmemh(INITIAL_HEX, mem);
 		end
 	end
+`endif
 
 	always @(posedge clk) begin
 		rdata <= mem[addr];
@@ -60,5 +63,36 @@ module simple_mem_words #(
 		if (wen[2]) mem[addr][23:16] <= wdata[23:16];
 		if (wen[3]) mem[addr][31:24] <= wdata[31:24];
 	end
-endmodule
 
+`ifdef FORMAL
+    // see https://zipcpu.com/zipcpu/2018/07/13/memories.html for details
+    localparam AW = $clog2(WORDS);
+    (* anyconst *) wire [AW-1:0] f_addr;
+    reg [32-1:0] f_data;
+    reg f_past_valid = 0;
+
+    // allow solver to choose data and put it at some (constant) address
+    initial assume(mem[f_addr] == f_data);
+
+    always @(posedge clk) begin
+        f_past_valid <= 1;
+        // if a write happens at the address then update the data
+        if(wen && f_addr == addr) begin
+            if (wen[0]) f_data[ 7: 0] <= wdata[ 7: 0];
+            if (wen[1]) f_data[15: 8] <= wdata[15: 8];
+            if (wen[2]) f_data[23:16] <= wdata[23:16];
+            if (wen[3]) f_data[31:24] <= wdata[31:24];
+        end
+
+        // assert data coming out is good
+        if(f_past_valid)
+            if(f_addr == $past(addr))
+                assert(rdata == $past(f_data));
+    end
+
+    // memory at the address can't change
+    always @(*)
+        assert(mem[f_addr] == f_data);
+`endif
+
+endmodule
