@@ -71,8 +71,6 @@ extern volatile uint32_t MISC[];
 extern volatile uint32_t GFXREG[];
 #define GFX_REG(i) GFXREG[(i)/4]
 
-uint32_t *GFXSPRITES = (uint32_t *)0x5000C000;
-
 //Used to debounce buttons
 #define BUTTON_READ_DELAY		15
 

@@ -31,9 +31,6 @@ extern volatile uint32_t MISC[];
 extern volatile uint32_t GFXREG[];
 #define GFX_REG(i) GFXREG[(i)/4]
 
-//Manually point to sprites memory location
-uint32_t *GFXSPRITES = (uint32_t *)0x5000C000;
-
 //Define some tilemap data
 #define FLAPPY_GROUND_INDEX 247
 #define FLAPPY_GROUND_Y 19

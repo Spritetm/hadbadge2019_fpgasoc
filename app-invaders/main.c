@@ -77,9 +77,6 @@ uint32_t m_level = 1;
 uint32_t m_score = 0;
 uint32_t m_counter = 0;
 
-// Manually point to sprites memory location
-uint32_t* GFXSPRITES = (uint32_t*)0x5000C000;
-
 // Borrowed this from lcd.c until a better solution comes along :/
 static void __INEFFICIENT_delay(int n) {
   for (int i = 0; i < n; i++) {
