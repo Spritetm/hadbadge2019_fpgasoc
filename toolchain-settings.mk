@@ -45,6 +45,7 @@ endif
 
 # Set prefixes and paths to all tools.
 CC := $(CROSS)gcc$(EXE)
+CPP := $(CROSS)g++$(EXE)
 AR := $(CROSS)gcc-ar$(EXE)
 LD := $(CROSS)ld$(EXE)
 OBJCOPY := $(CROSS)objcopy$(EXE)
@@ -53,6 +54,7 @@ SIZE := $(CROSS)size$(EXE)
 STRIP := $(CROSS)strip$(EXE)
 GDB := $(CROSS)gdb$(EXE)
 
-ASFLAGS := -march=rv32imac -mabi=ilp32
-CFLAGS  := -march=rv32imac -mabi=ilp32 -flto -Os
-LDFLAGS := -march=rv32imac -mabi=ilp32 -flto -ffreestanding -nostartfiles -Wl,--gc-section -Wl,-Bstatic -Wl,-melf32lriscv
+ASFLAGS  := -march=rv32imac -mabi=ilp32
+CFLAGS   := -march=rv32imac -mabi=ilp32 -flto -Os
+CPPFLAGS := -march=rv32imac -mabi=ilp32 -flto -Os
+LDFLAGS  := -march=rv32imac -mabi=ilp32 -flto -ffreestanding -nostartfiles -Wl,--gc-section -Wl,-Bstatic -Wl,-melf32lriscv
