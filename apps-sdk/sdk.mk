@@ -19,10 +19,11 @@ BUILD_DIR_SDK := $(BUILD_DIR)/apps-sdk
 #Ipl gloss is in include path because mach_defines.h
 INCLUDEDIRS += $(APPSSDK_DIR) $(APPSSDK_DIR)/gloss $(APPSSDK_DIR)/../soc/ipl/gloss $(APPSSDK_DIR)/../soc/ipl/syscallable/
 CFLAGS += -ggdb $(addprefix -I,$(INCLUDEDIRS))
+CPPFLAGS += -ggdb $(addprefix -I,$(INCLUDEDIRS))
 LDFLAGS += -ggdb -Wl,-T,$(LDSCRIPT) -Wl,-Map,$(TARGET_MAP) -lgcc -lm -lgloss
 DEPFLAGS := -MMD -MP 
 
-export CC AR LD OBJCOPY CFLAGS LDFLAGS APPNAME
+export CC CPP AR LD OBJCOPY CFLAGS CPPFLAGS LDFLAGS APPNAME
 
 #By default, we'll build the elf file.
 default: $(TARGET_ELF)
@@ -71,6 +72,11 @@ $(1)/%.o: $(2)/%.c $(1)/%.d
 	$$(vecho) CC $$(notdir $$<)
 	$$(Q)mkdir -p $$(dir $$@)
 	$$(Q)$$(CC) $$(CFLAGS) $$(DEPFLAGS) -c -o $$@ $$<
+
+$(1)/%.o: $(2)/%.cpp $(1)/%.d
+	$$(vecho) CPP $$(notdir $$<)
+	$$(Q)mkdir -p $$(dir $$@)
+	$$(Q)$$(CPP) $$(CPPFLAGS) $$(DEPFLAGS) -c -o $$@ $$<
 
 $(1)/%.o: $(2)/%.S $(1)/%.d
 	$$(vecho) CC $$(notdir $$<)
