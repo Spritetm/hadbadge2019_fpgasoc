@@ -1,0 +1,5 @@
+This example draws 16-color XPM image 720x288 to FB layer (and write 2 lines of tiles above and below)
+
+Needs SOC fix to draw every line properly
+
+https://github.com/Spritetm/hadbadge2019_fpgasoc/pull/155
