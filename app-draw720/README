@@ -1,4 +1,4 @@
-This example draws 16-color XPM image 720x288 to FB layer (and write 2 lines of tiles above and below)
+This example draws 16-color XPM image 720x288 (or wider) to FB layer (and write 2 lines of tiles above and below)
 
 Needs SOC fix to draw every line properly
 
