@@ -1,5 +1,3 @@
-/* vim: ts=4 st=4 : */
-
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -10,7 +8,13 @@
 #include "gfx_load.h"
 #include "cache.h"
 
+#if 1
 #include "golden-FN-16c.xpm"
+#define XPMNAME golden_FN_16c_xpm
+#else
+#include "16C-LGND.xpm"
+#define XPMNAME _16C_LGND_xpm
+#endif
 
 //Pointer to the framebuffer memory.
 uint8_t *fbmem;
@@ -54,7 +58,7 @@ void create_fire_palette(void) {
 //Here is where the party begins
 void main(int argc, char **argv) {
 	int ii,i,j=0,k=0,n=0;
-	int dx,dy,cc,cr,cg,cb,c1,c2,c3;
+	int dx,dy,cc,cr,cg,cb,c1,c2,c3,offset;
 	int ac[16],ar[16],ag[16],ab[16];
 	char *po,ch;
 	uint8_t *pb;
@@ -102,13 +106,13 @@ void main(int argc, char **argv) {
 	GFX_REG(GFX_FBPITCH_REG)=(17<<GFX_FBPITCH_PAL_OFF)|(FB_WIDTH<<GFX_FBPITCH_PITCH_OFF);
 	GFX_REG(GFX_FBADDR_REG)=((uint32_t)fbmem);
 	GFX_REG(GFX_LAYEREN_REG)=GFX_LAYEREN_TILEA|GFX_LAYEREN_FB|GFX_LAYEREN_FB_8BIT;
-	sscanf(golden_FN_16c_xpm[0],"%d %d %d %d",&dx,&dy,&cc,&j);
+	sscanf(XPMNAME[0],"%d %d %d %d",&dx,&dy,&cc,&j);
 //	fprintf(f,"dx=%i dy=%i cc=%i bb=%i",dx,dy,cc,j);
 	j = 1;
 	for(i=0;i<cc;i++)
 	{
-		ac[i] = golden_FN_16c_xpm[j][0];
-		po = strstr(golden_FN_16c_xpm[j++],"c #");
+		ac[i] = XPMNAME[j][0];
+		po = strstr(XPMNAME[j++],"c #");
 		if(po!=NULL) k=(int)strtol(&po[3],NULL,16);
 		else k=0;
 		cb = k&255;
@@ -123,11 +127,13 @@ void main(int argc, char **argv) {
 	{
 		c1 = k>>4;
 		c2 = k&15;
+		// combined color (C1 + 0.5*C2)/1.5
 		cr = (((ar[c1] + ar[c1] + ar[c2])<<8)*85)>>16;
 		cg = (((ag[c1] + ag[c1] + ag[c2])<<8)*85)>>16;
 		cb = (((ab[c1] + ab[c1] + ab[c2])<<8)*85)>>16;
 		GFXPAL[17+k] = COMP_COLOR(0xFF,cr,cg,cb);
 	}
+	offset = (dx-720)/2;
 	for(k=0;k<288;k++)
 	{
 		ii = 0;
@@ -140,13 +146,13 @@ void main(int argc, char **argv) {
 #if 0
 			if(k&1) c1 = c2 = c3 = 1;
 #else
-			ch = golden_FN_16c_xpm[j][i+8];
+			ch = XPMNAME[j][i+offset];
 			for(n=0;n<cc;n++) if(ac[n]==ch) break;
 			if(n<cc) c1 = n;
-			ch = golden_FN_16c_xpm[j][i+9];
+			ch = XPMNAME[j][i+offset+1];
 			for(n=0;n<cc;n++) if(ac[n]==ch) break;
 			if(n<cc) c2 = n;
-			ch = golden_FN_16c_xpm[j][i+10];
+			ch = XPMNAME[j][i+offset+2];
 			for(n=0;n<cc;n++) if(ac[n]==ch) break;
 			if(n<cc) c3 = n;
 #endif
