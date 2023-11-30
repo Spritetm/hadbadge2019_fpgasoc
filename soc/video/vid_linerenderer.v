@@ -744,13 +744,14 @@ always @(posedge clk) begin
 					vid_wen <= 1;
 					if (write_vid_addr[8:0]==479) begin
 						dma_run <= 0;
+						//Shaos moved it here from below to fix even lines ignoring
+						dma_start_addr <= dma_start_addr + (fb_is_8bit?pitch:pitch/2);						
 					end
 					if (write_vid_addr[8:0]>479) begin
 						//next line
 						write_vid_addr_next[19:9] <= write_vid_addr_next[19:9] + 'h1;
 						write_vid_addr_next[8:0] <= 0;
 						//prepare dma for next address
-						dma_start_addr <= dma_start_addr + (fb_is_8bit?pitch:pitch/2);
 						dma_run <= 1;
 						tilea_xb <= tilea_linestart_x;
 						tilea_yb <= tilea_linestart_y;
